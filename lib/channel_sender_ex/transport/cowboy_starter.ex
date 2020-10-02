@@ -1,8 +1,6 @@
 defmodule ChannelSenderEx.Transport.CowboyStarter do
   @moduledoc false
 
-  #  @type routes_config() :: [{name(), port(), [{path(), module(), initial_state()}]}]
-
   def start_listeners(routes_config) do
     routes_config
     |> Enum.map(fn {name, port, paths} ->

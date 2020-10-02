@@ -12,8 +12,13 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/cowboy" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/cowlib" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/deep_merge" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/delta_crdt" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/elixir_uuid" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/gen_state_machine" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/horde" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/jason" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/libring" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/merkle_map" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/mime" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/phoenix" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/phoenix_pubsub" />
@@ -24,16 +29,39 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/rustler" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/sorted_set_nif" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/telemetry" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/telemetry_poller" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/toml" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/cowboy" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/cowlib" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/delta_crdt" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/elixir_uuid" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/gen_state_machine" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/horde" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/jason" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/libring" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/merkle_map" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/mime" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/plug" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/plug_cowboy" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/plug_crypto" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/ranch" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/telemetry" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev1/lib/telemetry_poller" />
       <excludeFolder url="file://$MODULE_DIR$/_build/prod/lib/cowboy" />
       <excludeFolder url="file://$MODULE_DIR$/_build/prod/lib/cowlib" />
       <excludeFolder url="file://$MODULE_DIR$/_build/prod/lib/ranch" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/cowboy" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/cowlib" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/delta_crdt" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/elixir_uuid" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/gen_state_machine" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/gun" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/hackney" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/horde" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/idna" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/jason" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/libring" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/merkle_map" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/mime" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/plug" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/plug_cowboy" />
@@ -42,6 +70,7 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/ssl_verify_hostname" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/stream_data" />
       <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/telemetry" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/test/lib/telemetry_poller" />
       <excludeFolder url="file://$MODULE_DIR$/assets/node_modules/phoenix" />
       <excludeFolder url="file://$MODULE_DIR$/assets/node_modules/phoenix_html" />
       <excludeFolder url="file://$MODULE_DIR$/cover" />
@@ -87,5 +116,18 @@
     <orderEntry type="library" name="hackney" level="project" />
     <orderEntry type="library" name="kadabra" level="project" />
     <orderEntry type="library" name="x509" level="project" />
+    <orderEntry type="library" name="horde" level="project" />
+    <orderEntry type="library" name="delta_crdt" level="project" />
+    <orderEntry type="library" name="libring" level="project" />
+    <orderEntry type="library" name="local_cluster" level="project" />
+    <orderEntry type="library" name="schism" level="project" />
+    <orderEntry type="library" name="test_app" level="project" />
+    <orderEntry type="library" name="benchee_html" level="project" />
+    <orderEntry type="library" name="exprof" level="project" />
+    <orderEntry type="library" name="merkle_map" level="project" />
+    <orderEntry type="library" name="eqc_ex" level="project" />
+    <orderEntry type="library" name="gen_state_machine" level="project" />
+    <orderEntry type="library" name="gun" level="project" />
+    <orderEntry type="library" name="cowlib" level="project" />
   </component>
 </module>

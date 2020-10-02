@@ -26,12 +26,16 @@ defmodule ChannelSenderEx.MixProject do
       # {:dep_from_hexpm, "~> 0.3.0"},
       {:benchee, "~> 0.13", only: [:dev]},
       {:cowboy, "~> 2.8"},
+      {:cowlib, "~> 2.9", override: true},
       {:plug_cowboy, "~> 2.0"},
       {:elixir_uuid, "~> 1.2"},
+      {:gen_state_machine, "~> 2.1"},
       {:jason, "~> 1.2"},
+      {:horde, "~> 0.8.1"},
       {:hackney, "~> 1.2.0", only: :test},
       {:plug_crypto, "~> 1.1"},
-      {:stream_data, "~> 0.4", only: [:test]}
+      {:stream_data, "~> 0.4", only: [:test]},
+      {:gun, "~> 1.3", only: :test}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
@@ -39,5 +43,4 @@ defmodule ChannelSenderEx.MixProject do
   defp aliases do
     [test: "test --no-start"]
   end
-
 end
