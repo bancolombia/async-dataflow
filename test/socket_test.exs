@@ -3,8 +3,16 @@ defmodule SocketTest do
 
   alias ChannelSenderEx.Transport.Socket
   alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.RulesProvider.Helper
 
   @moduletag :capture_log
+
+  setup_all do
+    Helper.compile(:channel_sender_ex, socket_event_bus: SocketTest)
+    on_exit(fn ->
+      Helper.compile(:channel_sender_ex)
+    end)
+  end
 
   setup do
     ext_message = %{
@@ -20,7 +28,7 @@ defmodule SocketTest do
 
   test "Should send message", %{message: message, ext_message: ext_message} do
     from = {self(), make_ref()}
-    message_to_proc = {from, message}
+    message_to_proc = {:deliver_msg, from, message}
     state = {"channel1", :connected, {"app1", "user2"}, _pending = %{}}
 
     result = Socket.websocket_info(message_to_proc, state)
@@ -40,7 +48,7 @@ defmodule SocketTest do
 
   test "Should send message ack", %{message: message, ext_message: %{message_id: message_id}} do
     from = {self(), ref = make_ref()}
-    message_to_proc = {from, message}
+    message_to_proc = {:deliver_msg, from, message}
     state = {"channel1", :connected, {"app1", "user2"}, _pending = %{}}
 
     {_commands, state} = Socket.websocket_info(message_to_proc, state)
@@ -65,13 +73,17 @@ defmodule SocketTest do
   } do
     from = {self(), ref = make_ref()}
     message = build_non_serializable_message(message_id)
-    message_to_proc = {from, message}
+    message_to_proc = {:deliver_msg, from, message}
     state = {"channel1", :connected, {"app1", "user2"}, _pending = %{}}
 
     result = Socket.websocket_info(message_to_proc, state)
 
     assert {[], {"channel1", :connected, {"app1", "user2"}, %{}}} == result
     assert_receive {:non_retry_error, _error, ^ref, ^message_id}
+  end
+
+  def notify_event(_, _) do
+    :ok
   end
 
   defp build_non_serializable_message(message_id) do

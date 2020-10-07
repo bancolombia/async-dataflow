@@ -5,10 +5,10 @@ defmodule ChannelSenderEx.Core.Channel do
   use GenStateMachine, callback_mode: [:state_functions, :state_enter]
   require Logger
   alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.RulesProvider
 
   # Max allowed time in waiting before terminate the channel
 #  @waiting_timeout Application.get_env(:channel_sender_ex, :channel_waiting_timeout, 30)
-  @initial_redelivery_time Application.get_env(:channel_sender_ex, :initial_redelivery_time, 850)
 #  @message_time_to_live Application.get_env(:channel_sender_ex, :message_time_to_live, 8000)
   @on_connected_channel_reply_timeout Application.get_env(
                                         :channel_sender_ex,
@@ -80,12 +80,15 @@ defmodule ChannelSenderEx.Core.Channel do
     {:ok, :waiting, data}
   end
 
+  ############################################
+  ###           WAITING STATE             ####
+  ### waiting state callbacks definitions ####
   def waiting(:enter, _old_state, data) do
     {:keep_state, data, [{:state_timeout, 3000, :waiting_timeout}]}
   end
 
+  #TODO: define behaviour of event timeout
   def waiting(:state_timeout, :waiting_timeout, data) do
-    IO.inspect({"In Timeout", :waiting_timeout, data})
     :keep_state_and_data
   end
 
@@ -100,7 +103,6 @@ defmodule ChannelSenderEx.Core.Channel do
     {:next_state, :connected, new_data, actions}
   end
 
-  @spec waiting(call(), {:deliver_message, ProtocolMessage.t()}, Data.t()) :: state_return()
   def waiting(
         {:call, from},
         {:deliver_message, message},
@@ -115,20 +117,25 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state, new_data, actions}
   end
 
+  def waiting({:timeout, {:redelivery, ref}}, _, data) do
+    {:keep_state_and_data, :postpone}
+  end
+
   def waiting({:call, from}, event, data) do
-    IO.inspect({"In Call", {:call, from}, event, data})
     :keep_state_and_data
   end
 
   def waiting(:cast, event, data) do
-    IO.inspect({"In Cast", :cast, event, data})
     :keep_state_and_data
   end
 
   def waiting(:info, event, data) do
-    IO.inspect({"In info", :cast, event, data})
     :keep_state_and_data
   end
+  ###################END######################
+  ###           WAITING STATE             ####
+  ############################################
+
 
   @type call() :: {:call, GenServer.from()}
   @type state_return() :: :gen_statem.event_handler_result(Data.t())
@@ -143,11 +150,11 @@ defmodule ChannelSenderEx.Core.Channel do
         {:deliver_message, message},
         data
       ) do
-    {{_, ref}, _} = output = send_message(data, message)
+    {:deliver_msg, {_, ref}, _} = output = send_message(data, message)
 
     actions = [
       _reply = {:reply, from, :accepted_connected},
-      _timeout = {{:timeout, {:redelivery, ref}}, @initial_redelivery_time, 0}
+      _timeout = {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), 0}
     ]
 
     new_data =
@@ -162,7 +169,7 @@ defmodule ChannelSenderEx.Core.Channel do
     {_, new_data} = retrieve_pending_message(data, message_ref)
 
     actions = [
-      _cancel_timer = {{:timeout, message_ref}, :cancel}
+      _cancel_timer = {{:timeout, {:redelivery, message_ref}}, :cancel}
     ]
 
     {:keep_state, new_data, actions}
@@ -170,14 +177,26 @@ defmodule ChannelSenderEx.Core.Channel do
 
   def connected({:timeout, {:redelivery, ref}}, retries, %{socket: {socket_pid, _}} = data) do
     {message, new_data} = retrieve_pending_message(data, ref)
-
     output = send(socket_pid, create_output_message(message, ref))
 
     actions = [
-      _timeout = {{:timeout, {:redelivery, ref}}, @initial_redelivery_time, retries + 1}
+      _timeout = {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), retries + 1}
     ]
 
     {:keep_state, save_pending_message(new_data, output), actions}
+  end
+
+  #TODO: Check this logic
+  def connected({:call, from}, {:socket_connected, socket_pid}, data = %{socket: {_, old_ref}}) do
+    Process.demonitor(old_ref)
+    socket_ref = Process.monitor(socket_pid)
+    new_data = %{data | socket: {socket_pid, socket_ref}}
+
+    actions = [
+      _reply = {:reply, from, :ok}
+    ]
+
+    {:keep_state, new_data, actions}
   end
 
   def connected(:info, {:DOWN, ref, :process, _object, _reason}, %{socket: {_, ref}} = data) do
@@ -189,7 +208,6 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   def connected(:info, m = {:DOWN, _ref, :process, _object, _reason}, _data) do
-    IO.inspect("Ignoring #{inspect(m)}")
     :keep_state_and_data
   end
 
@@ -201,7 +219,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   @spec save_pending_message(Data.t(), output_message()) :: Data.t()
   @compile {:inline, save_pending_message: 2}
-  defp save_pending_message(data = %{pending_ack: pending_ack}, {{_, ref}, message}) do
+  defp save_pending_message(data = %{pending_ack: pending_ack}, {:deliver_msg, {_, ref}, message}) do
     %{data | pending_ack: Map.put(pending_ack, ref, message)}
   end
 
@@ -229,7 +247,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @spec create_output_message(ProtocolMessage.t()) :: output_message()
   @compile {:inline, create_output_message: 1}
   defp create_output_message(message, ref \\ make_ref()) do
-    {{self(), ref}, message}
+    {:deliver_msg, {self(), ref}, message}
   end
 
   # 1. Build init

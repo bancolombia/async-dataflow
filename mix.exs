@@ -24,7 +24,7 @@ defmodule ChannelSenderEx.MixProject do
   defp deps do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
-      {:benchee, "~> 0.13", only: [:dev]},
+      {:benchee, "~> 0.13", only: [:dev, :benchee]},
       {:cowboy, "~> 2.8"},
       {:cowlib, "~> 2.9", override: true},
       {:plug_cowboy, "~> 2.0"},
@@ -35,7 +35,7 @@ defmodule ChannelSenderEx.MixProject do
       {:hackney, "~> 1.2.0", only: :test},
       {:plug_crypto, "~> 1.1"},
       {:stream_data, "~> 0.4", only: [:test]},
-      {:gun, "~> 1.3", only: :test}
+      {:gun, "~> 1.3", only: [:test, :benchee]}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end

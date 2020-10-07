@@ -7,6 +7,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   @invalid_secret_code 1008
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.RulesProvider
 
   @impl :cowboy_websocket
   def init(req = %{method: "GET"}, _opts) do
@@ -29,6 +30,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   def websocket_handle({:text, "Auth::" <> secret}, {channel, :pre_auth}) do
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
+        notify_connected(channel)
         {_commands = [auth_ok_frame()], {channel, :connected, {application, user_ref}, %{}}}
 
       :unauthorized ->
@@ -68,6 +70,12 @@ defmodule ChannelSenderEx.Transport.Socket do
     {_commands = [], state}
   end
 
+  @compile {:inline, notify_connected: 1}
+  defp notify_connected(channel) do
+    socketEventBus = RulesProvider.get(:socket_event_bus)
+    socketEventBus.notify_event({:connected, channel}, self())
+  end
+
   @compile {:inline, heartbeat_frame: 1}
   @spec heartbeat_frame(String.t()) :: iolist()
   defp heartbeat_frame(hb_seq), do: ["[\"\", \"", hb_seq, "\", \":hb\", \"\"]"]
@@ -77,10 +85,17 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def websocket_info(
-        {from = {pid, ref}, message},
+        {:deliver_msg, from = {pid, ref}, message},
         state = {_, :connected, _, pending_messages}
       ) do
-    message_id = ProtocolMessage.message_id(message)
+
+    message_id = try do
+      ProtocolMessage.message_id(message)
+    catch
+      type, err ->
+        IO.inspect({"FALLA!!!!!", {:message, message}, {:error, type, err}})
+        raise "Falla controlada!!"
+    end
 
     case Jason.encode(ProtocolMessage.to_socket_message(message)) do
       {:ok, encoded} ->
@@ -100,7 +115,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def terminate(reason, partial_req, state) do
-    IO.inspect(%{terminate_reason: reason, req: partial_req, state: state})
+#    IO.inspect(%{terminate_reason: reason, req: partial_req, state: state})
     :ok
   end
 
@@ -112,7 +127,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   defp ws_opts() do
     %{
-      idle_timeout: 60000,
+      idle_timeout: RulesProvider.get(:socket_idle_timeout),
       #      active_n: 5,
       #      compress: false,
       #      deflate_opts: %{},
