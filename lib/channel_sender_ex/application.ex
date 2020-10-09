@@ -16,6 +16,7 @@ defmodule ChannelSenderEx.Application do
 
   def start(_type, _args) do
     ChannelSenderEx.Utils.ClusterUtils.discover_and_connect_local()
+    ChannelSenderEx.Core.RulesProvider.Helper.compile(:channel_sender_ex)
 
     if !@no_start do
       EntryPoint.start()
@@ -34,5 +35,4 @@ defmodule ChannelSenderEx.Application do
   end
 
   defp children(_no_start = true), do: []
-
 end

@@ -8,13 +8,40 @@ defmodule ChannelSenderEx.Transport.Socket do
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
+  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
+
+  @default_protocol_encoder Application.get_env(
+                     :channel_sender_ex,
+                     :message_encoder,
+                     ChannelSenderEx.Transport.Encoders.JsonEncoder
+                   )
+
+  @type channel_ref() :: String.t()
+  @type application_ref() :: String.t()
+  @type user_ref() :: String.t()
+  @type pending_bag() :: %{String.t() => {pid(), reference()}}
+  @type context_data() :: {application_ref(), user_ref()}
+  @type protocol_encoder() :: atom()
+
+  @type pre_operative_state :: {channel_ref(), :pre_auth, protocol_encoder()} | {channel_ref(), :unauthorized}
+  @type operative_state :: {channel_ref(), :connected, protocol_encoder(), context_data(), pending_bag()}
+  @type socket_state :: pre_operative_state() | operative_state()
 
   @impl :cowboy_websocket
   def init(req = %{method: "GET"}, _opts) do
     case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
       {@channel_key, channel} when byte_size(channel) > 10 ->
-        {:cowboy_websocket, req, _state = {channel, :connecting}, ws_opts()}
-
+        case :cowboy_req.parse_header("sec-websocket-protocol", req) do
+          :undefined -> {:cowboy_websocket, req, _state = {channel, :pre_auth, @default_protocol_encoder}, ws_opts()}
+          sub_protocols ->
+            {encoder, req} = case :lists.keymember("binary_flow", 1, sub_protocols) do
+              true ->
+                {BinaryEncoder, :cowboy_req.set_resp_header("sec-websocket-protocol", "binary_flow", req)}
+              false ->
+                {JsonEncoder, :cowboy_req.set_resp_header("sec-websocket-protocol", "json_flow", req)}
+            end
+            {:cowboy_websocket, req, _state = {channel, :pre_auth, encoder}, ws_opts()}
+        end
       _ ->
         req = :cowboy_req.reply(400, req)
         {:ok, req, _state = []}
@@ -22,16 +49,16 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def websocket_init({channel, :connecting}) do
-    {_commands = [], {channel, :pre_auth}}
+  def websocket_init(state) do
+    {_commands = [], state}
   end
 
   @impl :cowboy_websocket
-  def websocket_handle({:text, "Auth::" <> secret}, {channel, :pre_auth}) do
+  def websocket_handle({:text, "Auth::" <> secret}, {channel, :pre_auth, encoder}) do
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
         notify_connected(channel)
-        {_commands = [auth_ok_frame()], {channel, :connected, {application, user_ref}, %{}}}
+        {_commands = [auth_ok_frame()], {channel, :connected, encoder, {application, user_ref}, %{}}}
 
       :unauthorized ->
         {_commands = [{:close, @invalid_secret_code, "Invalid token for channel"}],
@@ -40,18 +67,15 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def websocket_handle({:text, "Ack::" <> message_id}, state = {_, :connected, _, pending}) do
-    new_state =
-      case Map.pop(pending, message_id) do
-        {nil, _} ->
-          state
+  def websocket_handle({:text, "Ack::" <> message_id}, state) do
+    case remove_pending(state, message_id) do
+      {nil, new_state} ->
+        {[], new_state}
 
-        {_from = {pid, ref}, new_pending} ->
-          send(pid, {:ack, ref, message_id})
-          state |> set_pending(new_pending)
-      end
-
-    {[], new_state}
+      {{pid, ref}, new_state} ->
+        send(pid, {:ack, ref, message_id})
+        {[], new_state}
+    end
   end
 
   @impl :cowboy_websocket
@@ -81,26 +105,27 @@ defmodule ChannelSenderEx.Transport.Socket do
   defp heartbeat_frame(hb_seq), do: ["[\"\", \"", hb_seq, "\", \":hb\", \"\"]"]
 
   @compile {:inline, set_pending: 2}
-  defp set_pending(state, new_pending), do: :erlang.setelement(4, state, new_pending)
+  defp set_pending(state, new_pending), do: :erlang.setelement(5, state, new_pending)
+
+  @compile {:inline, remove_pending: 2}
+  defp remove_pending(state = {_, :connected, _, _, pending}, message_id) do
+    case Map.pop(pending, message_id) do
+      {nil, _} -> {nil, state}
+      {elem, new_pending} -> {elem, set_pending(state, new_pending)}
+    end
+  end
 
   @impl :cowboy_websocket
   def websocket_info(
         {:deliver_msg, from = {pid, ref}, message},
-        state = {_, :connected, _, pending_messages}
+        state = {_, :connected, encoder, _, pending_messages}
       ) do
+    message_id = ProtocolMessage.message_id(message)
 
-    message_id = try do
-      ProtocolMessage.message_id(message)
-    catch
-      type, err ->
-        IO.inspect({"FALLA!!!!!", {:message, message}, {:error, type, err}})
-        raise "Falla controlada!!"
-    end
-
-    case Jason.encode(ProtocolMessage.to_socket_message(message)) do
+    case encoder.encode_message(message) do
       {:ok, encoded} ->
         new_state = state |> set_pending(Map.put(pending_messages, message_id, from))
-        {_commands = [{:text, encoded}], new_state}
+        {_commands = [encoded], new_state}
 
       {:error, error} ->
         send(pid, {:non_retry_error, error, ref, message_id})
@@ -114,8 +139,8 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def terminate(reason, partial_req, state) do
-#    IO.inspect(%{terminate_reason: reason, req: partial_req, state: state})
+  def terminate(_reason, _partial_req, _state) do
+    #    IO.inspect(%{terminate_reason: reason, req: partial_req, state: state})
     :ok
   end
 

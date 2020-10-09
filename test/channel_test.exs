@@ -100,10 +100,13 @@ defmodule ChannelTest do
     Process.exit(pid, :kill)
   end
 
-  test "Should postpone redelivery when Channel state change to waiting (disconnected)", %{init_args: init_args, message: message} do
+  test "Should postpone redelivery when Channel state change to waiting (disconnected)", %{
+    init_args: init_args,
+    message: message
+  } do
     proxy = proxy_process()
     {:ok, channel_pid} = start_channel_safe(init_args)
-#    :sys.trace(channel_pid, true)
+    #    :sys.trace(channel_pid, true)
     :ok = Channel.socket_connected(channel_pid, proxy)
 
     message_to_send = ProtocolMessage.to_protocol_message(message)
@@ -133,6 +136,7 @@ defmodule ChannelTest do
     receive do
       :stop ->
         nil
+
       any ->
         send(target_pid, any)
         loop_and_resend(target_pid)

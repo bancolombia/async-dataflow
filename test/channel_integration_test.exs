@@ -31,7 +31,9 @@ defmodule ChannelIntegrationTest do
     }
 
     {:ok, pid_registry} = @registry_module.start_link(name: ChannelRegistry, keys: :unique)
-    {:ok, pid_supervisor} = @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+
+    {:ok, pid_supervisor} =
+      @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
 
     on_exit(fn ->
       true = Process.exit(pid_registry, :normal)
@@ -55,7 +57,11 @@ defmodule ChannelIntegrationTest do
     {:ok, port: port, channel: channel, secret: secret}
   end
 
-  test "Should change channel state to waiting when connection closes", %{port: port, channel: channel, secret: secret} do
+  test "Should change channel state to waiting when connection closes", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
     assert {:accepted_connected, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
@@ -66,12 +72,15 @@ defmodule ChannelIntegrationTest do
 
   defp deliver_message(channel, message_id \\ "42") do
     data = "MessageData12_3245rs42112aa"
-    message = ProtocolMessage.to_protocol_message(%{
-      message_id: message_id,
-      correlation_id: "",
-      message_data: data,
-      event_name: "event.test"
-    })
+
+    message =
+      ProtocolMessage.to_protocol_message(%{
+        message_id: message_id,
+        correlation_id: "",
+        message_data: data,
+        event_name: "event.test"
+      })
+
     channel_response = ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel, message)
     {channel_response, message_id, data}
   end
@@ -99,5 +108,4 @@ defmodule ChannelIntegrationTest do
     socket_message = Jason.decode!(string_data)
     ProtocolMessage.from_socket_message(socket_message)
   end
-
 end

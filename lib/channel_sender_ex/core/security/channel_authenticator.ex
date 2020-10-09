@@ -6,8 +6,6 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ChannelSupervisor
 
-  @applications_repo Application.get_env(:channel_sender_ex, :app_repo)
-
   @type application() :: String.t()
   @type user_ref() :: String.t()
   @type channel_ref() :: String.t()
@@ -16,13 +14,7 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   @spec create_channel(application(), user_ref()) ::
           {:error, :no_app} | {channel_ref(), channel_secret()}
   def create_channel(application, user_ref) do
-    {channel_ref, channel_secret} = credentials = case @applications_repo.get_application(application) do
-      app = %SenderApplication{} ->
-        create_channel_data_for(app, user_ref)
-
-      {:error, :no_app} ->
-        raise "It is not possible to create channel for nonexistent application"
-    end
+    {channel_ref, channel_secret} = credentials = create_channel_data_for(application, user_ref)
     {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, application, user_ref})
     credentials
   end
@@ -41,7 +33,7 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
     end
   end
 
-  defp create_channel_data_for(%SenderApplication{id: app_id}, user_ref) do
+  defp create_channel_data_for(app_id, user_ref) do
     channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
     channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
     {channel_ref, channel_secret}

@@ -3,9 +3,7 @@ defmodule ChannelSenderEx.Core.RulesProvider do
   Provides general rules for handling timeouts and several communication/protocol related rules
   """
   def get(_key), do: raise("Config has not been compiled yet!")
-
 end
-
 
 defmodule ChannelSenderEx.Core.RulesProvider.Compiler do
   @moduledoc """
@@ -53,7 +51,6 @@ defmodule ChannelSenderEx.Core.RulesProvider.Compiler do
   end
 end
 
-
 defmodule ChannelSenderEx.Core.RulesProvider.Helper do
   alias ChannelSenderEx.Core.RulesProvider.Compiler, as: ModuleCompiler
 
@@ -61,5 +58,4 @@ defmodule ChannelSenderEx.Core.RulesProvider.Helper do
     config = Application.get_all_env(app_name) |> Keyword.merge(overrides)
     ModuleCompiler.compile(ChannelSenderEx.Core.RulesProvider, config)
   end
-
 end

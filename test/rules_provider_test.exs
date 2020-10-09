@@ -14,7 +14,7 @@ defmodule RulesProvider do
   doctest ChannelSenderEx.Core.RulesProvider.Compiler
 
   test "Should get rules into new module" do
-    Compiler.compile(Test.NewModule, [rule1: "value1", rule2: {:some, :value}])
+    Compiler.compile(Test.NewModule, rule1: "value1", rule2: {:some, :value})
     assert Test.NewModule.get(:rule1) == "value1"
     assert Test.NewModule.get(:rule2) == {:some, :value}
   end
@@ -34,8 +34,5 @@ defmodule RulesProvider do
     Helper.compile(:channel_sender_ex, initial_redelivery_time: 120)
 
     assert RulesProvider.get(:initial_redelivery_time) == 120
-
   end
-
 end
-

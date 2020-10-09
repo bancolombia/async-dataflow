@@ -20,7 +20,9 @@ defmodule RestControllerTest do
     {:ok, _} = Plug.Cowboy.http(RestController, [], port: 9085, protocol_options: [])
 
     {:ok, pid_registry} = @registry_module.start_link(name: ChannelRegistry, keys: :unique)
-    {:ok, pid_supervisor} = @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+
+    {:ok, pid_supervisor} =
+      @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
 
     on_exit(fn ->
       :ok = Plug.Cowboy.shutdown(RestController.HTTP)
@@ -29,6 +31,7 @@ defmodule RestControllerTest do
       Process.sleep(300)
       IO.puts("Supervisor and Registry was terminated")
     end)
+
     :ok
   end
 
@@ -46,6 +49,7 @@ defmodule RestControllerTest do
 
   test "Should send message on request" do
     {channel, _secret} = ChannelAuthenticator.create_channel("App1", "User1234")
+
     body =
       Jason.encode!(%{
         channel_ref: channel,

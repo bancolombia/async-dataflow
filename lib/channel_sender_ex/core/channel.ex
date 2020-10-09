@@ -8,8 +8,8 @@ defmodule ChannelSenderEx.Core.Channel do
   alias ChannelSenderEx.Core.RulesProvider
 
   # Max allowed time in waiting before terminate the channel
-#  @waiting_timeout Application.get_env(:channel_sender_ex, :channel_waiting_timeout, 30)
-#  @message_time_to_live Application.get_env(:channel_sender_ex, :message_time_to_live, 8000)
+  #  @waiting_timeout Application.get_env(:channel_sender_ex, :channel_waiting_timeout, 30)
+  #  @message_time_to_live Application.get_env(:channel_sender_ex, :message_time_to_live, 8000)
   @on_connected_channel_reply_timeout Application.get_env(
                                         :channel_sender_ex,
                                         :on_connected_channel_reply_timeout,
@@ -87,7 +87,7 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state, data, [{:state_timeout, 3000, :waiting_timeout}]}
   end
 
-  #TODO: define behaviour of event timeout
+  # TODO: define behaviour of event timeout
   def waiting(:state_timeout, :waiting_timeout, data) do
     :keep_state_and_data
   end
@@ -132,10 +132,10 @@ defmodule ChannelSenderEx.Core.Channel do
   def waiting(:info, event, data) do
     :keep_state_and_data
   end
-  ###################END######################
+
+  ################### END######################
   ###           WAITING STATE             ####
   ############################################
-
 
   @type call() :: {:call, GenServer.from()}
   @type state_return() :: :gen_statem.event_handler_result(Data.t())
@@ -180,13 +180,14 @@ defmodule ChannelSenderEx.Core.Channel do
     output = send(socket_pid, create_output_message(message, ref))
 
     actions = [
-      _timeout = {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), retries + 1}
+      _timeout =
+        {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), retries + 1}
     ]
 
     {:keep_state, save_pending_message(new_data, output), actions}
   end
 
-  #TODO: Check this logic
+  # TODO: Check this logic
   def connected({:call, from}, {:socket_connected, socket_pid}, data = %{socket: {_, old_ref}}) do
     Process.demonitor(old_ref)
     socket_ref = Process.monitor(socket_pid)

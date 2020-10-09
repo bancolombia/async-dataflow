@@ -11,7 +11,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @type channel_ref :: String.t()
   @type application :: String.t()
   @type user_ref :: String.t()
-  @type channel_init_args ::  {channel_ref(), application(), user_ref()}
+  @type channel_init_args :: {channel_ref(), application(), user_ref()}
   @spec start_channel(channel_init_args()) :: any()
   def start_channel(args) do
     @supervisor_module.start_child(__MODULE__, channel_child_spec(args))
@@ -29,5 +29,4 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
       restart: :transient
     }
   end
-
 end

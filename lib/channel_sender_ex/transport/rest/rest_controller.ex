@@ -41,16 +41,19 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp deliver_message(
          conn = %{
-           body_params: message = %{
-             channel_ref: channel_ref,
-             message_id: _message_id,
-             correlation_id: _correlation_id,
-             message_data: _message_data,
-             event_name: _event_name
-           }
+           body_params:
+             message = %{
+               channel_ref: channel_ref,
+               message_id: _message_id,
+               correlation_id: _correlation_id,
+               message_data: _message_data,
+               event_name: _event_name
+             }
          }
        ) do
-    _result = PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(message))
+    _result =
+      PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(message))
+
     send_resp(conn, 202, "Ok")
   end
 

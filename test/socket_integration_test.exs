@@ -31,7 +31,9 @@ defmodule SocketIntegrationTest do
     }
 
     {:ok, pid_registry} = @registry_module.start_link(name: ChannelRegistry, keys: :unique)
-    {:ok, pid_supervisor} = @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+
+    {:ok, pid_supervisor} =
+      @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
 
     on_exit(fn ->
       true = Process.exit(pid_registry, :normal)
@@ -85,7 +87,11 @@ defmodule SocketIntegrationTest do
     :gun.close(conn)
   end
 
-  test "Socket should close when no heartbeat was sent", %{port: port, channel: channel, secret: secret} do
+  test "Socket should close when no heartbeat was sent", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
     Helper.compile(:channel_sender_ex, socket_idle_timeout: 500)
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
 
@@ -95,7 +101,6 @@ defmodule SocketIntegrationTest do
     :gun.close(conn)
     Helper.compile(:channel_sender_ex)
   end
-
 
   test "Should receive messages", %{port: port, channel: channel, secret: secret} do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
@@ -107,7 +112,11 @@ defmodule SocketIntegrationTest do
     :gun.close(conn)
   end
 
-  test "Should continue to receive message when no ack was sent", %{port: port, channel: channel, secret: secret} do
+  test "Should continue to receive message when no ack was sent", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
 
     {message_id, data} = deliver_message(channel)
@@ -127,7 +136,11 @@ defmodule SocketIntegrationTest do
     :gun.close(conn)
   end
 
-  test "Should stop receiving same message after ack was sent", %{port: port, channel: channel, secret: secret} do
+  test "Should stop receiving same message after ack was sent", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
     {message_id, data} = deliver_message(channel, "45")
     assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"45\"," <> rest}}
@@ -140,12 +153,15 @@ defmodule SocketIntegrationTest do
 
   defp deliver_message(channel, message_id \\ "42") do
     data = "MessageData12_3245rs42112aa"
-    message = ProtocolMessage.to_protocol_message(%{
-      message_id: message_id,
-      correlation_id: "",
-      message_data: data,
-      event_name: "event.test"
-    })
+
+    message =
+      ProtocolMessage.to_protocol_message(%{
+        message_id: message_id,
+        correlation_id: "",
+        message_data: data,
+        event_name: "event.test"
+      })
+
     ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel, message)
     {message_id, data}
   end

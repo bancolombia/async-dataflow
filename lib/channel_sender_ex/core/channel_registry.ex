@@ -13,8 +13,6 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
     via_tuple(channel_ref)
   end
 
-
   @compile {:inline, via_tuple: 1}
   def via_tuple(channel_ref), do: {:via, @registry_module, {__MODULE__, channel_ref}}
-
 end

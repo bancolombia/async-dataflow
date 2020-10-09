@@ -1,6 +1,7 @@
 alias ChannelSenderEx.Transport.Socket
 alias ChannelSenderEx.Core.Security.ChannelAuthenticator
 alias ChannelSenderEx.Core.RulesProvider.Helper
+alias ChannelSenderEx.Transport.Encoders.JsonEncoder
 
 
 Helper.compile(:channel_sender_ex)
@@ -9,8 +10,8 @@ app_id = "app_22929"
 user_id = "user33243222"
 {channel_id, channel_secret} = ChannelAuthenticator.create_channel(app_id, user_id)
 auth_frame = {:text, "Auth::" <> channel_secret}
-state = {channel_id, :connected, {app_id, user_id}, %{}}
-state_pre_auth = {channel_id, :pre_auth}
+state = {channel_id, :connected, JsonEncoder, {app_id, user_id}, %{}}
+state_pre_auth = {channel_id, :pre_auth, JsonEncoder}
 
 
 Benchee.run(

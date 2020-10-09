@@ -61,16 +61,30 @@ end
 
 {:ok, port} = SingleSocketDeliveryBench.setup()
 
-
-base_message = %{
-  message_id: "42",
-  correlation_id: "",
-  message_data: "MessageData12_3245rs42112aa",
-  event_name: "event.test"
+sample_object = %{
+  number: 334433,
+  id: UUID.uuid4(:hex),
+  name: "Person Name LastName Complement",
+  name2: "Person Name LastName Complement",
+  list_of_things: [
+    %{name: "Thing1", detail: 2343, id: UUID.uuid4(:hex)},
+    %{name: "Thing2", detail: 2343, id: UUID.uuid4(:hex)},
+    %{name: "Thing3", detail: 2343, id: UUID.uuid4(:hex)},
+    %{name: "Thing4", detail: 2343, id: UUID.uuid4(:hex)},
+  ]
 }
 
+data = Jason.encode!(sample_object)
+
+base_message = %{
+  message_id: UUID.uuid4(:hex),
+  correlation_id: "",
+  message_data: data,
+  event_name: "event.test.name.application"
+}
 
 send_and_receive_sequential = fn {conn, stream, channel_id} ->
+#  Process.sleep(:erlang.trunc(:random.uniform * 5))
   message = ProtocolMessage.to_protocol_message(%{base_message | message_id: msg_id = UUID.uuid4(:hex)})
   ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel_id, message)
   receive do
@@ -100,6 +114,6 @@ Benchee.run(
     "Input" => 1,
   },
   time: 10,
-  parallel: 1,
+  parallel: 10,
   formatters: [{Benchee.Formatters.Console, extended_statistics: true}]
 )
