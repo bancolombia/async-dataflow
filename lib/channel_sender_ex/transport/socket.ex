@@ -11,10 +11,10 @@ defmodule ChannelSenderEx.Transport.Socket do
   alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
 
   @default_protocol_encoder Application.get_env(
-                     :channel_sender_ex,
-                     :message_encoder,
-                     ChannelSenderEx.Transport.Encoders.JsonEncoder
-                   )
+                              :channel_sender_ex,
+                              :message_encoder,
+                              ChannelSenderEx.Transport.Encoders.JsonEncoder
+                            )
 
   @type channel_ref() :: String.t()
   @type application_ref() :: String.t()
@@ -23,8 +23,10 @@ defmodule ChannelSenderEx.Transport.Socket do
   @type context_data() :: {application_ref(), user_ref()}
   @type protocol_encoder() :: atom()
 
-  @type pre_operative_state :: {channel_ref(), :pre_auth, protocol_encoder()} | {channel_ref(), :unauthorized}
-  @type operative_state :: {channel_ref(), :connected, protocol_encoder(), context_data(), pending_bag()}
+  @type pre_operative_state ::
+          {channel_ref(), :pre_auth, protocol_encoder()} | {channel_ref(), :unauthorized}
+  @type operative_state ::
+          {channel_ref(), :connected, protocol_encoder(), context_data(), pending_bag()}
   @type socket_state :: pre_operative_state() | operative_state()
 
   @impl :cowboy_websocket
@@ -32,16 +34,26 @@ defmodule ChannelSenderEx.Transport.Socket do
     case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
       {@channel_key, channel} when byte_size(channel) > 10 ->
         case :cowboy_req.parse_header("sec-websocket-protocol", req) do
-          :undefined -> {:cowboy_websocket, req, _state = {channel, :pre_auth, @default_protocol_encoder}, ws_opts()}
+          :undefined ->
+            {:cowboy_websocket, req, _state = {channel, :pre_auth, @default_protocol_encoder},
+             ws_opts()}
+
           sub_protocols ->
-            {encoder, req} = case :lists.keymember("binary_flow", 1, sub_protocols) do
-              true ->
-                {BinaryEncoder, :cowboy_req.set_resp_header("sec-websocket-protocol", "binary_flow", req)}
-              false ->
-                {JsonEncoder, :cowboy_req.set_resp_header("sec-websocket-protocol", "json_flow", req)}
-            end
+            #            IO.inspect(sub_protocols)
+            {encoder, req} =
+              case Enum.member?(sub_protocols, "binary_flow") do
+                true ->
+                  {BinaryEncoder,
+                   :cowboy_req.set_resp_header("sec-websocket-protocol", "binary_flow", req)}
+
+                false ->
+                  {JsonEncoder,
+                   :cowboy_req.set_resp_header("sec-websocket-protocol", "json_flow", req)}
+              end
+
             {:cowboy_websocket, req, _state = {channel, :pre_auth, encoder}, ws_opts()}
         end
+
       _ ->
         req = :cowboy_req.reply(400, req)
         {:ok, req, _state = []}
@@ -50,6 +62,8 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def websocket_init(state) do
+    #    IO.inspect({:init, state})
+    IO.puts("Connected with params: #{inspect(state)}")
     {_commands = [], state}
   end
 
@@ -58,7 +72,9 @@ defmodule ChannelSenderEx.Transport.Socket do
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
         notify_connected(channel)
-        {_commands = [auth_ok_frame()], {channel, :connected, encoder, {application, user_ref}, %{}}}
+
+        {_commands = [auth_ok_frame()],
+         {channel, :connected, encoder, {application, user_ref}, %{}}}
 
       :unauthorized ->
         {_commands = [{:close, @invalid_secret_code, "Invalid token for channel"}],

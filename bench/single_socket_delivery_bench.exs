@@ -4,6 +4,7 @@ alias ChannelSenderEx.Core.ProtocolMessage
 alias ChannelSenderEx.Transport.EntryPoint
 alias ChannelSenderEx.Core.ChannelSupervisor
 alias ChannelSenderEx.Core.ChannelRegistry
+alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
 
 defmodule SingleSocketDeliveryBench do
 
@@ -22,11 +23,11 @@ defmodule SingleSocketDeliveryBench do
     {:ok, :ranch.get_port(:external_server)}
   end
 
-  def connect_and_authenticate(port, channel, secret) do
-    conn = connect(port, channel)
+  def connect_and_authenticate(port, channel, secret, sub_protocol \\ "json_flow") do
+    conn = connect(port, channel, sub_protocol)
 
     stream = receive do
-      {:gun_upgrade, ^conn, stream, ["websocket"], _headers} -> stream
+      resp = {:gun_upgrade, ^conn, stream, _, _headers} -> stream
     after
       1000 -> raise "Websocket upgrade timeout!"
     end
@@ -51,10 +52,10 @@ defmodule SingleSocketDeliveryBench do
     {:ok, app_id, user_id, channel_id, channel_secret}
   end
 
-  defp connect(port, channel) do
+  defp connect(port, channel, sub_protocol) do
     {:ok, conn} = :gun.open('127.0.0.1', port)
     {:ok, _} = :gun.await_up(conn)
-    :gun.ws_upgrade(conn, "/ext/socket?channel=#{channel}")
+    :gun.ws_upgrade(conn, "/ext/socket?channel=#{channel}", [], %{protocols: [{sub_protocol, :gun_ws_h}]})
     conn
   end
 end
@@ -88,32 +89,41 @@ send_and_receive_sequential = fn {conn, stream, channel_id} ->
   message = ProtocolMessage.to_protocol_message(%{base_message | message_id: msg_id = UUID.uuid4(:hex)})
   ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel_id, message)
   receive do
-    {:gun_ws, ^conn, ^stream, {:text, data_string}} ->
-      :gun.ws_send(conn, {:text, "Ack::" <> msg_id})
-      :ok
+    {:gun_ws, ^conn, ^stream, {:text, data}} ->
+      {message_id, _, _, _, _} = JsonEncoder.decode_message(data)
+      :gun.ws_send(conn, {:text, "Ack::" <> message_id})
+    {:gun_ws, ^conn, ^stream, {:binary, data}} ->
+      {message_id, _, _, _, _} = BinaryEncoder.decode_message(data)
+      :gun.ws_send(conn, {:text, "Ack::" <> message_id})
   after
     100 ->
       raise "No message!"
   end
 end
 
+prepare_scenario = fn sub_protocol ->
+  {:ok, _, _, channel_id, channel_secret} = SingleSocketDeliveryBench.create_channel()
+  {:ok, conn, stream} = SingleSocketDeliveryBench.connect_and_authenticate(port, channel_id, channel_secret, sub_protocol)
+  {conn, stream, channel_id}
+end
 
 Benchee.run(
   %{
-    "Sequential send and receive" =>
+    "Sequential send and receive / JsonEncoder" =>
       {
       send_and_receive_sequential,
-      before_scenario: fn _input ->
-          {:ok, _, _, channel_id, channel_secret} = SingleSocketDeliveryBench.create_channel()
-          {:ok, conn, stream} = SingleSocketDeliveryBench.connect_and_authenticate(port, channel_id, channel_secret)
-          {conn, stream, channel_id}
-      end
-    }
+      before_scenario: fn _input -> prepare_scenario.("json_flow") end
+    },
+    "Sequential send and receive / BinaryEncoder" =>
+      {
+      send_and_receive_sequential,
+      before_scenario: fn _input -> prepare_scenario.("binary_flow") end
+    },
   },
   inputs: %{
     "Input" => 1,
   },
   time: 10,
-  parallel: 10,
+  parallel: 12,
   formatters: [{Benchee.Formatters.Console, extended_statistics: true}]
 )

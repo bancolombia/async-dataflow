@@ -19,13 +19,16 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoder do
       event_name,
       message_data
     ]
+
     {:ok, {:binary, data}}
   end
 
   def encode_binary({message_id, correlation_id, event_name, message_data, _}) do
-    data = <<255, byte_size(message_id)::size(8), byte_size(correlation_id)::size(8),
-      byte_size(event_name)::size(8), message_id::binary, correlation_id::binary,
-      event_name::binary, message_data::binary>>
+    data =
+      <<255, byte_size(message_id)::size(8), byte_size(correlation_id)::size(8),
+        byte_size(event_name)::size(8), message_id::binary, correlation_id::binary,
+        event_name::binary, message_data::binary>>
+
     {:ok, {:binary, data}}
   end
 

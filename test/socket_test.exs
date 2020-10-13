@@ -27,17 +27,22 @@ defmodule SocketTest do
     }
 
     message = ProtocolMessage.to_protocol_message(ext_message)
-    connected_state =  {"channel1", :connected, @test_encoder, {"app1", "user2"}, _pending = %{}}
+    connected_state = {"channel1", :connected, @test_encoder, {"app1", "user2"}, _pending = %{}}
     {:ok, ext_message: ext_message, message: message, connected_state: connected_state}
   end
 
-  test "Should send message", %{message: message, ext_message: ext_message, connected_state: state} do
+  test "Should send message", %{
+    message: message,
+    ext_message: ext_message,
+    connected_state: state
+  } do
     from = {self(), make_ref()}
     message_to_proc = {:deliver_msg, from, message}
 
     result = Socket.websocket_info(message_to_proc, state)
 
-    assert {commands, {"channel1", :connected, @test_encoder, {"app1", "user2"}, pending}} = result
+    assert {commands, {"channel1", :connected, @test_encoder, {"app1", "user2"}, pending}} =
+             result
 
     assert [
              {:text,
@@ -50,7 +55,11 @@ defmodule SocketTest do
     assert pending == %{ext_message.message_id => from}
   end
 
-  test "Should send message ack", %{message: message, ext_message: %{message_id: message_id}, connected_state: state} do
+  test "Should send message ack", %{
+    message: message,
+    ext_message: %{message_id: message_id},
+    connected_state: state
+  } do
     from = {self(), ref = make_ref()}
     message_to_proc = {:deliver_msg, from, message}
 
@@ -62,7 +71,10 @@ defmodule SocketTest do
     assert_receive {:ack, ^ref, ^message_id}
   end
 
-  test "Should not fail when client re-ack message", %{ext_message: %{message_id: message_id}, connected_state: state} do
+  test "Should not fail when client re-ack message", %{
+    ext_message: %{message_id: message_id},
+    connected_state: state
+  } do
     assert {[], {"channel1", :connected, @test_encoder, {"app1", "user2"}, %{}}} ==
              Socket.websocket_handle({:text, "Ack::#{message_id}"}, state)
 
@@ -70,7 +82,8 @@ defmodule SocketTest do
   end
 
   test "Should send message non_retry_error on serialization error", %{
-    ext_message: %{message_id: message_id}, connected_state: state
+    ext_message: %{message_id: message_id},
+    connected_state: state
   } do
     from = {self(), ref = make_ref()}
     message = build_non_serializable_message(message_id)
