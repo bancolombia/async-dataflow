@@ -43,12 +43,12 @@ message_to_convert = ProtocolMessage.to_protocol_message(base_message)
 Benchee.run(
   %{
 #    "Noop" => fn -> nil end,
-    "Binary encoder" => fn -> BinaryEncoder.encode_binary(message_to_convert) end,
+#    "Binary encoder" => fn -> BinaryEncoder.encode_binary(message_to_convert) end,
     "IO List Encoder" => fn -> BinaryEncoder.encode_message(message_to_convert) end,
     "Json Encoder" => fn -> JsonEncoder.encode_message(message_to_convert) end,
   },
 
-  time: 8,
-  parallel: 6,
+  time: 5,
+  parallel: 1,
   formatters: [{Benchee.Formatters.Console, extended_statistics: true}]
 )

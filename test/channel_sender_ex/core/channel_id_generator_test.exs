@@ -1,4 +1,4 @@
-defmodule ChannelIdGeneratorTest do
+defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.ChannelIDGenerator

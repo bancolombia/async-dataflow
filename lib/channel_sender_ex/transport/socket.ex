@@ -39,7 +39,6 @@ defmodule ChannelSenderEx.Transport.Socket do
              ws_opts()}
 
           sub_protocols ->
-            #            IO.inspect(sub_protocols)
             {encoder, req} =
               case Enum.member?(sub_protocols, "binary_flow") do
                 true ->

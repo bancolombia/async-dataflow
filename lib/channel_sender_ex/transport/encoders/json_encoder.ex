@@ -19,4 +19,12 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoder do
   def decode_message(message) do
     Jason.decode!(message) |> ProtocolMessage.from_socket_message()
   end
+
+  def heartbeat_frame(seq) do
+    {:text, ["[\"\", \"", seq, "\", \":hb\", \"\"]"]}
+  end
+
+  def simple_frame(event) do
+    {:text, ["[\"\", \"\", \"", event, "\", \"\"]"]}
+  end
 end

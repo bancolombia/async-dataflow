@@ -34,6 +34,17 @@ defmodule ChannelSenderEx.Core.ProtocolMessage do
     {message_id, correlation_id, event_name, message_data, :os.system_time(:millisecond)}
   end
 
+  @spec to_external_message(t()) :: external_message()
+  @compile {:inline, to_external_message: 1}
+  def to_external_message({message_id, correlation_id, event_name, message_data, _}) do
+    %{
+      message_id: message_id,
+      correlation_id: correlation_id,
+      message_data: message_data,
+      event_name: event_name
+    }
+  end
+
   @spec from_socket_message(socket_message()) :: t()
   @compile {:inline, from_socket_message: 1}
   def from_socket_message([message_id, correlation_id, event_name, message_data]) do

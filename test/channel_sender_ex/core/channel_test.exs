@@ -1,4 +1,4 @@
-defmodule ChannelTest do
+defmodule ChannelSenderEx.Core.ChannelTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.Channel

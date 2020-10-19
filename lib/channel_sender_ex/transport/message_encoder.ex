@@ -10,4 +10,7 @@ defmodule ChannelSenderEx.Transport.MessageEncoder do
   @callback encode_message(message :: ProtocolMessage.t()) ::
               {:ok, encoded_data()} | {:error, any()}
   @callback decode_message(message :: binary()) :: ProtocolMessage.t()
+
+  @callback heartbeat_frame(hb_seq :: binary()) :: encoded_data()
+  @callback simple_frame(event :: binary()) :: encoded_data()
 end

@@ -1,4 +1,4 @@
-defmodule ProtocolMessageTest do
+defmodule ChannelSenderEx.Core.ProtocolMessageTest do
   use ExUnit.Case
   alias ChannelSenderEx.Core.ProtocolMessage
 

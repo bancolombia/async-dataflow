@@ -1,4 +1,4 @@
-defmodule SocketIntegrationTest do
+defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.ProtocolMessage
@@ -10,6 +10,7 @@ defmodule SocketIntegrationTest do
   alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Transport.Encoders.BinaryEncoder
 
   @moduletag :capture_log
 
@@ -151,6 +152,44 @@ defmodule SocketIntegrationTest do
     :gun.close(conn)
   end
 
+  test "Should open socket with binary sub-protocol", %{port: port, channel: channel, secret: secret} do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, "binary_flow")
+
+    {message_id, data} = deliver_message(channel)
+    assert_receive {:gun_ws, ^conn, ^stream, {:binary, data_bin}}
+    assert {^message_id, "", "event.test", ^data, _} = BinaryEncoder.decode_message(data_bin)
+    :gun.close(conn)
+  end
+
+  test "Should open socket with json sub-protocol (explicit)", %{port: port, channel: channel, secret: secret} do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, "json_flow")
+
+    {message_id, data} = deliver_message(channel)
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
+    :gun.close(conn)
+  end
+
+  test "Should open socket with binary sub-protocol, (multi-options)", %{port: port, channel: channel, secret: secret} do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, ["binary_flow", "json_flow"])
+
+    {message_id, data} = deliver_message(channel)
+    assert_receive {:gun_ws, ^conn, ^stream, {:binary, data_bin}}
+    assert {^message_id, "", "event.test", ^data, _} = BinaryEncoder.decode_message(data_bin)
+    :gun.close(conn)
+  end
+
+  test "Should 2", %{message: _message, ext_message: _ext_message, port: port} do
+    {:ok, conn} = :gun.open('127.0.0.1', port)
+
+    IO.puts("In test")
+
+    #    assert {[], {"channel1", :connected, {"app1", "user2"}, pending}} = result
+    #    assert pending == %{}
+    #    assert_receive {:ack, ^ref, ^message_id}
+    :gun.close(conn)
+  end
+
   defp deliver_message(channel, message_id \\ "42") do
     data = "MessageData12_3245rs42112aa"
 
@@ -166,8 +205,11 @@ defmodule SocketIntegrationTest do
     {message_id, data}
   end
 
-  defp assert_connect_and_authenticate(port, channel, secret) do
-    conn = connect(port, channel)
+  defp assert_connect_and_authenticate(port, channel, secret, sub_protocol \\ nil) do
+    conn = case sub_protocol do
+      nil -> connect(port, channel)
+      sub_protocol -> connect(port, channel, sub_protocol)
+    end
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
     :gun.ws_send(conn, {:text, "Auth::#{secret}"})
 
@@ -178,10 +220,24 @@ defmodule SocketIntegrationTest do
   end
 
   defp connect(port, channel) do
-    {:ok, conn} = :gun.open('127.0.0.1', port)
-    {:ok, _} = :gun.await_up(conn)
+    {:ok, conn} = connect(port)
     :gun.ws_upgrade(conn, "/ext/socket?channel=#{channel}")
     conn
+  end
+
+  defp connect(port, channel, sub_protocol) when is_list(sub_protocol) do
+    {:ok, conn} = connect(port)
+    protocols = Enum.map(sub_protocol, fn p -> {p, :gun_ws_h} end)
+    :gun.ws_upgrade(conn, "/ext/socket?channel=#{channel}", [], %{protocols: protocols})
+    conn
+  end
+
+  defp connect(port, channel, sub_protocol), do: connect(port, channel, [sub_protocol])
+
+  defp connect(port) do
+    {:ok, conn} = :gun.open('127.0.0.1', port)
+    {:ok, _} = :gun.await_up(conn)
+    {:ok, conn}
   end
 
   @spec decode_message(String.t()) :: ProtocolMessage.t()
@@ -190,25 +246,5 @@ defmodule SocketIntegrationTest do
     ProtocolMessage.from_socket_message(socket_message)
   end
 
-  test "Should 1", %{message: _message, port: port} do
-    {:ok, conn} = :gun.open('127.0.0.1', port)
 
-    IO.puts("In test")
-
-    #    assert {[], {"channel1", :connected, {"app1", "user2"}, pending}} = result
-    #    assert pending == %{}
-    #    assert_receive {:ack, ^ref, ^message_id}
-    :gun.close(conn)
-  end
-
-  test "Should 2", %{message: _message, ext_message: _ext_message, port: port} do
-    {:ok, conn} = :gun.open('127.0.0.1', port)
-
-    IO.puts("In test")
-
-    #    assert {[], {"channel1", :connected, {"app1", "user2"}, pending}} = result
-    #    assert pending == %{}
-    #    assert_receive {:ack, ^ref, ^message_id}
-    :gun.close(conn)
-  end
 end

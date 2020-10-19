@@ -4,7 +4,7 @@ defmodule Test.NewModule do
   def get(_), do: raise("Not compiled")
 end
 
-defmodule RulesProvider do
+defmodule ChannelSenderEx.Core.RulesProviderTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.RulesProvider.Compiler

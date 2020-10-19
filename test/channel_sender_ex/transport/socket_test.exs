@@ -1,4 +1,4 @@
-defmodule SocketTest do
+defmodule ChannelSenderEx.Transport.SocketTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Transport.Socket

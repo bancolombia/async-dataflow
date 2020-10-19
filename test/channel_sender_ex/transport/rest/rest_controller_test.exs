@@ -1,4 +1,4 @@
-defmodule RestControllerTest do
+defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Transport.Rest.RestController

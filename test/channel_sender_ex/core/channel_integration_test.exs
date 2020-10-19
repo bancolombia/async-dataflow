@@ -1,4 +1,4 @@
-defmodule ChannelIntegrationTest do
+defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.ProtocolMessage
