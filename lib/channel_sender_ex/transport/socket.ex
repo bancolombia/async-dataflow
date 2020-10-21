@@ -72,7 +72,7 @@ defmodule ChannelSenderEx.Transport.Socket do
       {:ok, application, user_ref} ->
         notify_connected(channel)
 
-        {_commands = [auth_ok_frame()],
+        {_commands = [auth_ok_frame(encoder)],
          {channel, :connected, encoder, {application, user_ref}, %{}}}
 
       :unauthorized ->
@@ -94,8 +94,8 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def websocket_handle({:text, "hb::" <> hb_seq}, state) do
-    {_commands = [{:text, heartbeat_frame(hb_seq)}], state}
+  def websocket_handle({:text, "hb::" <> hb_seq}, state = {_, :connected, encoder, _, _}) do
+    {_commands = [encoder.heartbeat_frame(hb_seq)], state}
   end
 
   @impl :cowboy_websocket
@@ -114,10 +114,6 @@ defmodule ChannelSenderEx.Transport.Socket do
     socketEventBus = RulesProvider.get(:socket_event_bus)
     socketEventBus.notify_event({:connected, channel}, self())
   end
-
-  @compile {:inline, heartbeat_frame: 1}
-  @spec heartbeat_frame(String.t()) :: iolist()
-  defp heartbeat_frame(hb_seq), do: ["[\"\", \"", hb_seq, "\", \":hb\", \"\"]"]
 
   @compile {:inline, set_pending: 2}
   defp set_pending(state, new_pending), do: :erlang.setelement(5, state, new_pending)
@@ -159,11 +155,8 @@ defmodule ChannelSenderEx.Transport.Socket do
     :ok
   end
 
-  @compile {:inline, auth_ok_frame: 0}
-  defp auth_ok_frame(), do: simple_frame("AuthOk")
-
-  @compile {:inline, simple_frame: 1}
-  defp simple_frame(event), do: {:text, "[\"\", \"\", \"#{event}\", \"\"]"}
+  @compile {:inline, auth_ok_frame: 1}
+  defp auth_ok_frame(encoder), do: encoder.simple_frame("AuthOk")
 
   defp ws_opts() do
     %{

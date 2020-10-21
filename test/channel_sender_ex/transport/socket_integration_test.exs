@@ -10,12 +10,14 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias ChannelSenderEx.Transport.Encoders.BinaryEncoder
+  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
 
   @moduletag :capture_log
 
   @supervisor_module Application.get_env(:channel_sender_ex, :channel_supervisor_module)
   @registry_module Application.get_env(:channel_sender_ex, :registry_module)
+  @binary "binary_flow"
+  @json "json_flow"
 
   setup_all do
     IO.puts("Starting Applications for Socket Test")
@@ -69,6 +71,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     :gun.close(conn)
   end
 
+  test "Should authenticate with binary protocol", %{port: port, channel: channel, secret: secret} do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
+    :gun.close(conn)
+  end
+
   test "Should close on authentication fail", %{port: port, channel: channel, secret: secret} do
     conn = connect(port, channel)
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
@@ -79,14 +86,14 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     :gun.close(conn)
   end
 
-  test "Should reply heartbeat", %{port: port, channel: channel, secret: secret} do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-
-    :gun.ws_send(conn, {:text, "hb::1"})
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
-    assert {_, "1", ":hb", "", _} = decode_message(data_string)
-    :gun.close(conn)
+  test "Should reply heartbeat json protocol", params do
+    assert {:text, _txt} = assert_reply_heartbeat(@json, params)
   end
+
+  test "Should reply heartbeat with binary protocol", params do
+    assert {:binary, _} = assert_reply_heartbeat(@binary, params)
+  end
+
 
   test "Socket should close when no heartbeat was sent", %{
     port: port,
@@ -103,91 +110,88 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     Helper.compile(:channel_sender_ex)
   end
 
-  test "Should receive messages", %{port: port, channel: channel, secret: secret} do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-
-    {message_id, data} = deliver_message(channel)
-
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}, 400
-    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
-    :gun.close(conn)
+  test "Should receive messages, json protocol", params do
+    assert {:text, _} = assert_receive_message(@json, params)
   end
 
-  test "Should continue to receive message when no ack was sent", %{
-    port: port,
-    channel: channel,
-    secret: secret
-  } do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-
-    {message_id, data} = deliver_message(channel)
-
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
-    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
-
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}, 150
-    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
-
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}, 150
-    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
-
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}, 150
-    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
-
-    :gun.close(conn)
+  test "Should receive messages, binary protocol", params do
+    assert {:binary, _} = assert_receive_message(@binary, params)
   end
 
-  test "Should stop receiving same message after ack was sent", %{
-    port: port,
-    channel: channel,
-    secret: secret
-  } do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-    {message_id, data} = deliver_message(channel, "45")
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"45\"," <> rest}}
-    :gun.ws_send(conn, {:text, "Ack::" <> message_id})
+  test "Should continue to receive message when no ack was sent, json protocol", params do
+    assert :text == assert_redelivery_no_ack(@json, params)
+  end
 
-    refute_receive {:gun_ws, ^conn, ^stream, {:text, "[\"45\"," <> rest}}, 500
+  test "Should continue to receive message when no ack was sent, binary protocol", params do
+    assert :binary == assert_redelivery_no_ack(@binary, params)
+  end
 
-    :gun.close(conn)
+  test "Should stop receiving same message after ack was sent, json protocol", params do
+    assert_stop_redelivery(@json, params)
+  end
+
+  test "Should stop receiving same message after ack was sent, binary protocol", params do
+    assert_stop_redelivery(@binary, params)
   end
 
   test "Should open socket with binary sub-protocol", %{port: port, channel: channel, secret: secret} do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, "binary_flow")
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
 
     {message_id, data} = deliver_message(channel)
-    assert_receive {:gun_ws, ^conn, ^stream, {:binary, data_bin}}
-    assert {^message_id, "", "event.test", ^data, _} = BinaryEncoder.decode_message(data_bin)
+    assert_receive {:gun_ws, ^conn, ^stream, data_bin = {:binary, _bin}}
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_bin)
     :gun.close(conn)
   end
 
   test "Should open socket with json sub-protocol (explicit)", %{port: port, channel: channel, secret: secret} do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, "json_flow")
+    conn_stream = assert_connect_and_authenticate(port, channel, secret, @json)
+    assert {:text, _} = assert_receive_and_close(channel, conn_stream)
+  end
+
+  test "Should open socket with binary sub-protocol, (multi-options)",%{port: port, channel: channel, secret: secret} do
+    conn_stream = assert_connect_and_authenticate(port, channel, secret, [@binary, @json])
+    assert {:binary, _} = assert_receive_and_close(channel, conn_stream)
+  end
+
+  defp assert_receive_and_close(channel, {conn, stream}) do
+    {message_id, data} = deliver_message(channel)
+    assert_receive {:gun_ws, ^conn, ^stream, encoded_data}
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(encoded_data)
+    :gun.close(conn)
+    encoded_data
+  end
+
+  defp assert_stop_redelivery(protocol, %{port: port, channel: channel, secret: secret}) do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
+    {message_id, data} = deliver_message(channel, "45")
+    assert_receive {:gun_ws, ^conn, ^stream, encoded_data}
+    message_id = decode_message(encoded_data) |> ProtocolMessage.message_id()
+    :gun.ws_send(conn, {:text, "Ack::" <> message_id})
+
+    refute_receive {:gun_ws, ^conn, ^stream, _}, 600
+
+    :gun.close(conn)
+  end
+
+  defp assert_redelivery_no_ack(protocol, %{port: port, channel: channel, secret: secret}) do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, protocol)
 
     {message_id, data} = deliver_message(channel)
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
+
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
+
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
+
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
+
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
+
     :gun.close(conn)
-  end
-
-  test "Should open socket with binary sub-protocol, (multi-options)", %{port: port, channel: channel, secret: secret} do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, ["binary_flow", "json_flow"])
-
-    {message_id, data} = deliver_message(channel)
-    assert_receive {:gun_ws, ^conn, ^stream, {:binary, data_bin}}
-    assert {^message_id, "", "event.test", ^data, _} = BinaryEncoder.decode_message(data_bin)
-    :gun.close(conn)
-  end
-
-  test "Should 2", %{message: _message, ext_message: _ext_message, port: port} do
-    {:ok, conn} = :gun.open('127.0.0.1', port)
-
-    IO.puts("In test")
-
-    #    assert {[], {"channel1", :connected, {"app1", "user2"}, pending}} = result
-    #    assert pending == %{}
-    #    assert_receive {:ack, ^ref, ^message_id}
-    :gun.close(conn)
+    type
   end
 
   defp deliver_message(channel, message_id \\ "42") do
@@ -205,6 +209,27 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {message_id, data}
   end
 
+  defp assert_receive_message(protocol, %{port: port, channel: channel, secret: secret}) do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, protocol)
+
+    {message_id, data} = deliver_message(channel)
+
+    assert_receive {:gun_ws, ^conn, ^stream, encoded_data}, 400
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(encoded_data)
+    :gun.close(conn)
+    encoded_data
+  end
+
+  defp assert_reply_heartbeat(protocol, %{port: port, channel: channel, secret: secret}) do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, protocol)
+
+    :gun.ws_send(conn, {:text, "hb::1"})
+    assert_receive {:gun_ws, ^conn, ^stream, data}
+    assert {_, "1", ":hb", "", _} = decode_message(data)
+    :gun.close(conn)
+    data
+  end
+
   defp assert_connect_and_authenticate(port, channel, secret, sub_protocol \\ nil) do
     conn = case sub_protocol do
       nil -> connect(port, channel)
@@ -213,7 +238,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
     :gun.ws_send(conn, {:text, "Auth::#{secret}"})
 
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
+    assert_receive {:gun_ws, ^conn, ^stream, data_string}
     message = decode_message(data_string)
     assert "AuthOk" == ProtocolMessage.event_name(message)
     {conn, stream}
@@ -240,11 +265,14 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {:ok, conn}
   end
 
-  @spec decode_message(String.t()) :: ProtocolMessage.t()
-  defp decode_message(string_data) do
-    socket_message = Jason.decode!(string_data)
-    ProtocolMessage.from_socket_message(socket_message)
+  @spec decode_message({:text, String.t()}) :: ProtocolMessage.t()
+  defp decode_message({:text, data}) do
+    JsonEncoder.decode_message(data)
   end
 
+  @spec decode_message({:binary, String.t()}) :: ProtocolMessage.t()
+  defp decode_message({:binary, data}) do
+    BinaryEncoder.decode_message(data)
+  end
 
 end
