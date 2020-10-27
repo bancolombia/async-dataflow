@@ -35,22 +35,6 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoder do
     result
   end
 
-  def encode_binary({message_id, correlation_id, event_name, message_data, _}) do
-    data =
-      <<255, byte_size(message_id)::size(8), byte_size(correlation_id)::size(8),
-        byte_size(event_name)::size(8), message_id::binary, correlation_id::binary,
-        event_name::binary, message_data::binary>>
-
-    {:ok, {:binary, data}}
-  end
-
-  def sample_msj() do
-    data =
-      "Sample data {} \"hello\" -- \"Sample data {} \"hello\" Sample data {} \"hello\" Sample data {} \"hello\" "
-
-    {UUID.uuid4(:hex), "", "tas.event.sample", data, 24_546_342}
-  end
-
   @impl MessageEncoder
   def decode_message(<<255, s1, s2, s3, message_id::binary-size(s1), correlation_id::binary-size(s2),
           event_name::binary-size(s3), message_data::binary>>) do

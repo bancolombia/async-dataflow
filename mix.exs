@@ -31,6 +31,7 @@ defmodule ChannelSenderEx.MixProject do
       {:elixir_uuid, "~> 1.2"},
       {:gen_state_machine, "~> 2.1"},
       {:jason, "~> 1.2"},
+      {:cors_plug, "~> 2.0"},
       {:horde, "~> 0.8.1"},
       {:hackney, "~> 1.2.0", only: :test},
       {:plug_crypto, "~> 1.1"},

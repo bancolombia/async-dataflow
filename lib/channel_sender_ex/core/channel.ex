@@ -10,6 +10,8 @@ defmodule ChannelSenderEx.Core.Channel do
   # Max allowed time in waiting before terminate the channel
   #  @waiting_timeout Application.get_env(:channel_sender_ex, :channel_waiting_timeout, 30)
   #  @message_time_to_live Application.get_env(:channel_sender_ex, :message_time_to_live, 8000)
+  @token_max_age :max_age
+  @min_disconnection_tolerance :min_disconnection_tolerance
   @on_connected_channel_reply_timeout Application.get_env(
                                         :channel_sender_ex,
                                         :on_connected_channel_reply_timeout,
@@ -140,8 +142,29 @@ defmodule ChannelSenderEx.Core.Channel do
   @type call() :: {:call, GenServer.from()}
   @type state_return() :: :gen_statem.event_handler_result(Data.t())
 
-  def connected(:enter, _old_state, data) do
-    {:keep_state, data, _actions = []}
+  def connected(:enter, _old_state, _data) do
+    refresh_timeout = calculate_refresh_token_timeout()
+    {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
+  end
+
+  def connected(:state_timeout, :refresh_token_timeout, data) do
+    refresh_timeout = calculate_refresh_token_timeout()
+    message = new_token_message(data)
+
+    {:deliver_msg, {_, ref}, _} = output = send_message(data, message)
+
+    actions = [
+      _redelivery_timeout = {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), 0},
+      _refresh_timeout = {:state_timeout, refresh_timeout, :refresh_token_timeout}
+    ]
+
+    new_data = save_pending_message(data, output)
+    {:keep_state, new_data, actions}
+  end
+
+  defp new_token_message(data = %{application: app, channel: channel, user_ref: user}) do
+    new_token = ChannelSenderEx.Core.ChannelIDGenerator.generate_token(channel, app, user)
+    ProtocolMessage.of(UUID.uuid4(:hex), ":n_token", new_token)
   end
 
   @spec connected(call(), {:deliver_message, ProtocolMessage.t()}, Data.t()) :: state_return()
@@ -249,6 +272,15 @@ defmodule ChannelSenderEx.Core.Channel do
   @compile {:inline, create_output_message: 1}
   defp create_output_message(message, ref \\ make_ref()) do
     {:deliver_msg, {self(), ref}, message}
+  end
+
+  @spec calculate_refresh_token_timeout() :: integer()
+  @compile {:inline, calculate_refresh_token_timeout: 0}
+  defp calculate_refresh_token_timeout() do
+    token_validity = RulesProvider.get(@token_max_age)
+    tolerance = RulesProvider.get(@min_disconnection_tolerance)
+    min_timeout = token_validity/2
+    round(max(min_timeout, token_validity - tolerance) * 1000)
   end
 
   # 1. Build init

@@ -38,12 +38,23 @@ message_to_convert = ProtocolMessage.to_protocol_message(base_message)
 #{message_id, correlation_id, event_name, message_data, _} = BinaryEncoder.decode_message(binary_encoded)
 #{^message_id, ^correlation_id, ^event_name, ^message_data, _} = JsonEncoder.decode_message(json_encoded)
 
+defmodule DataEncodersBinary do
+  def encode_binary({message_id, correlation_id, event_name, message_data, _}) do
+    data =
+      <<255, byte_size(message_id)::size(8), byte_size(correlation_id)::size(8),
+        byte_size(event_name)::size(8), message_id::binary, correlation_id::binary,
+        event_name::binary, message_data::binary>>
+
+    {:ok, {:binary, data}}
+  end
+
+end
 
 
 Benchee.run(
   %{
 #    "Noop" => fn -> nil end,
-#    "Binary encoder" => fn -> BinaryEncoder.encode_binary(message_to_convert) end,
+    "Binary encoder" => fn -> DataEncodersBinary.encode_binary(message_to_convert) end,
     "IO List Encoder" => fn -> BinaryEncoder.encode_message(message_to_convert) end,
     "Json Encoder" => fn -> JsonEncoder.encode_message(message_to_convert) end,
   },
@@ -52,3 +63,4 @@ Benchee.run(
   parallel: 1,
   formatters: [{Benchee.Formatters.Console, extended_statistics: true}]
 )
+

@@ -34,6 +34,15 @@ defmodule ChannelSenderEx.Core.ProtocolMessage do
     {message_id, correlation_id, event_name, message_data, :os.system_time(:millisecond)}
   end
 
+  @doc """
+  Creates a simple message.
+  """
+  @spec of(message_id(), event_name(), message_data()) :: t()
+  @compile {:inline, to_protocol_message: 1}
+  def of(message_id, event_name, message_data) do
+    {message_id, "", event_name, message_data, :os.system_time(:millisecond)}
+  end
+
   @spec to_external_message(t()) :: external_message()
   @compile {:inline, to_external_message: 1}
   def to_external_message({message_id, correlation_id, event_name, message_data, _}) do

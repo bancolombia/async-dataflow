@@ -2,11 +2,13 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.RulesProvider.Helper
 
   @moduletag :capture_log
 
   setup_all do
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
+    Helper.compile(:channel_sender_ex)
     :ok
   end
 
@@ -40,12 +42,11 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
     channel_id = ChannelIDGenerator.generate_channel_id(app_id, user_id)
     token = ChannelIDGenerator.generate_token(channel_id, app_id, user_id)
 
-    old_val = Application.get_env(:channel_sender_ex, :max_age)
-    Application.put_env(:channel_sender_ex, :max_age, 1)
+    Helper.compile(:channel_sender_ex, max_age: 1)
     Process.sleep(1100)
 
     assert {:error, :expired} == ChannelIDGenerator.verify_token(channel_id, token)
-    Application.put_env(:channel_sender_ex, :max_age, old_val)
+    Helper.compile(:channel_sender_ex)
   end
 
   test "Should indicate invalid token", %{app_id: app_id, user_id: user_id} do
@@ -55,6 +56,10 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
       "SFMyNTY.g2gDaANtAAAAQTE2Y2MyNWYzZGU1MDNlZWFhMGFlNjQ4ZWViM2M4MWRjLjFiMzFhZDk4NDFlZDRlYWM5NWQ4ZDA0MGJkMWExYWRhbQAAABBBcHBfaWRfQUxNMDJfUERObQAAABAxMDM3NjA2MD"
 
     assert {:error, :invalid} == ChannelIDGenerator.verify_token(channel_id, token)
+  end
+
+  test "Should generate refreshed token for channel" do
+    
   end
 
   test "Should indicate wrong channel", %{app_id: app_id, user_id: user_id} do

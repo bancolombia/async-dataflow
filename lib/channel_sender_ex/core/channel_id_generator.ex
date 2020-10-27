@@ -5,6 +5,7 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
 
   import Application, only: [get_env: 2]
   import Plug.Crypto, only: [verify: 4, sign: 3]
+  alias ChannelSenderEx.Core.RulesProvider
 
   @application_name :channel_sender_ex
   @secret_key :secret_base
@@ -56,5 +57,5 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
     end
   end
 
-  defp max_age(), do: get_env(@application_name, @max_age)
+  defp max_age(), do: RulesProvider.get(@max_age)
 end

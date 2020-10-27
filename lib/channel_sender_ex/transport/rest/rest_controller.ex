@@ -5,9 +5,12 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.ProtocolMessage
+
+
   use Plug.Router
   require Logger
 
+  plug CORSPlug
   plug(:match)
 
   plug(Plug.Parsers,
