@@ -34,6 +34,7 @@ defmodule ChannelSenderEx.Core.Channel do
     @type t() :: %ChannelSenderEx.Core.Channel.Data{
             channel: String.t(),
             application: String.t(),
+            stop_cause: atom(),
             socket: {pid(), reference()},
             pending_ack: ChannelSenderEx.Core.Channel.pending_ack(),
             pending_sending: %{optional(String.t()) => ProtocolMessage.t()},
@@ -45,6 +46,7 @@ defmodule ChannelSenderEx.Core.Channel do
               socket: nil,
               pending_ack: %{},
               pending_sending: %{},
+              stop_cause: nil,
               user_ref: ""
   end
 
@@ -86,12 +88,13 @@ defmodule ChannelSenderEx.Core.Channel do
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
   def waiting(:enter, _old_state, data) do
-    {:keep_state, data, [{:state_timeout, 3000, :waiting_timeout}]}
+    waiting_timeout = round(RulesProvider.get(@token_max_age) * 1000)
+    {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
   end
 
-  # TODO: define behaviour of event timeout
+  # TODO: Continue here with test cases
   def waiting(:state_timeout, :waiting_timeout, data) do
-    :keep_state_and_data
+    {:stop, :normal,  %{data | stop_cause: :waiting_timeout}}
   end
 
   def waiting({:call, from}, {:socket_connected, socket_pid}, data) do

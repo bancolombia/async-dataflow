@@ -3,7 +3,6 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoder do
   Encoder for json format
   """
   alias ChannelSenderEx.Transport.MessageEncoder
-  alias ChannelSenderEx.Core.ProtocolMessage
 
   @behaviour MessageEncoder
 

@@ -2,7 +2,6 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   @moduledoc """
   Channel Authentication logic
   """
-  alias ChannelSenderEx.Core.SenderApplication
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ChannelSupervisor
 
@@ -14,7 +13,7 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   @spec create_channel(application(), user_ref()) ::
           {:error, :no_app} | {channel_ref(), channel_secret()}
   def create_channel(application, user_ref) do
-    {channel_ref, channel_secret} = credentials = create_channel_data_for(application, user_ref)
+    {channel_ref, _channel_secret} = credentials = create_channel_data_for(application, user_ref)
     {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, application, user_ref})
     credentials
   end
