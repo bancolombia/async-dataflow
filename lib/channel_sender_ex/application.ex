@@ -28,8 +28,8 @@ defmodule ChannelSenderEx.Application do
 
   defp children(_no_start = false) do
     [
-      {@registry_module, name: ChannelRegistry, keys: :unique},
-      {@supervisor_module, name: ChannelSupervisor, strategy: :one_for_one},
+      {@registry_module, name: ChannelRegistry, keys: :unique, members: :auto},
+      {@supervisor_module, name: ChannelSupervisor, strategy: :one_for_one, members: :auto},
       {Plug.Cowboy, scheme: :http, plug: RestController, options: [port: @http_port]}
     ]
   end

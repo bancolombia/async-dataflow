@@ -6,11 +6,14 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
   @registry_module Application.get_env(:channel_sender_ex, :registry_module)
 
   @type channel_ref :: String.t()
-  @type channel_addr :: any()
-  @spec lookup_channel_addr(channel_ref()) :: channel_addr()
+  @type channel_addr :: pid()
+  @spec lookup_channel_addr(channel_ref()) :: :noproc | channel_addr()
   @compile {:inline, lookup_channel_addr: 1}
   def lookup_channel_addr(channel_ref) do
-    via_tuple(channel_ref)
+    case @registry_module.lookup(via_tuple(channel_ref)) do
+      [{pid, _} | _] -> pid
+      [] -> :noproc
+    end
   end
 
   @compile {:inline, via_tuple: 1}

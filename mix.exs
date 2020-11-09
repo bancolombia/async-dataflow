@@ -32,7 +32,7 @@ defmodule ChannelSenderEx.MixProject do
       {:gen_state_machine, "~> 2.1"},
       {:jason, "~> 1.2"},
       {:cors_plug, "~> 2.0"},
-      {:horde, "~> 0.8.1"},
+      {:horde, "~> 0.8.3"},
       {:hackney, "~> 1.2.0", only: :test},
       {:plug_crypto, "~> 1.1"},
       {:stream_data, "~> 0.4", only: [:test]},

@@ -11,6 +11,8 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
+  alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.ChannelSupervisor
 
   @moduletag :capture_log
 
@@ -153,6 +155,17 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert {:binary, _} = assert_receive_and_close(channel, conn_stream)
   end
 
+  test "Should connect to channel when is not immediately available", %{port: port} do
+    {app_id, user_ref} = {"App1", "User1234"}
+    channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
+    channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
+    {conn, stream} = assert_connect(port, channel_ref, channel_secret)
+    authenticate(conn, channel_secret)
+    refute_receive {:gun_ws, ^conn, ^stream, data_string}, 300
+    {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, app_id, user_ref})
+    assert_authenticate(conn, stream, 750)
+  end
+
   defp assert_receive_and_close(channel, {conn, stream}) do
     {message_id, data} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, encoded_data}
@@ -231,16 +244,26 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   end
 
   defp assert_connect_and_authenticate(port, channel, secret, sub_protocol \\ nil) do
+    {conn, stream} = assert_connect(port, channel, secret, sub_protocol)
+    authenticate(conn, secret)
+    assert_authenticate(conn, stream)
+  end
+
+  defp assert_authenticate(conn, stream, timeout \\ 300) do
+    assert_receive {:gun_ws, ^conn, ^stream, data_string}, timeout
+    message = decode_message(data_string)
+    assert "AuthOk" == ProtocolMessage.event_name(message)
+    {conn, stream}
+  end
+
+  defp authenticate(conn, secret), do: :gun.ws_send(conn, {:text, "Auth::#{secret}"})
+
+  defp assert_connect(port, channel, secret, sub_protocol \\ nil) do
     conn = case sub_protocol do
       nil -> connect(port, channel)
       sub_protocol -> connect(port, channel, sub_protocol)
     end
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
-    :gun.ws_send(conn, {:text, "Auth::#{secret}"})
-
-    assert_receive {:gun_ws, ^conn, ^stream, data_string}
-    message = decode_message(data_string)
-    assert "AuthOk" == ProtocolMessage.event_name(message)
     {conn, stream}
   end
 
@@ -272,7 +295,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   @spec decode_message({:binary, String.t()}) :: ProtocolMessage.t()
   defp decode_message({:binary, data}) do
-    BinaryEncoder.decode_message(data)
+    IO.inspect BinaryEncoder.decode_message(data)
   end
 
 end
