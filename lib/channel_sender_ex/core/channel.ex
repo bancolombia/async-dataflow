@@ -26,6 +26,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @type delivery_ref() :: {pid(), reference()}
   @type output_message() :: {delivery_ref(), ProtocolMessage.t()}
   @type pending_ack() :: %{optional(reference()) => ProtocolMessage.t()}
+  @type pending_sending() :: %{optional(String.t()) => ProtocolMessage.t()}
 
   defmodule Data do
     @moduledoc """
@@ -37,7 +38,7 @@ defmodule ChannelSenderEx.Core.Channel do
             stop_cause: atom(),
             socket: {pid(), reference()},
             pending_ack: ChannelSenderEx.Core.Channel.pending_ack(),
-            pending_sending: %{optional(String.t()) => ProtocolMessage.t()},
+            pending_sending: ChannelSenderEx.Core.Channel.pending_ack(),
             user_ref: String.t()
           }
 
@@ -80,7 +81,7 @@ defmodule ChannelSenderEx.Core.Channel do
       application: application,
       user_ref: user_ref
     }
-
+    Process.flag(:trap_exit, true)
     {:ok, :waiting, data}
   end
 
@@ -134,7 +135,22 @@ defmodule ChannelSenderEx.Core.Channel do
     :keep_state_and_data
   end
 
+  def waiting(:info, {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}}, data = %{channel: c_ref}) do
+    send(new_pid, {:twins_last_words, data})
+    {:stop, :normal,  %{data | stop_cause: :name_conflict}}
+  end
+
+
+  def waiting(:info, {:twins_last_words, %{pending_ack: pending_ack, pending_sending: pending_sending}}, data) do
+    new_data = %{data |
+      pending_ack: Map.merge(pending_ack, data.pending_ack),
+      pending_sending: Map.merge(pending_sending, data.pending_sending)
+    }
+    {:keep_state, new_data}
+  end
+
   def waiting(:info, event, data) do
+    IO.inspect({:info, event, data})
     :keep_state_and_data
   end
 
@@ -234,8 +250,19 @@ defmodule ChannelSenderEx.Core.Channel do
     {:next_state, :waiting, new_data, actions}
   end
 
+  #TODO: test this scenario and register a callback to receive twins_last_words in connected state
+  def connected(:info, {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}}, data = %{channel: c_ref}) do
+    send(new_pid, {:twins_last_words, data})
+    {:stop, :normal,  %{data | stop_cause: :name_conflict}}
+  end
+
   def connected(:info, m = {:DOWN, _ref, :process, _object, _reason}, _data) do
     :keep_state_and_data
+  end
+
+  def terminate(reason, state, data) do
+    IO.inspect({:terminating, reason, state, data})
+    :ok
   end
 
   @compile {:inline, send_message: 2}
@@ -260,7 +287,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @spec save_pending_waiting_message(Data.t(), ProtocolMessage.t()) :: Data.t()
   @compile {:inline, save_pending_waiting_message: 2}
   defp save_pending_waiting_message(data = %{pending_sending: pending_sending}, message) do
-    %{data | pending_ack: Map.put(pending_sending, ProtocolMessage.message_id(message), message)}
+    %{data | pending_sending: Map.put(pending_sending, ProtocolMessage.message_id(message), message)}
   end
 
   @spec clear_pending_wait(Data.t(), ProtocolMessage.t()) :: Data.t()
@@ -268,7 +295,7 @@ defmodule ChannelSenderEx.Core.Channel do
   defp clear_pending_wait(data = %{pending_sending: %{}}, _), do: data
 
   defp clear_pending_wait(data = %{pending_sending: pending}, message) do
-    %{data | pending_ack: Map.delete(pending, ProtocolMessage.message_id(message))}
+    %{data | pending_sending: Map.delete(pending, ProtocolMessage.message_id(message))}
   end
 
   @spec create_output_message(ProtocolMessage.t()) :: output_message()

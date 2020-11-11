@@ -11,7 +11,7 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
   @compile {:inline, lookup_channel_addr: 1}
   def lookup_channel_addr(channel_ref) do
     case @registry_module.lookup(via_tuple(channel_ref)) do
-      [{pid, _} | _] -> pid
+      [{pid, _}] -> pid
       [] -> :noproc
     end
   end
