@@ -10,7 +10,6 @@ Distributed Elixir Cluster implementation of real time with websockets and notif
   - [Configuration](#configuration)
   - [Run](#run)
 - [How can I help?](#how-can-i-help)
-- [Whats Next?](#whats-next)
 
 ## How to use
 
