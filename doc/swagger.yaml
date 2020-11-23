@@ -1,0 +1,106 @@
+---
+openapi: 3.0.0
+info:
+  title: API REST Async Data Flow Channel Sender
+  description: Distributed Erlang/Elixir Cluster implementation of real time websockets notifications channels.
+  license:
+    name: MIT
+    url: https://github.com/bancolombia/async-dataflow-channel-sender/blob/master/LICENSE
+  version: 0.1.0
+servers:
+- url: https://virtserver.swaggerhub.com/santitigaga/async-data-flow-channel-sender/0.1.0
+  description: SwaggerHub API Auto Mocking
+tags:
+- name: /ext/channel/
+  description: Secured Admin-only calls
+- name: channel
+  description: Available operations for channels
+paths:
+  /create:
+    post:
+      tags:
+      - /ext/channel/
+      summary: Create Channel and session
+      description: |
+        By passing in the appropriate options, you can search for
+        available inventory in the system
+      operationId: createChannel
+      requestBody:
+        description: Channel to create
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Channel'
+      responses:
+        "200":
+          description: channel_ref and channel_secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channel_ref:
+                    type: string
+                    example: UNIQUE APPLICATION IDENTIFIER
+                  channel_secret:
+                    type: string
+                    example: TOKEN
+        "412":
+          description: No application {application_ref} found
+  /deliver_message:
+    post:
+      tags:
+      - /ext/channel/
+      summary: Deliver an event from a message
+      description: Deliver an event from a message to a channel
+      operationId: deliverMessage
+      requestBody:
+        description: Inventory item to add
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+      responses:
+        "202":
+          description: Ok
+        "400":
+          description: Invalid request
+components:
+  schemas:
+    Message:
+      required:
+      - channel_ref
+      - event_name
+      - message_data
+      - message_id
+      type: object
+      properties:
+        channel_ref:
+          type: string
+          format: uuid
+        message_id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        correlation_id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        message_data:
+          type: object
+          example: '{}'
+        event_name:
+          type: string
+          example: event.productCreated
+    Channel:
+      required:
+      - application_ref
+      - user_ref
+      type: object
+      properties:
+        application_ref:
+          type: string
+          example: UNIQUE APPLICATION IDENTIFIER
+        user_ref:
+          type: string
+          example: USER@DOMAIN
