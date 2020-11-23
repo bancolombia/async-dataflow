@@ -81,6 +81,7 @@ defmodule ChannelSenderEx.Core.Channel do
       application: application,
       user_ref: user_ref
     }
+
     Process.flag(:trap_exit, true)
     {:ok, :waiting, data}
   end
@@ -92,10 +93,9 @@ defmodule ChannelSenderEx.Core.Channel do
     waiting_timeout = round(RulesProvider.get(@token_max_age) * 1000)
     {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
   end
-
-  # TODO: Continue here with test cases
+  
   def waiting(:state_timeout, :waiting_timeout, data) do
-    {:stop, :normal,  %{data | stop_cause: :waiting_timeout}}
+    {:stop, :normal, %{data | stop_cause: :waiting_timeout}}
   end
 
   def waiting({:call, from}, {:socket_connected, socket_pid}, data) do
@@ -135,17 +135,26 @@ defmodule ChannelSenderEx.Core.Channel do
     :keep_state_and_data
   end
 
-  def waiting(:info, {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}}, data = %{channel: c_ref}) do
-    send(new_pid, {:twins_last_words, data})
-    {:stop, :normal,  %{data | stop_cause: :name_conflict}}
+  def waiting(
+        :info,
+        {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
+        data = %{channel: c_ref}
+      ) do
+    send(new_pid, {:twins_last_letter, data})
+    {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
 
-
-  def waiting(:info, {:twins_last_words, %{pending_ack: pending_ack, pending_sending: pending_sending}}, data) do
-    new_data = %{data |
-      pending_ack: Map.merge(pending_ack, data.pending_ack),
-      pending_sending: Map.merge(pending_sending, data.pending_sending)
+  def waiting(
+        :info,
+        {:twins_last_letter, %{pending_ack: pending_ack, pending_sending: pending_sending}},
+        data
+      ) do
+    new_data = %{
+      data
+      | pending_ack: Map.merge(pending_ack, data.pending_ack),
+        pending_sending: Map.merge(pending_sending, data.pending_sending)
     }
+
     {:keep_state, new_data}
   end
 
@@ -173,7 +182,8 @@ defmodule ChannelSenderEx.Core.Channel do
     {:deliver_msg, {_, ref}, _} = output = send_message(data, message)
 
     actions = [
-      _redelivery_timeout = {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), 0},
+      _redelivery_timeout =
+        {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), 0},
       _refresh_timeout = {:state_timeout, refresh_timeout, :refresh_token_timeout}
     ]
 
@@ -250,10 +260,14 @@ defmodule ChannelSenderEx.Core.Channel do
     {:next_state, :waiting, new_data, actions}
   end
 
-  #TODO: test this scenario and register a callback to receive twins_last_words in connected state
-  def connected(:info, {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}}, data = %{channel: c_ref}) do
-    send(new_pid, {:twins_last_words, data})
-    {:stop, :normal,  %{data | stop_cause: :name_conflict}}
+  # TODO: test this scenario and register a callback to receive twins_last_letter in connected state
+  def connected(
+        :info,
+        {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
+        data = %{channel: c_ref}
+      ) do
+    send(new_pid, {:twins_last_letter, data})
+    {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
 
   def connected(:info, m = {:DOWN, _ref, :process, _object, _reason}, _data) do
@@ -287,7 +301,10 @@ defmodule ChannelSenderEx.Core.Channel do
   @spec save_pending_waiting_message(Data.t(), ProtocolMessage.t()) :: Data.t()
   @compile {:inline, save_pending_waiting_message: 2}
   defp save_pending_waiting_message(data = %{pending_sending: pending_sending}, message) do
-    %{data | pending_sending: Map.put(pending_sending, ProtocolMessage.message_id(message), message)}
+    %{
+      data
+      | pending_sending: Map.put(pending_sending, ProtocolMessage.message_id(message), message)
+    }
   end
 
   @spec clear_pending_wait(Data.t(), ProtocolMessage.t()) :: Data.t()
@@ -309,7 +326,7 @@ defmodule ChannelSenderEx.Core.Channel do
   defp calculate_refresh_token_timeout() do
     token_validity = RulesProvider.get(@token_max_age)
     tolerance = RulesProvider.get(@min_disconnection_tolerance)
-    min_timeout = token_validity/2
+    min_timeout = token_validity / 2
     round(max(min_timeout, token_validity - tolerance) * 1000)
   end
 

@@ -1,4 +1,5 @@
 Code.compiler_options(ignore_module_conflict: true)
+
 defmodule ChannelSenderEx.Core.ChannelTest do
   use ExUnit.Case
 
@@ -19,6 +20,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     app = "app23324"
     user_ref = "user234"
     channel_ref = ChannelIDGenerator.generate_channel_id(app, user_ref)
+
     {:ok,
      init_args: {channel_ref, app, user_ref},
      message: %{
@@ -160,6 +162,18 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     Process.exit(channel_pid, :kill)
   end
 
+  test "Should terminate channel when no socket connected (Waiting timeout)", %{
+    init_args: init_args
+  } do
+    Helper.compile(:channel_sender_ex, max_age: 1)
+    {:ok, channel_pid} = start_channel_safe(init_args)
+    :sys.trace(channel_pid, true)
+    assert Process.alive? channel_pid
+    ref = Process.monitor(channel_pid)
+    assert_receive {:DOWN, ^ref, :process, ^channel_pid, :normal}, 1200
+    Helper.compile(:channel_sender_ex)
+  end
+
   defp proxy_process() do
     pid = self()
     spawn(fn -> loop_and_resend(pid) end)
@@ -183,8 +197,9 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     spawn(fn ->
       Process.flag(:trap_exit, true)
       send(parent, {ref, Channel.start_link(args)})
+
       receive do
-        z -> IO.inspect z
+        z -> IO.inspect(z)
       end
     end)
 

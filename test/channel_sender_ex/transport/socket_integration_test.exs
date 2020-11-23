@@ -5,7 +5,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ChannelRegistry
@@ -96,7 +95,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert {:binary, _} = assert_reply_heartbeat(@binary, params)
   end
 
-
   test "Socket should close when no heartbeat was sent", %{
     port: port,
     channel: channel,
@@ -136,7 +134,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert_stop_redelivery(@binary, params)
   end
 
-  test "Should open socket with binary sub-protocol", %{port: port, channel: channel, secret: secret} do
+  test "Should open socket with binary sub-protocol", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
 
     {message_id, data} = deliver_message(channel)
@@ -145,12 +147,20 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     :gun.close(conn)
   end
 
-  test "Should open socket with json sub-protocol (explicit)", %{port: port, channel: channel, secret: secret} do
+  test "Should open socket with json sub-protocol (explicit)", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
     conn_stream = assert_connect_and_authenticate(port, channel, secret, @json)
     assert {:text, _} = assert_receive_and_close(channel, conn_stream)
   end
 
-  test "Should open socket with binary sub-protocol, (multi-options)",%{port: port, channel: channel, secret: secret} do
+  test "Should open socket with binary sub-protocol, (multi-options)", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
     conn_stream = assert_connect_and_authenticate(port, channel, secret, [@binary, @json])
     assert {:binary, _} = assert_receive_and_close(channel, conn_stream)
   end
@@ -164,6 +174,40 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     refute_receive {:gun_ws, ^conn, ^stream, data_string}, 300
     {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, app_id, user_ref})
     assert_authenticate(conn, stream, 750)
+  end
+
+
+  test "Should reestablish Channel link when Channel gets restarted", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+    {message_id, data} = deliver_message(channel)
+
+
+    fn  ->
+
+      {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+
+      :gun.close(conn)
+      data
+
+    end
+
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
+
+
+    ch_pid = ChannelRegistry.lookup_channel_addr(channel)
+    Process.exit(ch_pid, :kill)
+
+    {message_id, data} = deliver_message(channel)
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
+    assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
+
+
+    :gun.close(conn)
   end
 
   defp assert_receive_and_close(channel, {conn, stream}) do
@@ -259,10 +303,12 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   defp authenticate(conn, secret), do: :gun.ws_send(conn, {:text, "Auth::#{secret}"})
 
   defp assert_connect(port, channel, secret, sub_protocol \\ nil) do
-    conn = case sub_protocol do
-      nil -> connect(port, channel)
-      sub_protocol -> connect(port, channel, sub_protocol)
-    end
+    conn =
+      case sub_protocol do
+        nil -> connect(port, channel)
+        sub_protocol -> connect(port, channel, sub_protocol)
+      end
+
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
     {conn, stream}
   end
@@ -295,7 +341,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   @spec decode_message({:binary, String.t()}) :: ProtocolMessage.t()
   defp decode_message({:binary, data}) do
-    IO.inspect BinaryEncoder.decode_message(data)
+    IO.inspect(BinaryEncoder.decode_message(data))
   end
-
 end

@@ -20,8 +20,11 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @spec channel_child_spec(channel_init_args()) :: any()
   @compile {:inline, channel_child_spec: 1}
   def channel_child_spec(channel_args = {channel_ref, _application, _user_ref}) do
-    name = ChannelRegistry.via_tuple(channel_ref)
+    channel_child_spec(channel_args, ChannelRegistry.via_tuple(channel_ref))
+  end
 
+  @compile {:inline, channel_child_spec: 2}
+  def channel_child_spec(channel_args = {channel_ref, _application, _user_ref}, name) do
     %{
       id: "Channel_#{channel_ref}",
       start: {Channel, :start_link, [channel_args, [name: name]]},

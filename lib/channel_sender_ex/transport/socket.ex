@@ -9,6 +9,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
+  alias ChannelSenderEx.Core.PubSub.ReConnectProcess
 
   @default_protocol_encoder Application.get_env(
                               :channel_sender_ex,
@@ -19,8 +20,9 @@ defmodule ChannelSenderEx.Transport.Socket do
   @type channel_ref() :: String.t()
   @type application_ref() :: String.t()
   @type user_ref() :: String.t()
+  @type ch_ref() :: reference()
   @type pending_bag() :: %{String.t() => {pid(), reference()}}
-  @type context_data() :: {application_ref(), user_ref()}
+  @type context_data() :: {application_ref(), user_ref(), ch_ref()}
   @type protocol_encoder() :: atom()
 
   @type pre_operative_state ::
@@ -70,10 +72,10 @@ defmodule ChannelSenderEx.Transport.Socket do
   def websocket_handle({:text, "Auth::" <> secret}, {channel, :pre_auth, encoder}) do
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
-        notify_connected(channel)
+        monitor_ref = notify_connected(channel)
 
         {_commands = [auth_ok_frame(encoder)],
-         {channel, :connected, encoder, {application, user_ref}, %{}}}
+         {channel, :connected, encoder, {application, user_ref, monitor_ref}, %{}}}
 
       :unauthorized ->
         {_commands = [{:close, @invalid_secret_code, "Invalid token for channel"}],
@@ -112,7 +114,8 @@ defmodule ChannelSenderEx.Transport.Socket do
   @compile {:inline, notify_connected: 1}
   defp notify_connected(channel) do
     socketEventBus = RulesProvider.get(:socket_event_bus)
-    socketEventBus.notify_event({:connected, channel}, self())
+    ch_pid = socketEventBus.notify_event({:connected, channel}, self())
+    Process.monitor(ch_pid)
   end
 
   @compile {:inline, set_pending: 2}
@@ -143,6 +146,18 @@ defmodule ChannelSenderEx.Transport.Socket do
         {_commands = [], state}
     end
   end
+
+  @impl :cowboy_websocket
+  def websocket_info({:DOWN, ref, :process, _pid, _cause}, state = {channel_ref, :connected, _, {_, _, ref}, _}) do
+    spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
+    {_commands = [], state}
+  end
+
+#  @impl :cowboy_websocket
+#  def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, ref}, _}) do
+#    spawn_monitor(ReConnectProcess, start, [self(), channel_ref])
+#    {_commands = [], state}
+#  end
 
   @impl :cowboy_websocket
   def websocket_info(_message, state) do

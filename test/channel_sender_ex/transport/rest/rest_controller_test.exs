@@ -5,6 +5,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+  alias ChannelSenderEx.Core.RulesProvider.Helper
 
   @supervisor_module Application.get_env(:channel_sender_ex, :channel_supervisor_module)
   @registry_module Application.get_env(:channel_sender_ex, :registry_module)
@@ -48,6 +49,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   end
 
   test "Should send message on request" do
+    Helper.compile(:channel_sender_ex)
     {channel, _secret} = ChannelAuthenticator.create_channel("App1", "User1234")
 
     body =

@@ -24,8 +24,8 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoder do
 
   @impl MessageEncoder
   def heartbeat_frame(seq) do
-     {:ok, result} = encode_message({"", seq, ":hb", "", nil})
-     result
+    {:ok, result} = encode_message({"", seq, ":hb", "", nil})
+    result
   end
 
   @impl MessageEncoder
@@ -35,11 +35,10 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoder do
   end
 
   @impl MessageEncoder
-  def decode_message(<<255, s1, s2, s3, message_id::binary-size(s1), correlation_id::binary-size(s2),
-          event_name::binary-size(s3), message_data::binary>>) do
+  def decode_message(
+        <<255, s1, s2, s3, message_id::binary-size(s1), correlation_id::binary-size(s2),
+          event_name::binary-size(s3), message_data::binary>>
+      ) do
     {message_id, correlation_id, event_name, message_data, 0}
   end
-
-
-
 end

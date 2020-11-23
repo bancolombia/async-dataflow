@@ -3,7 +3,6 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoderTest do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Transport.Encoders.BinaryEncoder
 
-
   setup do
     external_message = %{
       channel_ref: "channel_ref",
@@ -24,12 +23,21 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoderTest do
 
     decoded_message = BinaryEncoder.decode_message(encoded)
 
-    assert ProtocolMessage.to_external_message(decoded_message) == ProtocolMessage.to_external_message(message)
+    assert ProtocolMessage.to_external_message(decoded_message) ==
+             ProtocolMessage.to_external_message(message)
+
     IO.inspect(encoded, limit: :infinity)
   end
 
-  test "should encode message with UTF-8 special characters to binary", %{external_message: message} do
-    message = %{message | message_data: "{\"strange_message: \"áéíóú@ñ&%$#!especíalç\", \"strange_message: \"áéíóú@ñ&%$#!especíal2ç\"}"}
+  test "should encode message with UTF-8 special characters to binary", %{
+    external_message: message
+  } do
+    message = %{
+      message
+      | message_data:
+          "{\"strange_message: \"áéíóú@ñ&%$#!especíalç\", \"strange_message: \"áéíóú@ñ&%$#!especíal2ç\"}"
+    }
+
     message = ProtocolMessage.to_protocol_message(message)
     {:ok, {:binary, iolist_data}} = BinaryEncoder.encode_message(message)
     encoded = :erlang.list_to_binary(iolist_data)
@@ -37,7 +45,9 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoderTest do
 
     decoded_message = BinaryEncoder.decode_message(encoded)
 
-    assert ProtocolMessage.to_external_message(decoded_message) == ProtocolMessage.to_external_message(message)
+    assert ProtocolMessage.to_external_message(decoded_message) ==
+             ProtocolMessage.to_external_message(message)
+
     IO.inspect(encoded, limit: :infinity)
   end
 
@@ -52,6 +62,4 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoderTest do
     encoded = :erlang.list_to_binary(iolist)
     assert {"", "", "AuthOk", "", 0} == BinaryEncoder.decode_message(encoded)
   end
-
-
 end

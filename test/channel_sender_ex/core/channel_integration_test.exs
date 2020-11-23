@@ -1,15 +1,11 @@
 defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Core.RulesProvider
-  alias ChannelSenderEx.Core.ChannelSupervisor
-  alias ChannelSenderEx.Core.ChannelRegistry
-  alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Core.{ChannelRegistry, ChannelSupervisor, ProtocolMessage, Channel}
 
   @moduletag :capture_log
 
@@ -70,19 +66,59 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert {:accepted_waiting, _, _} = deliver_message(channel)
   end
 
+  test "Should not restart channel when terminated normal (Waiting timeout)" do
+    Helper.compile(:channel_sender_ex, max_age: 1)
+    {channel, secret} = ChannelAuthenticator.create_channel("App1", "User1234")
+    channel_pid = ChannelRegistry.lookup_channel_addr(channel)
+
+    ref = Process.monitor(channel_pid)
+    assert_receive {:DOWN, ^ref, :process, ^channel_pid, :normal}, 1200
+    Process.sleep(300)
+
+    assert :noproc == ChannelRegistry.lookup_channel_addr(channel)
+    Helper.compile(:channel_sender_ex)
+  end
+
+  test "Should send pending messages to twin process when terminated by supervisor merge (name conflict)" do
+    channel_args = {"channel_ref", "application", "user_ref"}
+    {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup1, strategy: :one_for_one)
+    {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup2, strategy: :one_for_one)
+    {:ok, _} = Horde.Registry.start_link(name: :reg1, keys: :unique)
+    {:ok, _} = Horde.Registry.start_link(name: :reg2, keys: :unique)
+
+    {:ok, pid1} = Horde.DynamicSupervisor.start_child(:sup1, ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg1)))
+    {:ok, pid2} = Horde.DynamicSupervisor.start_child(:sup2, ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg2)))
+    {_, msg1} = build_message("42")
+    {_, msg2} = build_message("82")
+    Channel.deliver_message(pid1, msg1)
+    Channel.deliver_message(pid2, msg2)
+    Process.monitor(pid1)
+    Process.monitor(pid2)
+    Horde.Cluster.set_members(:sup1, [:sup1, :sup2])
+    Horde.Cluster.set_members(:reg1, [:reg1, :reg2])
+
+    assert_receive {:DOWN, _ref, :process, channel_pid, _} when channel_pid in [pid1, pid2]
+
+    assert [{pid, _}] = Horde.Registry.lookup(ChannelRegistry.via_tuple("channel_ref", :reg1))
+    {_, %{pending_sending: pending_msg}} = :sys.get_state(pid)
+    assert %{"42" => msg1, "82" => msg2} = pending_msg
+  end
+
   defp deliver_message(channel, message_id \\ "42") do
-    data = "MessageData12_3245rs42112aa"
-
-    message =
-      ProtocolMessage.to_protocol_message(%{
-        message_id: message_id,
-        correlation_id: "",
-        message_data: data,
-        event_name: "event.test"
-      })
-
+    {data, message} = build_message(message_id)
     channel_response = ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel, message)
     {channel_response, message_id, data}
+  end
+
+  defp build_message(message_id) do
+    data = "MessageData12_3245rs42112aa" <> message_id
+    message = ProtocolMessage.to_protocol_message(%{
+      message_id: message_id,
+      correlation_id: "",
+      message_data: data,
+      event_name: "event.test"
+    })
+    {data, message}
   end
 
   defp assert_connect_and_authenticate(port, channel, secret) do

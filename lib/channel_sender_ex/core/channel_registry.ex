@@ -18,4 +18,13 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
 
   @compile {:inline, via_tuple: 1}
   def via_tuple(channel_ref), do: {:via, @registry_module, {__MODULE__, channel_ref}}
+
+  def via_tuple(channel_ref, registry), do: {:via, @registry_module, {registry, channel_ref}}
+
+#  def lookup_channel_addr(channel_ref, registry) do
+#    case @registry_module.lookup(via_tuple(channel_ref, registry)) do
+#      [{pid, _}] -> pid
+#      [] -> :noproc
+#    end
+#  end
 end

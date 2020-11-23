@@ -3,7 +3,6 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoderTest do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Transport.Encoders.JsonEncoder
 
-
   setup do
     external_message = %{
       channel_ref: "channel_ref",
@@ -22,18 +21,27 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoderTest do
 
     decoded_message = JsonEncoder.decode_message(encoded)
 
-    assert ProtocolMessage.to_external_message(decoded_message) == ProtocolMessage.to_external_message(message)
+    assert ProtocolMessage.to_external_message(decoded_message) ==
+             ProtocolMessage.to_external_message(message)
+
     IO.inspect(encoded, limit: :infinity)
   end
 
   test "should encode message with UTF-8 special characters to json", %{external_message: message} do
-    message = %{message | message_data: "{\"strange_message: \"áéíóú@ñ&%$#!especíalç\", \"strange_message: \"áéíóú@ñ&%$#!especíal2ç\"}"}
+    message = %{
+      message
+      | message_data:
+          "{\"strange_message: \"áéíóú@ñ&%$#!especíalç\", \"strange_message: \"áéíóú@ñ&%$#!especíal2ç\"}"
+    }
+
     message = ProtocolMessage.to_protocol_message(message)
     {:ok, {:text, encoded}} = JsonEncoder.encode_message(message)
 
     decoded_message = JsonEncoder.decode_message(encoded)
 
-    assert ProtocolMessage.to_external_message(decoded_message) == ProtocolMessage.to_external_message(message)
+    assert ProtocolMessage.to_external_message(decoded_message) ==
+             ProtocolMessage.to_external_message(message)
+
     IO.inspect(encoded, limit: :infinity)
   end
 
@@ -48,6 +56,4 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoderTest do
     encoded = :erlang.list_to_binary(iolist)
     assert {"", "", "AuthOk", "", _} = JsonEncoder.decode_message(encoded)
   end
-
-
 end

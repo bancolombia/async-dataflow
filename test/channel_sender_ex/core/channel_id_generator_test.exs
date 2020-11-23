@@ -59,7 +59,6 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
   end
 
   test "Should generate refreshed token for channel" do
-    
   end
 
   test "Should indicate wrong channel", %{app_id: app_id, user_id: user_id} do
