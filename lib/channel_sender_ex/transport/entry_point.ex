@@ -13,7 +13,9 @@ defmodule ChannelSenderEx.Transport.EntryPoint do
     [
       {:external_server, port,
        [
-         {"/ext/socket", Socket, []}
+         {"/ext/socket", Socket, []},
+         #Enable below line for load testing purposes
+         {:_, Plug.Cowboy.Handler, {ChannelSenderEx.Transport.Rest.RestController, []}}
        ]}
     ]
   end
