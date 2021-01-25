@@ -12,7 +12,6 @@ defmodule ChannelSenderEx.Application do
   @supervisor_module Application.get_env(:channel_sender_ex, :channel_supervisor_module)
   @registry_module Application.get_env(:channel_sender_ex, :registry_module)
   @no_start Application.get_env(:channel_sender_ex, :no_start)
-  @http_port Application.get_env(:channel_sender_ex, :rest_port, 8080)
 
   def start(_type, _args) do
     ChannelSenderEx.Utils.ClusterUtils.discover_and_connect_local()
@@ -27,10 +26,11 @@ defmodule ChannelSenderEx.Application do
   end
 
   defp children(_no_start = false) do
+    http_port = Application.get_env(:channel_sender_ex, :rest_port, 8080)
     [
       {@registry_module, name: ChannelRegistry, keys: :unique, members: :auto},
       {@supervisor_module, name: ChannelSupervisor, strategy: :one_for_one, members: :auto},
-      {Plug.Cowboy, scheme: :http, plug: RestController, options: [port: @http_port]}
+      {Plug.Cowboy, scheme: :http, plug: RestController, options: [port: http_port]}
     ]
   end
 

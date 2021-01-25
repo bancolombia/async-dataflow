@@ -16,7 +16,7 @@ defmodule SyntheticStatsCollector do
     {:next_state, :running, %{data | pid: pid}}
   end
 
-  def waiting(:info, {:DOWN, _, _, _, :kill}, _), do: :keep_state_and_data
+  def waiting(:info, {:DOWN, _, _, _, :killed}, _), do: :keep_state_and_data
 
   def waiting(:info, message,  %__MODULE__{name: name}) do
     Logger.info("Task: #{name}, Unexpected info in waiting: #{inspect(message)}")

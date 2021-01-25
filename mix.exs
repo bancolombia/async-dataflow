@@ -32,8 +32,12 @@ defmodule ChannelSenderEx.MixProject do
       {:gen_state_machine, "~> 2.1"},
       {:jason, "~> 1.2"},
       {:cors_plug, "~> 2.0"},
-      {:horde, "~> 0.8.3"},
+#      {:horde, "~> 0.8.3"},
+#      {:horde, path: "/Users/daniel/Projects/banco/async-data-flow/ext/horde"},
+      {:horde, git: "https://github.com/dbuos/horde.git", tag: "ets_in_supervisor"},
       {:hackney, "~> 1.2.0", only: :test},
+      {:local_cluster, "~> 1.2", only: :test},
+      {:schism, "~> 1.0.1", only: :test},
       {:plug_crypto, "~> 1.1"},
       {:stream_data, "~> 0.4", only: [:test]},
       {:gun, "~> 1.3", only: [:test, :benchee]}
