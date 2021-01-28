@@ -40,6 +40,8 @@ defmodule ChannelSenderEx.MixProject do
       {:schism, "~> 1.0.1", only: :test},
       {:plug_crypto, "~> 1.1"},
       {:stream_data, "~> 0.4", only: [:test]},
+      {:telemetry_poller, "~> 0.5.1"},
+      {:telemetry_metrics_prometheus, "~> 0.6.0"},
       {:gun, "~> 1.3", only: [:test, :benchee]}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
