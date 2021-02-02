@@ -61,11 +61,12 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
         event_name: "event_name"
       })
 
-    {status, _headers, body} =
+    {status, headers, body} =
       request(:post, "/ext/channel/deliver_message", [{"content-type", "application/json"}], body)
 
     assert 202 == status
-    assert "Ok" == body
+    assert %{"result" => "Ok"} = Jason.decode!(body)
+    assert Enum.member?(headers, {"Content-Type", "application/json"})
   end
 
   test "Should fail on invalid body" do

@@ -56,7 +56,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     _result =
       PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(message))
 
-    send_resp(conn, 202, "Ok")
+    conn
+    |> put_resp_header("Content-Type", "application/json")
+    |> send_resp(202, Jason.encode!(%{result: "Ok"}))
   end
 
   defp deliver_message(conn), do: invalid_body(conn)
