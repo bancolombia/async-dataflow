@@ -31,8 +31,11 @@ defmodule ChannelSenderEx.Application do
     [
       {@registry_module, name: ChannelRegistry, keys: :unique, members: :auto},
       {:telemetry_poller, measurements: [
-              {:process_info, name: ChannelSenderEx.Core.ChannelSupervisor, event: [:app, :chan_sup], keys: [:memory, :message_queue_len]},
-              {:process_info, name: ChannelSenderEx.Core.ChannelRegistry, event: [:app, :chan_reg], keys: [:memory, :message_queue_len]}
+              {:process_info, name: ChannelSenderEx.Core.ChannelSupervisor, event: [:app, :chan_sup], keys: [:memory, :message_queue_len, :reductions]},
+              {:process_info, name: ChannelSenderEx.Core.ChannelSupervisor.Crdt, event: [:app, :chan_sup_crdt], keys: [:memory, :message_queue_len, :reductions]},
+              {:process_info, name: ChannelSenderEx.Core.ChannelSupervisor.ProcessesSupervisor, event: [:app, :chan_sup_proc], keys: [:memory, :message_queue_len, :reductions]},
+              {:process_info, name: ChannelSenderEx.Core.ChannelRegistry, event: [:app, :chan_reg], keys: [:memory, :message_queue_len, :reductions]},
+              {:process_info, name: ChannelSenderEx.Core.ChannelRegistry.Crdt, event: [:app, :chan_reg_crdt], keys: [:memory, :message_queue_len, :reductions]},
       ], period: 5_000},
       {TelemetryMetricsPrometheus, [metrics: metrics()]},
       {@supervisor_module, name: ChannelSupervisor, strategy: :one_for_one, members: :auto},
@@ -63,9 +66,24 @@ defmodule ChannelSenderEx.Application do
       last_value("vm.system_counts.port_count"),
 
       last_value("app.chan_sup.memory"),
+      last_value("app.chan_sup.reductions"),
       last_value("app.chan_sup.message_queue_len"),
+
       last_value("app.chan_reg.memory"),
+      last_value("app.chan_reg.reductions"),
       last_value("app.chan_reg.message_queue_len"),
+
+      last_value("app.chan_sup_crdt.memory"),
+      last_value("app.chan_sup_crdt.reductions"),
+      last_value("app.chan_sup_crdt.message_queue_len"),
+
+      last_value("app.chan_sup_proc.memory"),
+      last_value("app.chan_sup_proc.reductions"),
+      last_value("app.chan_sup_proc.message_queue_len"),
+
+      last_value("app.chan_reg_crdt.memory"),
+      last_value("app.chan_reg_crdt.reductions"),
+      last_value("app.chan_reg_crdt.message_queue_len"),
 
     ]
   end
@@ -85,7 +103,7 @@ defmodule MemInfo do
     end)
     |> Enum.sort_by(fn {mem, _, _, _, _} -> mem end)
     |> Enum.reverse()
-    |> Enum.take(5)
+    |> Enum.take(10)
     |> Enum.map(fn info ->
       pid = elem(info, 4)
       {:message_queue_len, queue} = elem(info, 2)
