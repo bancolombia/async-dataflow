@@ -84,6 +84,8 @@ defmodule ChannelSenderEx.Application do
       last_value("app.chan_reg_crdt.memory"),
       last_value("app.chan_reg_crdt.reductions"),
       last_value("app.chan_reg_crdt.message_queue_len"),
+      counter("app.create_channel.count"),
+      counter("app.deliver_message.count"),
 
     ]
   end

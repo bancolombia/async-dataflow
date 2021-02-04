@@ -25,6 +25,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp create_channel(
          conn = %{body_params: %{application_ref: application_ref, user_ref: user_ref}}
        ) do
+    :telemetry.execute([:app, :create_channel], %{count: 1}, %{})
     {response, code} =
       case ChannelAuthenticator.create_channel(application_ref, user_ref) do
         {:error, :no_app} ->
@@ -53,6 +54,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
              }
          }
        ) do
+    :telemetry.execute([:app, :deliver_message], %{count: 1}, %{})
     _result =
       PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(message))
 
