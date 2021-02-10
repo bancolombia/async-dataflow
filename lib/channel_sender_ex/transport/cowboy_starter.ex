@@ -17,7 +17,9 @@ defmodule ChannelSenderEx.Transport.CowboyStarter do
   defp tcp_opts(port) do
     [
       port: port,
-      backlog: 1024
+      backlog: 1024,
+      max_connections: :infinity,
+      num_acceptors: 64,
     ]
   end
 end
