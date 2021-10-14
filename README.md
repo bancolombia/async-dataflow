@@ -1,5 +1,7 @@
 # Channel Sender
 [![Docker Hub](https://img.shields.io/docker/pulls/bancolombia/async-dataflow-channel-sender?label=Docker%20Hub)](https://hub.docker.com/repository/docker/bancolombia/async-dataflow-channel-sender)
+![imagen](https://user-images.githubusercontent.com/12372370/137362047-34f5d048-9f1a-4065-8a09-dc97318bf42e.png)
+
 
 Distributed Elixir Cluster implementation of real time with websockets and notifications channels.
 
