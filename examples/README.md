@@ -30,7 +30,7 @@ npm run start
 ```
 
 **Great!!!, you will see something like that...**
-![imagen](https://user-images.githubusercontent.com/12372370/137996397-9ccd0370-9238-452a-8a89-a06861daabcf.png)
+![imagen](https://user-images.githubusercontent.com/12372370/137996938-10f8e68f-4c85-4ce9-830e-0d01c84458d8.png)
 
 You can customize the delay time in the GUI.
 
