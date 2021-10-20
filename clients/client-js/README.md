@@ -1,5 +1,6 @@
 # Client JS
 
+[![NPM](https://nodei.co/npm/chanjs-client.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/chanjs-client/)
 Javascript library for async data flow implementation for browsers.
 
 - [Client JS](#client-js)
@@ -21,7 +22,7 @@ npm install chanjs-client --save
 
 You can understand better the flow with this sequence diagram.
 
-<img src="https://raw.githubusercontent.com/bancolombia/async-dataflow-channel-client-js/master/doc/sequence-diagram-async-data-flow.png" width="600">
+![imagen](https://user-images.githubusercontent.com/12372370/137554898-0d652b9c-2598-4e1b-b681-554e0a9f00e7.png)
 
 ```javascript
 import { AsyncClient } from 'chanjs-client';
