@@ -11,7 +11,7 @@ Javascript library for async data flow implementation for browsers.
 
 ## How to use
 
-you need to have a running instances of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/channel-sender)
+you need to have a running instances of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender)
 
 ### Install
 
@@ -38,13 +38,13 @@ const client = new AsyncClient({
 ...
 ```
 
-| **Parameters**          | Description                                                                                                                         | Default Value |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| socket_url              | [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/channel-sender) cluster url                           |               |
-| channel_ref             | channel getted from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/channel-sender)   |               |
-| channel_secret          | token getted from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/channel-sender)     |               |
-| heartbeat_interval      | time in milliseconds to verify socket connection **this parameter must be less than the socket_idle_timeout on the channel sender** | 750           |
-| enable_binary_transport | boolean parameter to indicate use binary protocol                                                                                   | false         |
+| **Parameters**          | Description                                                                                                                                   | Default Value |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| socket_url              | [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender) cluster url                         |               |
+| channel_ref             | channel getted from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender) |               |
+| channel_secret          | token getted from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender)   |               |
+| heartbeat_interval      | time in milliseconds to verify socket connection **this parameter must be less than the socket_idle_timeout on the channel sender**           | 750           |
+| enable_binary_transport | boolean parameter to indicate use binary protocol                                                                                             | false         |
 
 ```javascript
 client.listenEvent("event.some-name", (message) =>

@@ -36,8 +36,8 @@ You can customize the delay time in the GUI.
 
 ## References
 
-- [Async Data Flow - Channel Sender - Repository ](https://github.com/bancolombia/async-dataflow/channel-sender)
+- [Async Data Flow - Channel Sender - Repository ](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender)
   - [Docker Hub](https://hub.docker.com/repository/docker/bancolombia/async-dataflow-channel-sender)
-  - [Swagger](https://github.com/bancolombia/async-dataflow/channel-sender/blob/master/doc/swagger.yaml)
+  - [Swagger](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender/blob/master/doc/swagger.yaml)
 - [Async Data Flow - Channel Client JS - Repository](https://github.com/bancolombia/async-dataflow/clients/clients/client-js)
   - [Npm Package](https://www.npmjs.com/package/chanjs-client)
