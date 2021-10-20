@@ -1,4 +1,4 @@
-name: Deploy Image
+name: Deploy image Async DataFlow channel sender
 on:
   release:
     types: [published]
