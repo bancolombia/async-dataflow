@@ -1,70 +1,16 @@
-# Channel Sender
-[![Docker Hub](https://img.shields.io/docker/pulls/bancolombia/async-dataflow-channel-sender?label=Docker%20Hub)](https://hub.docker.com/repository/docker/bancolombia/async-dataflow-channel-sender)
+# Async DataFlow
+
+The Async DataFlow component aims to deliver asynchronous responses in real time to client applications, thus enabling end-to-end asynchronois flows without losing the ability to respond in real time or eventually, send data to client applications as a result of asynchronous operations and oriented to `messages / commands / events` on the platform.
 ![imagen](https://user-images.githubusercontent.com/12372370/137362047-34f5d048-9f1a-4065-8a09-dc97318bf42e.png)
 
+## Repository
 
-Distributed Elixir Cluster implementation of real time with websockets and notifications channels.
+- [Channel Sender](https://github.com/bancolombia/async-dataflow/channel-sender) Distributed Elixir Cluster implementation of real time with websockets and notifications channels.
+- [Client JS](https://github.com/bancolombia/async-dataflow/clients/client-js) Javascript library for async data flow implementation for browsers.
 
+- [Examples](https://github.com/bancolombia/async-dataflow/examples)
+  The purpose of this project is to help the community to understand more the the async data flow component to implement in full asyncio solutions.
 
-- [Channel Sender](#channel-sender)
-- [Plugin Implementation](#plugin-implementation)
-- [How to use](#how-to-use)
-  - [Install](#install)
-  - [Configuration](#configuration)
-  - [API Documentation](#configuration)
-  - [Run](#run)
-- [Clients](#clients)
-- [How can I help?](#how-can-i-help)
-
-## How to use
-
-### Requirements
-
-- Elixir >= 1.10
-- Mix
-
-### Install
-```elixir
-mix deps.get
-mix compile
-```
-### Configuration
-
-Open and edit the config/dev.exs file to configure, you can create and set new environment files.
-   |  **Parameters** | Description                                   | Default Value |
-   | -------------------------------- | -------------------------------------- | ------------------ |
-   | `socket_port`                          | Port to atend Web Sockets requests                   | 8082      |
-   | `rest_port`                          | API Port to atend Rest service requests     |       8081             |
-   | `initial_redelivery_time`                          | time in milliseconds to retry when an ack is not received after send an event|      900              |
-   | `socket_idle_timeout`                          | timeout in milliseconds to reject idle socket |            30000        |
-   | `max_age`                          | Max time in seconds of validity for the secret **the channel sender have strategy to update the secret before this expire.**   |        900            |
-
-### API Documentation
-`doc/swagger.yaml` A Swagger definition of the API.
-
-Run make `https://editor.swagger.io/` add the `swagger.yaml` file and you get a preview the documentation.
-
-### Run
-In the shell:
-```elixir
-iex -S mix 
-or
- MIX_ENV=<CONFIG-FILE-NAME> iex --erl "-name async-node1@127.0.0.1" -S mix 
- ```
- ### Connect nodes
-Can connect the nodes with a self-discovery strategy as a central register or broadcast, you can also connect the nodes manually with the following task. **this task is useful in development environment.**
-```elixir
-Node.connect(:"node-name@ip")
- ```
- and verify with:
- ```elixir
- Node.list()
- ```
-
-## Clients
-|Repository|
-|--|
-|[Javascript](https://github.com/bancolombia/async-dataflow-channel-client-js)
 ## How can I help?
 
-Review the [issues](https://github.com/bancolombia/async-dataflow-channel-sender/issues). Read [how Contributing](https://github.com/bancolombia/async-dataflow-channel-sender/wiki/Contributing).
+Review the [issues](https://github.com/bancolombia/async-dataflow/issues). Read [how Contributing](https://github.com/bancolombia/async-dataflow/wiki/Contributing).

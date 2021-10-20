@@ -1,0 +1,9 @@
+tsconfig.json
+src
+.idea
+test
+.nyc_output
+.scannerwork
+coverage
+Jenkinsfile
+sonar-project.properties
