@@ -6,7 +6,6 @@
 Distributed Elixir Cluster implementation of real time with websockets and notifications channels.
 
 - [Channel Sender](#channel-sender)
-- [Plugin Implementation](#plugin-implementation)
 - [How to use](#how-to-use)
   - [Install](#install)
   - [Configuration](#configuration)
@@ -72,6 +71,5 @@ Node.list()
 ## Clients
 
 | Repository |
-| ---------- |
-
-|[Javascript](https://github.com/bancolombia/async-dataflow/tree/master/clients/client-js)
+| -- |
+|[Javascript](https://github.com/bancolombia/async-dataflow/tree/master/clients/client-js)|
