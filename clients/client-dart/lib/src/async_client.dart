@@ -1,9 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-
-import 'package:web_socket_channel/io.dart';
-
 import 'message_decoder.dart';
 import 'async_config.dart';
 import 'binary_decoder.dart';
@@ -12,6 +9,7 @@ import 'retry_timer.dart';
 import 'channel_message.dart';
 import 'transport.dart';
 import 'package:logging/logging.dart';
+import 'package:web_socket_channel/io.dart';
 
 /// Async Data Flow Low Level Client
 ///
@@ -30,7 +28,7 @@ class AsyncClient {
   RetryTimer reconnectTimer;
   Map<String, Function> bindings = {};
   List<String> subProtocols = [];
-  MessageDecoder serializer;
+  MessageDecoder msgDecoder;
 
   AsyncClient(this.config) {
     actualToken = config.channel_secret;
@@ -44,25 +42,39 @@ class AsyncClient {
 
   /// Opens up the connection and performs auth flow.
   ///
-  Future<int> connect() async {
+  Future<bool> connect() async {
     if (transport != null && transport.isOpen()) {
       log.info('Connect Request: Transport is aready open');
-      return 0;
+      return Future.value(true);
     }
     
-    var channel = IOWebSocketChannel.connect(config.socket_url + '?channel=' + config.channel_ref, 
-      protocols: subProtocols,
-      headers: _buildHeaders()
-    );
-    
-    transport = Transport(channel, config.heartbeat_interval ?? 750);
-    transport.attach(_doOnSocketMessage, _onTransportClose, false);
+    try {
+      // connect to channel
+      var channel = IOWebSocketChannel.connect(config.socket_url + '?channel=' + config.channel_ref, 
+        protocols: subProtocols,
+        headers: _buildHeaders(), 
+      );
 
-    if (transport.isOpen()) {  
-      _doAfterTransportOpen();
+      // build transport object
+      transport = Transport(channel, config.heartbeat_interval);
+
+      // attachs functions to socket stream
+      await transport.attach(
+        _doOnSocketMessage, _onTransportClose, false
+      );
+
+      // send credentials
+      transport.send('Auth::$actualToken');
+
+      return Future.delayed(Duration(milliseconds: 200), () => transport.isOpen());
+
+    } catch (e) {
+      log.severe('Error connecting: $e');
     }
+  }
 
-    return Future(transport.readyState ?? -1);
+  bool isOpen() {
+    return transport.isOpen();
   }
 
   Map<String, dynamic> _buildHeaders() {
@@ -94,54 +106,53 @@ class AsyncClient {
     log.fine('added callback for "$eventName"');
   }
 
-  void _doAfterTransportOpen() {
-    _selectSerializerForProtocol();
-    transport.resetHeartbeat();
-    log.fine('Presenting channel creds');
-    transport.send('Auth::$actualToken');
-  }
-
-  void _selectSerializerForProtocol() {
-    if (transport.getProtocol() == 'binary_flow') {
-      serializer = BinaryDecoder();
-    } else {
-      serializer = JsonDecoder();
-    }
-  }
-
   /// Method that handles messages received by the server 
   ///
-  void _doOnSocketMessage(String dataReceived) {
-    log.finest('Received from Server: $dataReceived');
-    var message = serializer.decode(dataReceived);
-    if (!transport.isActive && message.event == 'AuthOk'){
+  void _doOnSocketMessage(Object dataReceived) {
+    
+    if (msgDecoder == null) {
+      // selection of message decoder is delayed until receiving first message from socket
+      _selectMessageDecoder();
+    }
+
+    var message = msgDecoder.decode(dataReceived);
+
+    log.finest('Received from Server: $message');
+
+    if (message.event == 'AuthOk'){
         _handleAuthResponse(message);
     } else if(message.event == ':hb' && message.correlation_id == transport.pendingHeartbeatRef){
         _handleCleanHeartBeat(message);
-    } else if(message.event == ':new_tkn'){
+    } else if(message.event == ':n_token'){
         _handleNewToken(message);
-    } else if (transport.isActive){
-        _handleUserMessage(message);
     } else {
-        log.warning('Unexpected message: ${message.toString()}');
+        _handleUserMessage(message);
+    }
+  }
+
+  void _selectMessageDecoder() {
+    if (transport.getProtocol() == 'binary_flow') {
+      msgDecoder = BinaryDecoder();
+    } else {
+      msgDecoder = JsonDecoder();
     }
   }
 
   void _handleAuthResponse(ChannelMessage message) {
-    transport.isActive = true;
+    transport.resetHeartbeat();
     reconnectTimer.reset();
-    log.info('Change active to true!');
+    log.info('channel is open? ${transport.isOpen()}');
   }
 
   void _handleCleanHeartBeat(ChannelMessage message) {
     transport.pendingHeartbeatRef = null;
   }
 
-  /// Function to handle the refreshed channel secret refresed by the server
+  /// Function to handle the refreshed channel secret sent by the server
   ///
   void _handleNewToken(ChannelMessage message) {
     actualToken = message.payload;
-    log.fine('new_tkn: $actualToken');
+    log.fine(':n_token: $actualToken');
     _ackMessage(message);
   }
 
@@ -159,10 +170,16 @@ class AsyncClient {
     transport.send('Ack::${message.message_id}');
   }
 
-  void _onTransportClose(int code) {
-    if (!transport.closeWasClean && code != 4403) {
-      log.severe('Transport not closed cleanly, Scheduling reconnect...');
-      reconnectTimer.schedule();
+  void _onTransportClose(int code, String reason) {
+    switch(code) {
+      case 1008: {
+        log.severe('Transport closed due invalid credentials, not reconnecting!');
+      }
+      break;
+      default: {
+        log.severe('Transport not closed cleanly, Scheduling reconnect...');
+        reconnectTimer.schedule();
+      }
     }
   }
 

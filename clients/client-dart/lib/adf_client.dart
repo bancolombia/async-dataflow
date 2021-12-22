@@ -11,17 +11,20 @@ void main(List<String> arguments) async {
   });
 
   var conf = AsyncConfig();
-  conf.socket_url = 'http://localhost:8082';
-  // conf.enable_binary_transport = true;
-  conf.channel_ref = '44f59ec0689f3908a0281330add5d9c7.088a7f137c1c4f5387e928a2111f8457';
-  conf.channel_secret = 'SFMyNTY.g2gDaANtAAAAQTQ0ZjU5ZWMwNjg5ZjM5MDhhMDI4MTMzMGFkZDVkOWM3LjA4OGE3ZjEzN2MxYzRmNTM4N2U5MjhhMjExMWY4NDU3bQAAAA9hcHBsaWNhdGlvbl9yZWZtAAAACHVzZXJfcmVmbgYAHr4ZQ3kBYgABUYA.J8pmlTCL6dqUrDFiKtpWgwdAVnAqThmlkvFua1wMauI';
-
+  conf.socket_url = 'ws://localhost:8082/ext/socket';
+  conf.enable_binary_transport = true;
+  conf.channel_ref = '<channel_ref>';
+  conf.channel_secret = '<secret>';
+  conf.heartbeat_interval = 2500;
+  
   var client = AsyncClient(conf);
-  await client.connect();
+  var state = await client.connect();
 
-  void testCallback(ChannelMessage message) => print(message.payload);
-  client.listenEvent('event.productCreated', callback: testCallback);
+  if (state == true) {
+    void testCallback(ChannelMessage message) => print(message.payload);
+    client.listenEvent('event.productCreated', callback: testCallback);
+  }
 
-  await Future.delayed(Duration(seconds: 90));
-  await client.disconnect();
+  // await Future.delayed(Duration(seconds: 90));
+  // await client.disconnect();
 }

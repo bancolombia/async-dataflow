@@ -12,4 +12,8 @@ class ChannelMessage {
     this.payload = payload;
   }
 
+  @override
+  String toString() {
+    return '{message_id: $message_id, correlation_id: $correlation_id, event: $event, payload: $payload }';
+  } 
 }
