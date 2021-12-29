@@ -3,27 +3,45 @@ import 'package:test/test.dart';
 import 'package:channel_dart_client/src/json_decoder.dart';
 
 void main() {
-    group('Parsing json', () {
-      test('parses json', () {
-        final json_string = '''
-        { "message_id": "001", "event": "foo.event", "correlation_id": "bar", "payload": { "hello": "world" } }
-        ''';
-        final msg = JsonDecoder().decode(json_string);
+    group('Json decoding', () {
+      test('should parse authOk event', () {
+        final trama = '["", "", "AuthOk", ""]';
+
+        final msg = JsonDecoder().decode(trama);
+        expect(msg, isNotNull);
+        expect(msg.message_id, isNull);
+        expect(msg.event, equals('AuthOk'));
+        expect(msg.correlation_id, isNull);
+        expect(msg.payload, isNull);
+      });
+
+      test('should parse heartbeat event', () {
+
+        final trama = '["", "1", ":hb", ""]';
+
+        final msg = JsonDecoder().decode(trama);
+        expect(msg, isNotNull);
+        expect(msg.message_id, isNull);
+        expect(msg.event, equals(':hb'));
+        expect(msg.correlation_id, equals('1'));
+        expect(msg.payload, isNull);
+      });
+
+      test('should parse user event', () {
+        // final json_string = '''
+        // { "message_id": "001", "event": "foo.event", "correlation_id": "bar", "payload": { "hello": "world" } }
+        // ''';
+
+        final trama = '["001", "002", "foo.event", "{\"body\": \"Hello World\"}"]';
+
+        final msg = JsonDecoder().decode(trama);
         expect(msg, isNotNull);
         expect(msg.message_id, equals('001'));
         expect(msg.event, equals('foo.event'));
-        expect(msg.correlation_id, equals('bar'));
+        expect(msg.correlation_id, equals('002'));
         expect(msg.payload, isMap);
       });
 
-
-      test('fails to parse json', () {
-        final json_string = '''
-        { "hello": "world" }
-        ''';
-        final msg = JsonDecoder().decode(json_string);
-        expect(msg, isNull);
-      });
   });
 
 }

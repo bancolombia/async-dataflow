@@ -4,56 +4,56 @@ import 'package:logging/logging.dart';
 
 class RetryTimer {
 
-    final log = Logger('RetryTimer');
+    final _log = Logger('RetryTimer');
 
-    int initialWait = 100;
-    int maxWait = 6000;
-    Function jitterFn;
+    int _initialWait = 100;
+    int _maxWait = 6000;
+    Function _jitterFn;
     int _defaultJitterFn(int num) => Utils.jitter(num, 0.25);
-    int tries = 1;
-    Future Function() function;
-    Timer timer;
+    int _tries = 0;
+    Future Function() _function;
+    Timer _timer;
 
-    RetryTimer(Future Function() function, [int initialWait, int maxWait, Function jitterFn]) {
+    RetryTimer(Future Function() function, {int initialWait, int maxWait, Function jitterFn}) {
       if (initialWait != null) {
-        this.initialWait = initialWait;
+        _initialWait = initialWait;
       }
       if (maxWait != null) {
-        this.maxWait = maxWait;
+        _maxWait = maxWait;
       }
       if (jitterFn == null) {
-        this.jitterFn = _defaultJitterFn;
+        _jitterFn = _defaultJitterFn;
       } else {
-        this.jitterFn = jitterFn;
+        _jitterFn = jitterFn;
       }
-      this.function = function;
+      _function = function;
     }
     
     void reset() {
-      tries = 1;
-      if (timer != null) {
-        timer.cancel();
-        timer = null;
+      _tries = 0;
+      if (_timer != null) {
+        _timer.cancel();
+        _timer = null;
       }
-      log.fine('Retry timer reset');
+      _log.finest('Retry timer reset');
     }
 
     void schedule() {
       var delay = _delay();
-      timer = Timer(Duration(milliseconds: delay), () async {
+      _timer = Timer(Duration(milliseconds: delay), () async {
         try {
-          await function();
+          await _function();
         } catch (e) {
-          log.severe('Captured error calling delayed function: $e');
-          rethrow;
+          _log.severe('Captured error calling delayed function: $e');
+          // rethrow;
         }
       });
-      log.fine('Retry timer scheduled. Due in $delay ms. Retry #$tries');
+      _tries = _tries + 1;
+      _log.fine('Retry scheduled. Due in $delay ms. Retry #$_tries');
     }
 
     int _delay() {
-      var delay = Utils.expBackoff(initialWait, maxWait, tries, _defaultJitterFn);
-      tries = tries + 1;
+      var delay = Utils.expBackoff(_initialWait, _maxWait, _tries, _jitterFn);
       return delay;
     }
 }

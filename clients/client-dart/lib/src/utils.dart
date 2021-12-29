@@ -29,4 +29,13 @@ class Utils {
     return willWait.toInt();
   }
 
+  static String checkString(String data) {
+    if (data == null) {
+      return data;
+    } else if (data.trim().isEmpty) {
+      return null;
+    } else {
+      return data.trim();
+    }
+  }
 }

@@ -1,22 +1,30 @@
-import 'channel_message.dart';
-import 'message_decoder.dart';
 import 'dart:convert';
 import 'package:validators/validators.dart';
-
+import 'channel_message.dart';
+import 'message_decoder.dart';
+import 'utils.dart';
 class JsonDecoder extends MessageDecoder<String> {
 
   @override
   ChannelMessage decode(String event) {
 
     var event_as_list = _tokenize(_removeKeys(event));
-
-    var msg = ChannelMessage(event_as_list[0], event_as_list[1], event_as_list[2], null); 
-    if (isJSON(event_as_list[3])) {
-      msg.payload = jsonDecode(event_as_list[3]);
-    } else {
-      msg.payload = event_as_list[3];
-    }
     
+    var msg = ChannelMessage(Utils.checkString(event_as_list[0]), 
+      Utils.checkString(event_as_list[1]),
+      Utils.checkString(event_as_list[2]),
+      null);
+    
+    var data = Utils.checkString(event_as_list[3]);
+
+    if (data != null) {
+      if (isJSON(data)) {
+        msg.payload = jsonDecode(data);
+      } else {
+        msg.payload = data;
+      }
+    }
+
     return msg;
   }
 

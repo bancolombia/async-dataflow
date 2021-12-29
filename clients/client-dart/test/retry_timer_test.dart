@@ -17,8 +17,8 @@ void main() {
         // var counter = 0;
         // var lastTime = DateTime.now();
 
-        Future doSomething() async {
-          print('Function called');
+        var doSomething = () async {
+          print('Dummy function called');
           throw 'Some error';
         };
 
@@ -31,9 +31,43 @@ void main() {
         retyTimer.schedule();
         await Future.delayed(Duration(milliseconds: 4000));
 
-
         // const exp = [ 10, 20, 40, 80, 160, 320, 640 ];
         // times.forEach((delay, index) => assert.approximately(delay, exp[index], 10))
+
+      });
+
+      test('Should retry with exponential delay, custom params', () async {
+        var doSomething = () async {
+          print('Dummy function called');
+          throw 'Some error';
+        };
+
+        var customJitter = (int num) {
+          return 1;
+        };
+
+        var retyTimer = RetryTimer(doSomething, initialWait: 100, maxWait: 300, jitterFn: customJitter);
+
+        retyTimer.schedule();
+        await Future.delayed(Duration(milliseconds: 500));
+        retyTimer.schedule();
+        await Future.delayed(Duration(milliseconds: 500));
+        retyTimer.schedule();
+        await Future.delayed(Duration(milliseconds: 500));
+      });
+
+      test('Should cancel retry timer', () async {
+        var doSomething = () async {
+          print('Dummy function called');
+          throw 'Some error';
+        };
+
+        var retyTimer = RetryTimer(doSomething);
+
+        retyTimer.schedule();
+        await Future.delayed(Duration(milliseconds: 500));
+
+        retyTimer.reset();
 
       });
   });

@@ -1,28 +1,44 @@
 import 'dart:async';
+import 'package:channel_dart_client/src/channel_message.dart';
 import 'package:logging/logging.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'message_decoder.dart';
+import 'binary_decoder.dart';
+import 'json_decoder.dart';
+// import 'socket_error.dart';
+
 class Transport {
 
-  final log = Logger('Transport');
-  
+  final _log = Logger('Transport');
   final IOWebSocketChannel _webSocketCh;
+  final StreamController<ChannelMessage> _localStream;
+  final int _heartbeatIntervalMs;
+  final Function _signalSocketClose;
+  final Function _signalSocketError;
+
   String pendingHeartbeatRef;
   int _ref = 0;
-  bool closeWasClean = false;
-  Timer heartbeatTimer;
-  int heartbeatIntervalMs = 1000;
+  bool _closeWasClean = false;
+  Timer _heartbeatTimer;
+  
+  MessageDecoder msgDecoder;
 
-  Transport(this._webSocketCh, this.heartbeatIntervalMs);
+  Transport(this._webSocketCh,
+    this._localStream,
+    this._signalSocketClose,
+    this._signalSocketError,
+    this._heartbeatIntervalMs);
   
   bool isOpen() {
-    return _webSocketCh.innerWebSocket != null
+    return _webSocketCh != null && _webSocketCh.innerWebSocket != null
       && readyState() == 1;
   }
 
   int readyState() {
     var readyState = 0;
+    
     if (_webSocketCh.innerWebSocket != null) {
       readyState = _webSocketCh.innerWebSocket.readyState;
     }
@@ -34,9 +50,9 @@ class Transport {
   }
 
   Future<dynamic> close(int code, String reason) async {
-    closeWasClean = true;
-    if (heartbeatTimer != null) {
-      heartbeatTimer.cancel();
+    _closeWasClean = true;
+    if (_heartbeatTimer != null) {
+      _heartbeatTimer.cancel();
     }
     return await _webSocketCh.sink.close(code, reason);
   }
@@ -45,57 +61,77 @@ class Transport {
     return _webSocketCh.closeCode;
   }
 
-  Future<int> attach(Function dataFn, Function closeFn, bool cancelOnErrorFlag) {
-    _webSocketCh.stream.listen(
+  StreamSubscription<dynamic> subscribe({bool cancelOnErrorFlag}) {
+    return _webSocketCh.stream.listen(
       (data) {
-          dataFn(data);
+        _onData(data);
       },
       onError: (error, stackTrace) {
         _onSocketError(error, stackTrace);
       }, 
       onDone: () {
-        _onSocketClose(closeFn);
+        _onSocketClose();
       }, 
       cancelOnError: cancelOnErrorFlag);
-      return Future.value(0);
   }
 
   void send(String message) {
-    log.finest('Sending $message');
+    _log.finest('Sending $message');
     _webSocketCh.sink.add(message);
   }
 
-  void _onSocketError(WebSocketChannelException error, StackTrace stackTrace) {
-    log.severe('onSocketError: $error');
-    if (heartbeatTimer != null) {
-      heartbeatTimer.cancel();
+  void _onData(dynamic data) {
+    _log.finest('Received raw from Server: $data');
+    if (msgDecoder == null) {
+      // selection of message decoder is delayed until receiving first message from socket
+      _selectMessageDecoder();
     }
+    var decoded = msgDecoder.decode(data);
+    _log.finest('Received Decoded: $decoded');
+    // decodes message received and pushes it to the stream
+    _localStream.add(decoded);
   }
 
-  void _onSocketClose(Function callback) {
-    log.warning('onSocketClose, code: ${_webSocketCh.closeCode}, reason: ${_webSocketCh.closeReason}');
-    if (heartbeatTimer != null) {
-      heartbeatTimer.cancel();
+  void _onSocketError(WebSocketChannelException error, StackTrace stackTrace) {
+    _log.severe('onSocketError: $error');
+    _log.severe('onSocketError: $stackTrace');
+    
+    if (_heartbeatTimer != null) {
+      _heartbeatTimer.cancel();
     }
-    callback(_webSocketCh.closeCode, _webSocketCh.closeReason);
+    if (_signalSocketError != null) {
+      _signalSocketError(error);
+    }
+    // _localStream.addError(SocketError.withError(error, SocketError.HANDLER_ON_ERROR), stackTrace);
+  }
+
+  void _onSocketClose() {
+    _log.warning('onSocketClose, code: ${_webSocketCh.closeCode}, reason: ${_webSocketCh.closeReason}');
+    if (_heartbeatTimer != null) {
+      _heartbeatTimer.cancel();
+    }
+    if (_signalSocketClose != null) {
+      _signalSocketClose(_webSocketCh.closeCode, _webSocketCh.closeReason);
+    }
+    // _localStream.addError(SocketError.withCode(_webSocketCh.closeCode, _webSocketCh.closeReason,  SocketError.HANDLER_ON_CLOSE));
   }
 
   void resetHeartbeat() {
     pendingHeartbeatRef = null;
-    if (heartbeatTimer != null) {
-      heartbeatTimer.cancel();
+    if (_heartbeatTimer != null) {
+      _heartbeatTimer.cancel();
     }
-    heartbeatTimer = Timer.periodic(Duration(milliseconds: heartbeatIntervalMs), (Timer t) {
-      _sendHeartbeat();
+    _heartbeatTimer = Timer.periodic(Duration(milliseconds: _heartbeatIntervalMs), (Timer t) {
+      sendHeartbeat();
     });
   }
 
-  void _sendHeartbeat() {
-    if (!isOpen()){ return; } 
+  void sendHeartbeat() {
+    if (!isOpen()){ return; }
     if (pendingHeartbeatRef != null) {
         pendingHeartbeatRef = null;
         const reason = 'heartbeat timeout. Attempting to re-establish connection';
-        log.warning('transport: $reason');
+        _log.warning('transport: $reason');
         _abnormalClose(reason);
         return;
     }
@@ -104,8 +140,8 @@ class Transport {
   }
 
   void _abnormalClose(reason){
-    closeWasClean = false;
-    log.fine('Abnormal Close: Modify clean to: $closeWasClean');
+    _closeWasClean = false;
+    _log.fine('Abnormal Close: Modify clean to: $_closeWasClean');
     _webSocketCh.sink.close(1000, reason);
   }
 
@@ -127,4 +163,14 @@ class Transport {
       .map((e) => e.replaceAll(RegExp(r'"$'), ''))
       .toList();
   }
+
+  void _selectMessageDecoder() {
+    if (getProtocol() == 'binary_flow') {
+      msgDecoder = BinaryDecoder();
+    } else {
+      msgDecoder = JsonDecoder();
+    }
+    _log.finest('Decoder selected : $msgDecoder');
+  }
+
 }

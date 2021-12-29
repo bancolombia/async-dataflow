@@ -21,7 +21,7 @@ void main() {
         expect(msg.payload, equals('message_data1'));
       });
 
-      test('parses binary message and json payload', () {
+      test('parses binary message with json payload', () {
         var message_id = 'message_id2';
         var correlation_id = 'correlation_id2';
         var event = 'event_name2';
@@ -39,23 +39,29 @@ void main() {
         expect(msg.payload, isMap);
       });
 
-      test('handle failure parsing binary message', () {
-        expect(() => BinaryDecoder().decode(Uint8List.fromList([115, 97])), throwsArgumentError);
-      });
-
-      test('handle failure parsing binary message', () {
-        expect(() => BinaryDecoder().decode(Uint8List.fromList([115, 97])), throwsArgumentError);
-      });
-
       test('parses binary frame for auth ok', () {
         final binary_message = Uint8List.fromList([255, 0, 0, 6, 65, 117, 116, 104, 79, 107]);
         final msg = BinaryDecoder().decode(binary_message);
         expect(msg, isNotNull);
-        expect(msg.message_id, equals(''));
-        expect(msg.correlation_id, equals(''));
+        expect(msg.message_id, equals(null));
+        expect(msg.correlation_id, equals(null));
         expect(msg.event, equals('AuthOk'));
-        expect(msg.payload, equals(''));
+        expect(msg.payload, isNull);
       });
+
+      test('handle parsing wrong binary message', () {
+        expect(() => BinaryDecoder().decode(Uint8List.fromList([115, 97])), throwsArgumentError);
+      });
+
+      test('handle parsing empty binary message ', () {
+        expect(() => BinaryDecoder().decode(Uint8List.fromList([])), throwsArgumentError);
+      });
+
+      test('handle parsing null binary message ', () {
+        expect(() => BinaryDecoder().decode(null), throwsArgumentError);
+      });
+
+
 
   });
 

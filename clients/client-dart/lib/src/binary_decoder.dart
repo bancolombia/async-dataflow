@@ -31,7 +31,12 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
     var event = _extract(eventData, msgIdSize + corrIdSize, evtNameSize);
     var payload = _extract(eventData, msgIdSize + corrIdSize + evtNameSize, null);
 
-    return ChannelMessage(messageId, correlationId, event, _formatPayload(payload));
+    return ChannelMessage(
+      _checkString(messageId), 
+      _checkString(correlationId),
+      _checkString(event),
+      _formatPayload(payload)
+    );
   }
 
   String _extract(Uint8List data, int start, int size) {
@@ -44,12 +49,24 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
     }
   }
 
+  String _checkString(String data) {
+    if (data == null) {
+      return data;
+    } else if (data.trim().isEmpty) {
+      return null;
+    } else {
+      return data.trim();
+    }
+  }
+
   dynamic _formatPayload(String payload) {
     // check if payload is json
-    if (isJSON(payload)) {
-      return jsonDecode(payload);
-    } else {
-      return payload;
+    if (payload != null && payload.isNotEmpty) {
+      if (isJSON(payload)) {
+        return jsonDecode(payload);
+      } else {
+        return payload;
+      }
     }
   }
 

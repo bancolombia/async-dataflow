@@ -1,6 +1,5 @@
 import 'src/async_client.dart';
 import 'src/async_config.dart';
-import 'src/channel_message.dart';
 import 'package:logging/logging.dart';
 
 void main(List<String> arguments) async {
@@ -12,19 +11,25 @@ void main(List<String> arguments) async {
 
   var conf = AsyncConfig();
   conf.socket_url = 'ws://localhost:8082/ext/socket';
-  conf.enable_binary_transport = true;
-  conf.channel_ref = '<channel_ref>';
-  conf.channel_secret = '<secret>';
+  conf.enable_binary_transport = false;
+  conf.channel_ref = '<a channel ref>';
+  conf.channel_secret = '<a secret>';
   conf.heartbeat_interval = 2500;
   
-  var client = AsyncClient(conf);
-  var state = await client.connect();
+  var client = AsyncClient(conf).connect();
 
-  if (state == true) {
-    void testCallback(ChannelMessage message) => print(message.payload);
-    client.listenEvent('event.productCreated', callback: testCallback);
-  }
+  client.subscribeTo('event.productCreated', (event) {
+    print('SUB 1 JUST RECEIVED: $event');
+  }, onError: (err) {
+    print('SUB 1 JUST RECEIVED AN ERROR: $err');
+  });
 
-  // await Future.delayed(Duration(seconds: 90));
-  // await client.disconnect();
+  client.subscribeTo('event.productCreated', (event) {
+    print('SUB 2 JUST RECEIVED: $event');
+  }, onError: (err) {
+    print('SUB 2 JUST RECEIVED AN ERROR: $err');
+  });
+
+  await Future.delayed(Duration(seconds: 90));
+  await client.disconnect();
 }
