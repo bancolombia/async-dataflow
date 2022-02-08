@@ -1,9 +1,14 @@
 class AsyncConfig {
-    String socket_url;
-    String channel_ref;
-    String channel_secret;
-    bool enable_binary_transport = false;
-    int heartbeat_interval;
+  final String socketUrl;
+  final String channelRef;
+  final String channelSecret;
+  final bool enableBinaryTransport;
+  final int heartbeatInterval;
 
-
+  AsyncConfig(
+      {required this.socketUrl,
+      required this.channelRef,
+      required this.channelSecret,
+      this.enableBinaryTransport = false,
+      this.heartbeatInterval = 1000});
 }

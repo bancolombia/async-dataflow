@@ -1,19 +1,19 @@
 class ChannelMessage {
+  final String? messageId;
+  final String? correlationId;
+  final String? event;
+  dynamic payload;
 
-  String message_id;
-  String correlation_id;
-  String event;
-  Object payload;
-
-  ChannelMessage(message_id, correlation_id, event, payload) {
-    this.message_id = message_id;
-    this.correlation_id = correlation_id;
-    this.event = event;
-    this.payload = payload;
-  }
+  ChannelMessage(this.messageId, this.correlationId, this.event, this.payload);
 
   @override
   String toString() {
-    return '{message_id: $message_id, correlation_id: $correlation_id, event: $event, payload: $payload }';
-  } 
+    return '{messageId: $messageId, correlationId: $correlationId, event: $event, payload: $payload }';
+  }
+
+  ChannelMessage.fromMap(dynamic map)
+      : messageId = map['message_id'],
+        correlationId = map['correlation_id'],
+        event = map['event'],
+        payload = map['payload'];
 }

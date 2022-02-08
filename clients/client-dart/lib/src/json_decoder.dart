@@ -34,7 +34,7 @@ class JsonDecoder extends MessageDecoder<String> {
   }
 
   List<String> _tokenize(String event) {
-    return event.split(',')
+    return event.split(RegExp(r',(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)'))
       .map((e) => e.trim())
       .map((e) => e.replaceAll(RegExp(r'["]{2}'), ''))
       .map((e) => e.replaceAll(RegExp(r'^"'), ''))

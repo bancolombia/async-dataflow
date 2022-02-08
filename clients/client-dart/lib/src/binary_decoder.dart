@@ -7,13 +7,11 @@ import 'channel_message.dart';
 import 'message_decoder.dart';
 
 class BinaryDecoder extends MessageDecoder<Uint8List> {
-
   final Utf8Decoder _decoder = Utf8Decoder(allowMalformed: false);
   final int _offset = 4;
 
   @override
-  ChannelMessage decode(Uint8List eventData) {
-
+  ChannelMessage decode(Uint8List? eventData) {
     if (eventData == null || eventData.isEmpty) {
       throw ArgumentError('Invalid binary data; empty list');
     }
@@ -29,18 +27,15 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
     var messageId = _extract(eventData, 0, msgIdSize);
     var correlationId = _extract(eventData, msgIdSize, corrIdSize);
     var event = _extract(eventData, msgIdSize + corrIdSize, evtNameSize);
-    var payload = _extract(eventData, msgIdSize + corrIdSize + evtNameSize, null);
+    var payload =
+        _extract(eventData, msgIdSize + corrIdSize + evtNameSize, null);
 
-    return ChannelMessage(
-      _checkString(messageId), 
-      _checkString(correlationId),
-      _checkString(event),
-      _formatPayload(payload)
-    );
+    return ChannelMessage(_checkString(messageId), _checkString(correlationId),
+        _checkString(event), _formatPayload(payload));
   }
 
-  String _extract(Uint8List data, int start, int size) {
-    var _start =  _offset + start;
+  String _extract(Uint8List data, int start, int? size) {
+    var _start = _offset + start;
     if (size == null) {
       return _decoder.convert(data, _start);
     } else {
@@ -49,7 +44,7 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
     }
   }
 
-  String _checkString(String data) {
+  String? _checkString(String? data) {
     if (data == null) {
       return data;
     } else if (data.trim().isEmpty) {
@@ -61,7 +56,7 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
 
   dynamic _formatPayload(String payload) {
     // check if payload is json
-    if (payload != null && payload.isNotEmpty) {
+    if (payload.isNotEmpty) {
       if (isJSON(payload)) {
         return jsonDecode(payload);
       } else {
@@ -69,5 +64,5 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
       }
     }
   }
-
 }
+

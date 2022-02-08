@@ -10,41 +10,37 @@ import 'async_client_test.mocks.dart';
 
 @GenerateMocks([IOWebSocketChannel, Transport])
 void main() {
+  var transportMock = MockTransport();
+  var webSocketMock = MockIOWebSocketChannel();
 
-      var transportMock = MockTransport();
-      var webSocketMock = MockIOWebSocketChannel();
-      
-      group('Async Client Tests', () {
-    
-      Logger.root.level = Level.ALL;
-      Logger.root.onRecord.listen((record) {
-        print('${record.level.name}: ${record.time}: ${record.message}');
+  group('Async Client Tests', () {
+    Logger.root.level = Level.ALL;
+    Logger.root.onRecord.listen((record) {
+      print('${record.level.name}: ${record.time}: ${record.message}');
+    });
+
+    test('Simple test', () async {
+      var conf = AsyncConfig(
+          socketUrl: 'ws://localhost:8082/ext/socket',
+          channelRef: '',
+          channelSecret: '');
+
+      var client = AsyncClient(conf).connect();
+
+      print('Done connecting');
+
+      var subscriber = client.subscribeTo('event.productCreated', (event) {
+        print('SUB 1 JUST RECEIVED: $event');
+      }, onError: (err) {
+        print('SUB 1 JUST RECEIVED AN ERROR: $err');
       });
 
-      test('Simple test', () async {
+      await subscriber.cancel();
 
-        var conf = AsyncConfig();
-        conf.socket_url = 'ws://localhost:8082/ext/socket';
-        conf.channel_ref = 'dummy_ref';
-        conf.channel_secret = 'dummy_secret';
+      await client.disconnect();
 
-        var client = AsyncClient(conf).connect();
-        
-        print('Done connecting');
-
-        var subscriber = client.subscribeTo('event.productCreated', (event) {
-          print('SUB 1 JUST RECEIVED: $event');
-        }, onError: (err) {
-          print('SUB 1 JUST RECEIVED AN ERROR: $err');
-        });
-
-        await subscriber.cancel();
-
-        await client.disconnect();
-
-        await Future.delayed(Duration(seconds: 30));
-        // await client.disconnect();
-      });
-      
+      await Future.delayed(Duration(seconds: 30));
+      // await client.disconnect();
+    });
   });
 }
