@@ -1,7 +1,6 @@
 import 'dart:math';
 
 class Utils {
-
   static int _defaultJitterFn(int num) => num;
 
   static int jitter(int baseTime, double randomFactor) {
@@ -11,12 +10,12 @@ class Utils {
     return jitter.toInt();
   }
 
-  static int expBackoff(int initial, int max, int actualRetry, [Function jitterFn]) {
+  static int expBackoff(int initial, int max, int actualRetry,
+      [Function? jitterFn]) {
     var curatedFn;
     if (jitterFn == null) {
       curatedFn = _defaultJitterFn;
-    }
-    else {
+    } else {
       curatedFn = jitterFn;
     }
     var base = initial * pow(2, actualRetry);
@@ -29,7 +28,7 @@ class Utils {
     return willWait.toInt();
   }
 
-  static String checkString(String data) {
+  static String? checkString(String? data) {
     if (data == null) {
       return data;
     } else if (data.trim().isEmpty) {

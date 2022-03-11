@@ -1,50 +1,65 @@
-import 'package:channel_dart_client/src/transport.dart';
-import 'package:mockito/annotations.dart';
+import 'dart:io';
 import 'package:test/test.dart';
 import 'package:logging/logging.dart';
-import 'package:channel_dart_client/src/async_client.dart';
-import 'package:channel_dart_client/src/async_config.dart';
+import 'package:channel_sender_client/src/async_client.dart';
+import 'package:channel_sender_client/src/async_config.dart';
 import 'package:web_socket_channel/io.dart';
 
-import 'async_client_test.mocks.dart';
-
-@GenerateMocks([IOWebSocketChannel, Transport])
 void main() {
 
-      var transportMock = MockTransport();
-      var webSocketMock = MockIOWebSocketChannel();
-      
-      group('Async Client Tests', () {
-    
-      Logger.root.level = Level.ALL;
-      Logger.root.onRecord.listen((record) {
-        print('${record.level.name}: ${record.time}: ${record.message}');
-      });
+  group('Async Client Tests', () {
+    HttpServer server;
 
-      test('Simple test', () async {
+    Logger.root.level = Level.ALL;
+    Logger.root.onRecord.listen((record) {
+      print('${record.level.name}: (${record.loggerName}) ${record.time}: ${record.message}');
+    });
 
-        var conf = AsyncConfig();
-        conf.socket_url = 'ws://localhost:8082/ext/socket';
-        conf.channel_ref = 'dummy_ref';
-        conf.channel_secret = 'dummy_secret';
+    final _log = Logger('AsyncClientTest');
 
-        var client = AsyncClient(conf).connect();
-        
-        print('Done connecting');
+    test('Simple test', () async {
 
-        var subscriber = client.subscribeTo('event.productCreated', (event) {
-          print('SUB 1 JUST RECEIVED: $event');
-        }, onError: (err) {
-          print('SUB 1 JUST RECEIVED AN ERROR: $err');
+      server = await HttpServer.bind('localhost', 0);
+      addTearDown(server.close);
+      server.transform(WebSocketTransformer()).listen((WebSocket webSocket) {
+        final channel = IOWebSocketChannel(webSocket);
+        channel.stream.listen((request) {
+          _log.finest('--> server received: $request');
+          if (request.startsWith('Auth')) {
+            channel.sink.add('["", "", "AuthOk", ""]');
+          } else if (request.startsWith('hb')) {
+            var parts = request.split('::');
+            channel.sink.add('["", "${parts[1]}", ":hb", ""]');
+          }
+          else {
+            channel.sink.close(5678, 'raisin');
+          }
         });
-
-        await subscriber.cancel();
-
-        await client.disconnect();
-
-        await Future.delayed(Duration(seconds: 30));
-        // await client.disconnect();
       });
-      
+
+      var conf = AsyncConfig(
+          socketUrl: 'ws://localhost:${server.port}',
+          channelRef: 'xxx-channel-ref-xxxx',
+          channelSecret: 'xxx-channel-secret-xxx',
+          enableBinaryTransport: false,
+          heartbeatInterval: 1000);
+
+      var client = AsyncClient(conf).connect();
+
+      _log.finest('------ Done connecting -------');
+
+      var subscriber = client.subscribeTo('event.productCreated', (event) {
+        print('SUB 1 JUST RECEIVED: $event');
+      }, onError: (err) {
+        print('SUB 1 JUST RECEIVED AN ERROR: $err');
+      });
+
+
+      await Future.delayed(Duration(seconds: 2));
+
+      await subscriber.cancel();
+      await client.disconnect();
+
+    });
   });
 }
