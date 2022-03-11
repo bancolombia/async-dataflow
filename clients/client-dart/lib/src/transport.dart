@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:channel_dart_client/src/channel_message.dart';
+import 'package:channel_sender_client/src/channel_message.dart';
 import 'package:logging/logging.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';

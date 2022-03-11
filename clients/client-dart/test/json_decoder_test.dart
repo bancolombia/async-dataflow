@@ -1,6 +1,6 @@
 import 'package:test/test.dart';
 
-import 'package:channel_dart_client/src/json_decoder.dart';
+import 'package:channel_sender_client/src/json_decoder.dart';
 
 void main() {
   group('Json decoding', () {

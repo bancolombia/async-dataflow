@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:test/test.dart';
 
-import 'package:channel_dart_client/src/binary_decoder.dart';
+import 'package:channel_sender_client/src/binary_decoder.dart';
 
 void main() {
   group('Parsing binary data', () {

@@ -17,7 +17,7 @@ import 'transport.dart';
 ///
 class AsyncClient {
  
-  final _log = Logger('BcAsyncDataClient');
+  final _log = Logger('AsyncClient');
 
   static const String JSON_FLOW = 'json_flow';
   static const String BINARY_FLOW = 'binary_flow';
@@ -38,8 +38,8 @@ class AsyncClient {
   late IOWebSocketChannel _channel;
   // ----
   StreamSubscription<dynamic>? _socketStreamSub;
-  late StreamController<ChannelMessage> _localStream;
-  late Stream<ChannelMessage> _broadCastStream;
+  late StreamController<ChannelMessage> _localStream; // internal stream of data
+  late Stream<ChannelMessage> _broadCastStream; // subscribers stream of data
   // ----
 
   AsyncClient(this._config) {
@@ -50,6 +50,7 @@ class AsyncClient {
       _subProtocols.add(BINARY_FLOW);
     }
 
+    // creates localstream
     _localStream = StreamController(onListen: _onListen);
 
     _connectRetryTimer = RetryTimer(() async {
@@ -244,6 +245,7 @@ class AsyncClient {
   }
 
   void _onTransportError(Object error) {
+    _log.severe('Transport error: $error');
     if (!_transport!.isOpen()) {
       _log.severe(
           'Transport error and channel is not open, Scheduling reconnect...');

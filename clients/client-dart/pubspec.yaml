@@ -1,4 +1,4 @@
-name: channel_dart_client
+name: channel_sender_client
 description: Client for Async DataFlow Channel Sender
 version: 1.0.0
 homepage: https://github.com/bancolombia/async-dataflow

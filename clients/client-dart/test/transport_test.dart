@@ -1,78 +1,99 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:channel_dart_client/src/channel_message.dart';
-import 'package:channel_dart_client/src/transport.dart';
-import 'package:mockito/annotations.dart';
+import 'package:channel_sender_client/src/channel_message.dart';
+import 'package:channel_sender_client/src/transport.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
 import 'package:logging/logging.dart';
 import 'package:web_socket_channel/io.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-
-import 'transport_test.mocks.dart';
 
 class MockStream extends Mock implements Stream {}
 
-@GenerateMocks([IOWebSocketChannel, StreamSubscription, WebSocketSink, WebSocket])
 void main() {
 
-  var webSocketChannelMock;
-  var webSocketMock;
-  var webSocketSinkMock;
-
-  setUp(() async {
-    webSocketChannelMock = MockIOWebSocketChannel();
-    webSocketMock = MockWebSocket();
-    webSocketSinkMock = MockWebSocketSink();
-  });
-
-  tearDown(() async {
-    reset(webSocketChannelMock);
-    reset(webSocketMock);
-    reset(webSocketSinkMock);
-  });
 
   group('Transport Tests', () {
-    
+    HttpServer server;
+
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((record) {
-      print('${record.level.name}: ${record.time}: ${record.message}');
+      print('${record.level.name}: (${record.loggerName}) ${record.time}: ${record.message}');
     });
 
-    test('Should receive heartbeat', () async {
+    final _log = Logger('TransportTest');
 
-      var _localStream = StreamController<ChannelMessage>();
-      var _simulatedStream = StreamController<ChannelMessage>();
+    test('Should send/receive auth and heartbeat', () async {
 
-      var _signalSocketCloseFn = (int code, String reason) {
-        print('TransportTest: socket closed');
-      };
-      var _signalSocketErrorFn = (error) {
-        print('TransportTest: socket error');
-      };
-
-      when(webSocketChannelMock.stream).thenAnswer((realInvocation) => _simulatedStream.stream);
-      when(webSocketChannelMock.innerWebSocket).thenAnswer((realInvocation) => webSocketMock);
-      when(webSocketMock.readyState).thenAnswer((realInvocation) => 1);
-      when(webSocketChannelMock.protocol).thenAnswer((realInvocation) => 'json_flow');
-
-      var transport = Transport(webSocketChannelMock, _localStream, _signalSocketCloseFn, _signalSocketErrorFn, 1000);
+      server = await HttpServer.bind('localhost', 0);
+      addTearDown(server.close);
+      server.transform(WebSocketTransformer()).listen((WebSocket webSocket) {
+        final channel = IOWebSocketChannel(webSocket);
+        channel.stream.listen((request) {
+          _log.finest('--> server received: $request');
+          if (request == 'Auth::SFMy') {
+            channel.sink.add('["", "", "AuthOk", ""]');
+          } else {
+            var parts = request.split('::');
+            channel.sink.add('["", "${parts[1]}", ":hb", ""]');
+          }
+          // channel.sink.close(5678, 'raisin');
+        });
+      });
       
-      expect(transport, isNotNull);
-      expect(transport.isOpen(), true);
-      expect(transport.getProtocol(), equals('json_flow'));
+      var _headers = <String, dynamic>{};
+        _headers['Connection'] = 'upgrade';
+        _headers['Upgrade'] = 'websocket';
+        _headers['sec-websocket-version'] = '13';
+        _headers['sec-websocket-protocol'] = 'json_flow';
+        _headers['sec-websocket-key'] = 'x3JJHMbDL1EzLkh9GBhXDw==';
 
-      var sub1 = transport.subscribe(cancelOnErrorFlag: false);
-      sub1.onData((data) {
-        expect(data, isNotNull);
-        expect(data.message_id, isNull);
-        expect(data.correlation_id, equals('2'));
-        expect(data.event, equals(':hb'));
-        expect(data.payload, isNull);
+      final webSocket = await WebSocket.connect('ws://localhost:${server.port}', 
+        protocols: ['json_flow'],
+        headers: _headers);
+      final channel = IOWebSocketChannel(webSocket);
+
+      late StreamController<ChannelMessage> _localStream;
+
+      _localStream = StreamController(onListen: () {
+        _log.finest('OnListen');
       });
 
-      _simulatedStream.add(ChannelMessage(null, '2', ':hb', null));
+      var _signalSocketCloseFn = (int code, String reason) {
+        _log.finest('socket closed');
+      };
+      var _signalSocketErrorFn = (error) {
+        _log.severe('socket error');
+      };
+
+      var transport = Transport(channel, _localStream, _signalSocketCloseFn, _signalSocketErrorFn, 1000);
+
+      expect(transport, isNotNull);
+      expect(transport.isOpen(), true);
+      var hbCounter;
+
+      _localStream.stream.listen((message) {
+        _log.fine('Received $message');
+        if (message.event == 'AuthOk') {
+          transport.resetHeartbeat();
+        } else if (message.event == ':hb') {
+          hbCounter = message.correlationId;
+          transport.pendingHeartbeatRef = null;
+        }
+      }, onError: (error, stacktrace) {
+        _log.severe(error);
+      }, onDone: () {
+        _log.warning('Subscription for "xxxx" terminated.');
+      });
+
+      var sub1 = transport.subscribe(cancelOnErrorFlag: false);
+
+      transport.send('Auth::SFMy');
+
+      await Future.delayed(Duration(seconds: 3));
+
+      expect(hbCounter, equals('2'));
+      await sub1.cancel();
 
     });
 

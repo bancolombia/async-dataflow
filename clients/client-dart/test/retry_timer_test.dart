@@ -1,7 +1,7 @@
 
 import 'package:test/test.dart';
 
-import 'package:channel_dart_client/src/retry_timer.dart';
+import 'package:channel_sender_client/src/retry_timer.dart';
 import 'package:logging/logging.dart';
 
 void main() {

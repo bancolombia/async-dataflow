@@ -1,6 +1,6 @@
 import 'package:test/test.dart';
 
-import 'package:channel_dart_client/src/utils.dart';
+import 'package:channel_sender_client/src/utils.dart';
 
 void main() {
     group('Utils tests.', () {
