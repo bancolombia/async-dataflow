@@ -9,10 +9,10 @@ void main() {
 
       final msg = JsonDecoder().decode(trama);
       expect(msg, isNotNull);
-      expect(msg.messageId, isNull);
+      expect(msg.messageId, equals(''));
       expect(msg.event, equals('AuthOk'));
-      expect(msg.correlationId, isNull);
-      expect(msg.payload, isNull);
+      expect(msg.correlationId, equals(''));
+      expect(msg.payload, equals(''));
     });
 
     test('should parse heartbeat event', () {
@@ -20,10 +20,10 @@ void main() {
 
       final msg = JsonDecoder().decode(trama);
       expect(msg, isNotNull);
-      expect(msg.messageId, isNull);
+      expect(msg.messageId, equals(''));
       expect(msg.event, equals(':hb'));
       expect(msg.correlationId, equals('1'));
-      expect(msg.payload, isNull);
+      expect(msg.payload, equals(''));
     });
 
     test('should parse user event', () {
