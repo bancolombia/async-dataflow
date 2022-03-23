@@ -21,7 +21,7 @@ RUN export MIX_ENV=dev && \
 RUN APP_NAME="channel_sender_ex" && \
     RELEASE_DIR=`ls -d _build/dev/` && \
     mkdir /export && \
-    tar -xf "$RELEASE_DIR/$APP_NAME-0.1.0.tar.gz" -C /export
+    tar -xf "$RELEASE_DIR/$APP_NAME-0.1.1.tar.gz" -C /export
 
 #===================
 # Deployment Stage

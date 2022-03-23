@@ -19,6 +19,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   plug(:dispatch)
 
+  get("/health", do: send_resp(conn, 200, "UP"))
   post("/ext/channel/create", do: create_channel(conn))
   post("/ext/channel/deliver_message", do: deliver_message(conn))
 
