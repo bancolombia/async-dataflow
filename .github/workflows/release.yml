@@ -19,4 +19,4 @@ jobs:
       - name: Config Builder
         run: docker buildx create --name mbuilder && docker buildx use mbuilder
       - name: Docker Build Multiplatform
-        run: docker buildx build --platform linux/arm64,linux/amd64 -t bancolombia/async-dataflow-channel-sender:${GITHUB_REF##*/} --push .
+        run: docker buildx build --platform linux/arm64,linux/amd64 -f channel-sender/Dockerfile -t bancolombia/async-dataflow-channel-sender:${GITHUB_REF##*/} --push /Dockerfile.
