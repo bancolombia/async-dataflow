@@ -8,38 +8,37 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<String> responses = [];
+  late AsyncClientService asyncClientService;
   TextEditingController textEditingController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    asyncClientService = AsyncClientService.of(context)!;
     setState(() {
       textEditingController.text = "250";
     });
-    AsyncClientService.of(context)!.initAsyncClient();
+    asyncClientService.initAsyncClient();
   }
 
   @override
   void dispose() {
-    AsyncClientService.of(context)!.closeSession();
+    asyncClientService.closeSession();
     super.dispose();
   }
 
   void _callAsyncBackend() {
     int start = DateTime.now().millisecondsSinceEpoch;
 
-    AsyncClientService.of(context)!
-        .asyncClientGateway
+    asyncClientService.asyncClientGateway
         .callBusinessUseCase(
-            AsyncClientService.of(context)!.prefs.getString("channelRef") ?? "",
+            asyncClientService.prefs.getString("channelRef") ?? "",
             int.tryParse(textEditingController.text) ?? 100)
-        .then((value) => responses.add(
+        .then((value) => asyncClientService.responses.add(
             "Get empty response after ${DateTime.now().millisecondsSinceEpoch - start} ms"));
   }
 
@@ -62,8 +61,8 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(
               height: 20,
             ),
-            ...List.generate(
-                responses.length, (index) => Text(responses[index]))
+            ...List.generate(asyncClientService.responses.length,
+                (index) => Text(asyncClientService.responses[index]))
           ],
         ),
       ),
