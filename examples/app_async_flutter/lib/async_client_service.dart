@@ -1,21 +1,27 @@
-import 'package:app_async_flutter/api_service.dart';
-import 'package:app_async_flutter/channel_credentials.dart';
+import 'package:app_async_flutter/domain/model/channel_credentials.dart';
+import 'package:app_async_flutter/domain/model/gateway/async_client_gateway.dart';
 import 'package:channel_sender_client/adf_client.dart';
-import 'package:dotenv/dotenv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AsyncClientService extends InheritedWidget {
-  AsyncClientService({Key? key, required this.child, required this.eventListen})
+  AsyncClientService(
+      {Key? key,
+      required this.child,
+      required this.eventListen,
+      required this.asyncClientGateway})
       : super(key: key, child: child);
 
+  @override
   final Widget child;
+
   final String eventListen;
 
   late AsyncClient asyncClient;
+  final AsyncClientGateway asyncClientGateway;
   List<String> responses = [];
-  late final prefs;
-  late DotEnv env;
+  late final SharedPreferences prefs;
 
   void _handleEvent(String result) {
     print(result);
@@ -34,16 +40,17 @@ class AsyncClientService extends InheritedWidget {
 
   Future<void> initAsyncClient() async {
     prefs = await SharedPreferences.getInstance();
-    env = DotEnv(includePlatformEnvironment: true)..load();
 
     ChannelCredential? channelCredential = await _requestChannelCredentials();
     if (channelCredential != null) {
       final conf = AsyncConfig(
-          socketUrl: env['socketUrl'] ?? 'ws://localhost:8082/ext/socket',
+          socketUrl:
+              dotenv.env['socketUrl'] ?? 'ws://localhost:8082/ext/socket',
           enableBinaryTransport: false,
           channelRef: channelCredential.channelRef,
           channelSecret: channelCredential.channelSecret,
-          heartbeatInterval: int.tryParse(env['heartbeatInterval']!) ?? 2500);
+          heartbeatInterval:
+              int.tryParse(dotenv.env['heartbeatInterval']!) ?? 2500);
 
       asyncClient = AsyncClient(conf).connect();
       asyncClient.subscribeTo(eventListen, (eventResult) {
@@ -61,8 +68,7 @@ class AsyncClientService extends InheritedWidget {
     if (hasChannelCreated()) {
       return getChannelCreated();
     }
-    channelCredential = await ApiService.getCredentials(
-        env["apiBusiness"] ?? 'http://localhost:8080/api');
+    channelCredential = await asyncClientGateway.getCredentials();
     persistCredentials(channelCredential);
     return channelCredential;
   }
@@ -74,14 +80,14 @@ class AsyncClientService extends InheritedWidget {
 
   ChannelCredential getChannelCreated() {
     return ChannelCredential(
-        channelRef: prefs.getString('channelRef'),
-        channelSecret: prefs.getString('channelSecret'));
+        channelRef: prefs.getString('channelRef')!,
+        channelSecret: prefs.getString('channelSecret')!);
   }
 
   void persistCredentials(ChannelCredential? channelCredential) async {
     if (channelCredential != null) {
       await prefs.setString('channelRef', channelCredential.channelRef);
-      await prefs.channelSecret('action', channelCredential.channelSecret);
+      await prefs.setString('channelSecret', channelCredential.channelSecret);
     }
   }
 
