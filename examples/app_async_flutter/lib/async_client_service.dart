@@ -1,31 +1,41 @@
+import 'package:app_async_flutter/application/app_config.dart';
 import 'package:app_async_flutter/domain/model/channel_credentials.dart';
 import 'package:app_async_flutter/domain/model/gateway/async_client_gateway.dart';
 import 'package:channel_sender_client/adf_client.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class ResponsesNotifier extends ChangeNotifier {
+  List<String> responses = [];
+  void addResponse(String response) {
+    responses.add(response);
+    notifyListeners();
+  }
+}
 
 class AsyncClientService extends InheritedWidget {
   AsyncClientService(
       {Key? key,
       required this.child,
       required this.eventListen,
-      required this.asyncClientGateway})
+      required this.asyncClientGateway,
+      required this.appConfig})
       : super(key: key, child: child);
 
   @override
   final Widget child;
 
   final String eventListen;
-
   late AsyncClient asyncClient;
   final AsyncClientGateway asyncClientGateway;
-  List<String> responses = [];
-  late final SharedPreferences prefs;
 
-  void _handleEvent(String result) {
-    print(result);
-    responses.add(result);
+  late final SharedPreferences prefs;
+  ResponsesNotifier responsesNotifier = ResponsesNotifier();
+  final AppConfig appConfig;
+
+  void _handleEvent(dynamic result) {
+    responsesNotifier.addResponse(
+        "Message from async dataflow, payload: ${result.payload} correlationId: ${result.correlationId}");
   }
 
   static AsyncClientService? of(BuildContext context) {
@@ -33,24 +43,26 @@ class AsyncClientService extends InheritedWidget {
   }
 
   void closeSession() async {
+    await deleteChannelCreated();
+    asyncClient.disconnect();
+  }
+
+  Future<void> deleteChannelCreated() async {
     await prefs.remove('channelRef');
     await prefs.remove('channelSecret');
-    asyncClient.disconnect();
   }
 
   Future<void> initAsyncClient() async {
     prefs = await SharedPreferences.getInstance();
-
+    await deleteChannelCreated();
     ChannelCredential? channelCredential = await _requestChannelCredentials();
     if (channelCredential != null) {
       final conf = AsyncConfig(
-          socketUrl:
-              dotenv.env['socketUrl'] ?? 'ws://localhost:8082/ext/socket',
+          socketUrl: appConfig.socketUrl,
           enableBinaryTransport: false,
           channelRef: channelCredential.channelRef,
           channelSecret: channelCredential.channelSecret,
-          heartbeatInterval:
-              int.tryParse(dotenv.env['heartbeatInterval']!) ?? 2500);
+          heartbeatInterval: appConfig.heartbeatInterval);
 
       asyncClient = AsyncClient(conf).connect();
       asyncClient.subscribeTo(eventListen, (eventResult) {
@@ -69,6 +81,7 @@ class AsyncClientService extends InheritedWidget {
       return getChannelCreated();
     }
     channelCredential = await asyncClientGateway.getCredentials();
+    print(channelCredential!.channelRef);
     persistCredentials(channelCredential);
     return channelCredential;
   }

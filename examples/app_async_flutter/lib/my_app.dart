@@ -1,3 +1,4 @@
+import 'package:app_async_flutter/application/app_config.dart';
 import 'package:app_async_flutter/async_client_service.dart';
 import 'package:app_async_flutter/infraestructure/driven_adapter/api_service.dart';
 import 'package:app_async_flutter/ui/pages/home_page.dart';
@@ -11,7 +12,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return AsyncClientService(
       eventListen: "businessEvent",
-      asyncClientGateway: ApiService(),
+      asyncClientGateway: ApiService(context),
+      appConfig: AppConfig.of(context),
       child: MaterialApp(
         title: title,
         theme: ThemeData(

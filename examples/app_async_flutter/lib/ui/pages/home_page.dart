@@ -1,6 +1,7 @@
 import 'package:app_async_flutter/async_client_service.dart';
 import 'package:app_async_flutter/ui/atoms/button.dart';
 import 'package:app_async_flutter/ui/atoms/delay_field.dart';
+import 'package:app_async_flutter/ui/helpers/home_helper.dart';
 import 'package:flutter/material.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -13,15 +14,16 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   late AsyncClientService asyncClientService;
+  late HomeHelper homeHelper;
   TextEditingController textEditingController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     asyncClientService = AsyncClientService.of(context)!;
-    setState(() {
-      textEditingController.text = "250";
-    });
+    homeHelper = HomeHelper(context);
+    textEditingController.text = "250";
+
     asyncClientService.initAsyncClient();
   }
 
@@ -29,17 +31,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     asyncClientService.closeSession();
     super.dispose();
-  }
-
-  void _callAsyncBackend() {
-    int start = DateTime.now().millisecondsSinceEpoch;
-
-    asyncClientService.asyncClientGateway
-        .callBusinessUseCase(
-            asyncClientService.prefs.getString("channelRef") ?? "",
-            int.tryParse(textEditingController.text) ?? 100)
-        .then((value) => asyncClientService.responses.add(
-            "Get empty response after ${DateTime.now().millisecondsSinceEpoch - start} ms"));
   }
 
   @override
@@ -57,12 +48,23 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(
               height: 20,
             ),
-            Button(callback: _callAsyncBackend),
+            Button(
+                onTap: () =>
+                    homeHelper.callAsyncBackend(textEditingController)),
             const SizedBox(
               height: 20,
             ),
-            ...List.generate(asyncClientService.responses.length,
-                (index) => Text(asyncClientService.responses[index]))
+            Expanded(
+              child: AnimatedBuilder(
+                  animation: asyncClientService.responsesNotifier,
+                  builder: (context, _) {
+                    var data = asyncClientService.responsesNotifier.responses;
+                    return ListView.builder(
+                        itemCount: data.length,
+                        itemBuilder: (context, index) =>
+                            ListTile(title: Text(data[index])));
+                  }),
+            )
           ],
         ),
       ),

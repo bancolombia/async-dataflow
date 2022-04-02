@@ -1,29 +1,32 @@
 import 'dart:convert';
 
+import 'package:app_async_flutter/application/app_config.dart';
 import 'package:app_async_flutter/domain/model/channel_credentials.dart';
 import 'package:app_async_flutter/domain/model/gateway/async_client_gateway.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService implements AsyncClientGateway {
   late String urlBusinessService;
-  ApiService() {
-    urlBusinessService =
-        dotenv.env['apiBusiness'] ?? 'http://localhost:8080/api';
+  ApiService(BuildContext context) {
+    urlBusinessService = AppConfig.of(context).businessUrl;
   }
   @override
   Future<ChannelCredential?> getCredentials() async {
     ChannelCredential? channelCredential;
-    http.get(Uri.parse("$urlBusinessService/credentials")).then((response) {
+    return http
+        .get(Uri.parse("$urlBusinessService/credentials"))
+        .then((response) {
       try {
+        print("response.body ${response.body}");
         final dynamic body = jsonDecode(response.body);
         channelCredential = ChannelCredential.fromMap(body);
+        return channelCredential;
       } catch (_) {
+        print("error");
         throw Exception("Could not get Credentials");
       }
     });
-
-    return channelCredential;
   }
 
   @override
