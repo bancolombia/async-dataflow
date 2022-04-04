@@ -5,7 +5,7 @@ The purpose of this project is to help the community to understand more the the 
 ## Requirements
 
 - Docker
-- Npm
+- Npm or Flutter
 - JVM >= 8
 
 # Execute
@@ -22,11 +22,18 @@ You need to start `back-async-java`, configure your async data flow endpoint in 
 ./gradlew bootRun
 ```
 
-Finally you must install the `front-async-angular` dependencies, configure back-async endpoint and websocket async data flow endpoint in your _environment_ file and execute the solution.
+Finally you must run web or mobile frontend solution. if you want to run web solution you must install the `front-async-angular` dependencies, configure back-async endpoint and websocket async data flow endpoint in your _environment_ file and execute the solution.
 
 ```sh
 npm i
 npm run start
+```
+
+Or install `app_async_flutter` dependencies, configure back-async endpoint and websocket async data flow endpoint in your _.env_ file and execute the solution.
+
+```sh
+flutter pub get
+flutter run
 ```
 
 **Great!!!, you will see something like that...**
