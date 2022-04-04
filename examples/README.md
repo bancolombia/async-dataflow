@@ -37,7 +37,9 @@ flutter run
 ```
 
 **Great!!!, you will see something like that...**
-![imagen](https://user-images.githubusercontent.com/12372370/137996938-10f8e68f-4c85-4ce9-830e-0d01c84458d8.png)
+|Angular|Flutter|
+|---|---|
+|![imagen](https://user-images.githubusercontent.com/12372370/137996938-10f8e68f-4c85-4ce9-830e-0d01c84458d8.png)|![image](https://user-images.githubusercontent.com/12372370/161621915-d1169c39-9abf-4198-bee0-099fbbce8c78.png)|
 
 You can customize the delay time in the GUI.
 
