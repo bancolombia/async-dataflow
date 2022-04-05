@@ -1,0 +1,28 @@
+name: app_async_flutter
+description: A Flutter project to implement client of async data flow to get asynchronous responses in real time.
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.16.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  channel_sender_client:
+    git:
+      url: https://github.com/bancolombia/async-dataflow
+      path: clients/client-dart
+  shared_preferences: ^2.0.13
+  http: ^0.13.4
+  flutter_dotenv: ^5.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^1.0.0
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
