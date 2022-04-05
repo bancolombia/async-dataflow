@@ -1,12 +1,31 @@
 name: Deploy image Async DataFlow channel sender
 on:
+  push:
+    paths:
+      - "channel-sender"
+    branches: [master]
+  pull_request:
+    paths:
+      - "channel-sender"
+    branches: [master]
   release:
     types: [published]
 jobs:
+  build:
+    defaults:
+      run:
+        working-directory: channel-sender
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
   deploy:
     defaults:
       run:
         working-directory: channel-sender
+    if: github.event_name == 'release'
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
