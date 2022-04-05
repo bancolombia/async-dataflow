@@ -1,12 +1,9 @@
 import 'dart:convert';
-import 'package:logging/logging.dart';
 import 'channel_message.dart';
 import 'message_decoder.dart';
 import 'utils.dart';
 
 class JsonDecoder extends MessageDecoder<String> {
-
-  final _log = Logger('AsyncClient');
 
   @override
   ChannelMessage decode(String event) {
@@ -24,7 +21,6 @@ class JsonDecoder extends MessageDecoder<String> {
       try {
         msg.payload = jsonDecode(data);
       } catch (e) {
-        _log.warning('payload its not decodeable to json');
         msg.payload = data;
       }
     }
