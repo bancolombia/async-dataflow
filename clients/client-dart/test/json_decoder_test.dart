@@ -26,20 +26,67 @@ void main() {
       expect(msg.payload, equals(''));
     });
 
-    test('should parse user event', () {
-      // final json_string = '''
-      // { "message_id": "001", "event": "foo.event", "correlation_id": "bar", "payload": { "hello": "world" } }
-      // ''';
-
+    test('should parse user event with json content', () {
       final trama =
-          '["001", "002", "foo.event", "{\"body\": \"Hello World\"}"]';
+          '["msg-id-0001","correlation-id-002","event.productCreated","{\\"code\\":\\"100\\", \\"title\\":\\"process after 5000ms\\", \\"detail\\":\\"some detail 89bd02d1da483efaa5389cbd4ca65bbd\\", \\"level\\":\\"info\\"}"]';
 
       final msg = JsonDecoder().decode(trama);
+
       expect(msg, isNotNull);
-      expect(msg.messageId, equals('001'));
-      expect(msg.event, equals('foo.event'));
-      expect(msg.correlationId, equals('002'));
+      expect(msg.messageId, equals('msg-id-0001'));
+      expect(msg.correlationId, equals('correlation-id-002'));
+      expect(msg.event, equals('event.productCreated'));
       expect(msg.payload, isMap);
+      expect(msg.payload['code'], equals('100'));
+      expect(msg.payload['title'], equals('process after 5000ms'));
+      expect(msg.payload['detail'], equals('some detail 89bd02d1da483efaa5389cbd4ca65bbd'));
+      expect(msg.payload['level'], equals('info'));
     });
+
+    test('should parse user event with no json content', () {
+
+      final trama =
+          '["msg-id-0003","correlation-id-004","event.productCreated","Hello World"]';
+
+      final msg = JsonDecoder().decode(trama);
+
+      expect(msg, isNotNull);
+      expect(msg.messageId, equals('msg-id-0003'));
+      expect(msg.correlationId, equals('correlation-id-004'));
+      expect(msg.event, equals('event.productCreated'));
+      expect(msg.payload, equals('Hello World'));
+    });
+
+    test('should parse user event with no payload', () {
+
+      final trama =
+          '["msg-id-0003","correlation-id-004","event.productCreated",""]';
+
+      final msg = JsonDecoder().decode(trama);
+
+      expect(msg, isNotNull);
+      expect(msg.messageId, equals('msg-id-0003'));
+      expect(msg.correlationId, equals('correlation-id-004'));
+      expect(msg.event, equals('event.productCreated'));
+      expect(msg.payload, equals(''));
+    });
+
+    test('should parse user event with weird payload', () {
+
+      final trama =
+          '["msg-id-0003","correlation-id-004","event.productCreated",".,.,.,%%#@"]';
+
+      final msg = JsonDecoder().decode(trama);
+
+      expect(msg, isNotNull);
+      expect(msg.messageId, equals('msg-id-0003'));
+      expect(msg.correlationId, equals('correlation-id-004'));
+      expect(msg.event, equals('event.productCreated'));
+      expect(msg.payload, equals('.,.,.,%%#@'));
+    });
+
   });
+
+  
+
 }
