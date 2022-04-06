@@ -1,4 +1,7 @@
 [![Scorecards supply-chain security](https://github.com/bancolombia/async-dataflow/actions/workflows/scorecards-analysis.yml/badge.svg)](https://github.com/bancolombia/async-dataflow/actions/workflows/scorecards-analysis.yml)
+
+### The decision was made to have all async data flow components in a [single repository](https://github.com/bancolombia/async-dataflow)
+
 # Async DataFlow
 
 The Async DataFlow component aims to deliver asynchronous responses in real time to client applications, thus enabling end-to-end asynchronois flows without losing the ability to respond in real time or eventually, send data to client applications as a result of asynchronous operations and oriented to `messages / commands / events` on the platform.
