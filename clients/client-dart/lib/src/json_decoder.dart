@@ -13,9 +13,9 @@ class JsonDecoder extends MessageDecoder<String> {
     return ChannelMessage(Utils.checkString(event_as_list[0]), 
       Utils.checkString(event_as_list[1]),
       Utils.checkString(event_as_list[2]),
-      Utils.checkString(event_as_list[3])
+      event_as_list[3]
     );
-  
   }
 
 }
+
