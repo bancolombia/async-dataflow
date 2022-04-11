@@ -36,11 +36,8 @@ void main() {
       expect(msg.messageId, equals('msg-id-0001'));
       expect(msg.correlationId, equals('correlation-id-002'));
       expect(msg.event, equals('event.productCreated'));
-      expect(msg.payload, isMap);
-      expect(msg.payload['code'], equals('100'));
-      expect(msg.payload['title'], equals('process after 5000ms'));
-      expect(msg.payload['detail'], equals('some detail 89bd02d1da483efaa5389cbd4ca65bbd'));
-      expect(msg.payload['level'], equals('info'));
+      expect(msg.payload, equals('{"code":"100", "title":"process after 5000ms", "detail":"some detail 89bd02d1da483efaa5389cbd4ca65bbd", "level":"info"}'));
+      
     });
 
     test('should parse user event with no json content', () {
@@ -90,3 +87,4 @@ void main() {
   
 
 }
+
