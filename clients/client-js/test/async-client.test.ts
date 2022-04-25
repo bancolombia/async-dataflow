@@ -347,6 +347,122 @@ describe('Protocol negotiation Tests', function()  {
     }
 });
 
+describe('Event handler matching Tests', function()  {
+    let mockServer;
+    let client : AsyncClient;
+    let config = {
+        socket_url: "wss://host.local/socket",
+        channel_ref: "ab771f3434aaghjgr",
+        channel_secret: "secret234342432dsfghjikujyg1221",
+    };
+
+    beforeEach(() => {
+        mockServer = new Server("wss://host.local/socket");
+        client = new AsyncClient(config, WebSocket);
+    })
+
+    afterEach((done) => {
+        mockServer.stop(() => done());
+    });
+
+    after(() => {
+        client.disconnect();
+    });
+
+    it('Should match direct equality' , async() => {
+        mockServer.on('connection', socket => {
+            socket.on('message', data => {
+                if (data == `Auth::${config.channel_secret}`){
+                    socket.send('["", "", "AuthOk", ""]');
+                    socket.send('["12", "", "quick.orange.rabbit", "Hi, There"]');
+                }else {
+                    socket.send('["", "", "NoAuth", ""]');
+                }
+            });
+        });
+
+        assert.isFalse(client.isActive);
+        const message = new Promise<boolean>(resolve => client.listenEvent("quick.orange.rabbit", message => resolve(message)));
+        client.connect();
+
+        const result = await Promise.race([timeout(200), message]);
+        // @ts-ignore
+        assert.isTrue(client.isActive);
+        assert.notEqual(result, "timeout");
+        assert.equal(result.payload, "Hi, There");
+        client.disconnect();
+    });
+
+    it('Should match single word wildcard' , async() => {
+        mockServer.on('connection', socket => {
+            socket.on('message', data => {
+                if (data == `Auth::${config.channel_secret}`){
+                    socket.send('["", "", "AuthOk", ""]');
+                    socket.send('["12", "", "quick.orange.rabbit", "Hi, There Rabbit"]');
+                    socket.send('["12", "", "lazy.brown.fox", "Hi, There Fox"]');
+                    socket.send('["12", "", "lazy.orange.elephant", "Hi, There Elephant"]');
+                    socket.send('["12", "", "quick.white.male.bird", "Hi, There Male Bird"]');
+                }else {
+                    socket.send('["", "", "NoAuth", ""]');
+                }
+            });
+        });
+
+        assert.isFalse(client.isActive);
+        const message = new Promise<boolean>(resolve => client.listenEvent("quick.orange.*", message => resolve(message)));
+        const message2 = new Promise<boolean>(resolve => client.listenEvent("lazy.*.fox", message => resolve(message)));
+        const message3 = new Promise<boolean>(resolve => client.listenEvent("*.orange.elephant", message => resolve(message)));
+        const message4 = new Promise<boolean>(resolve => client.listenEvent("quick.*.bird", message => resolve(message)));
+        client.connect();
+
+        const result = await Promise.race([timeout(200), message]);
+        const result2 = await Promise.race([timeout(200), message2]);
+        const result3 = await Promise.race([timeout(200), message3]);
+        const result4 = await Promise.race([timeout(200), message4]);
+
+        // @ts-ignore
+        assert.isTrue(client.isActive);
+        assert.notEqual(result, "timeout");
+        assert.notEqual(result2, "timeout");
+        assert.notEqual(result3, "timeout");
+        assert.equal(result.payload, "Hi, There Rabbit");
+        assert.equal(result2.payload, "Hi, There Fox");
+        assert.equal(result3.payload, "Hi, There Elephant");
+        assert.equal(result4, "timeout");
+        client.disconnect();
+    });
+
+    it('Should match multi word wildcard' , async() => {
+        mockServer.on('connection', socket => {
+            socket.on('message', data => {
+                if (data == `Auth::${config.channel_secret}`){
+                    socket.send('["", "", "AuthOk", ""]');
+                    socket.send('["12", "", "quick.white.male.bird", "Hi, There Male Bird"]');
+                    socket.send('["12", "", "quick.orange.rabbit", "Hi, There Rabbit"]');
+                }else {
+                    socket.send('["", "", "NoAuth", ""]');
+                }
+            });
+        });
+
+        assert.isFalse(client.isActive);
+        const message1 = new Promise<boolean>(resolve => client.listenEvent("quick.#.bird", message => resolve(message)));
+        const message2 = new Promise<boolean>(resolve => client.listenEvent("lazy.#.rabbit", message => resolve(message)));
+        client.connect();
+
+        const result1 = await Promise.race([timeout(200), message1]);
+        const result2 = await Promise.race([timeout(200), message2]);
+
+        // @ts-ignore
+        assert.isTrue(client.isActive);
+        assert.notEqual(result1, "timeout");
+        assert.equal(result1.payload, "Hi, There Male Bird");
+        assert.equal(result2, "timeout");
+
+        client.disconnect();
+    });
+
+});
 
 function waitFor(promise) {
     return Promise.race([timeout(200), promise]);

@@ -140,8 +140,14 @@ export class AsyncClient {
 
     private handleMessage(message: ChannelMessage) {
         this.bindings
-            .filter(handler => handler.eventName == message.event)
+            .filter(handler => this.matchHandlerExpr(handler.eventName, message.event))
             .forEach(handler => handler.callBack(message))
+    }
+
+    private matchHandlerExpr(eventExpr: string, actualEventName: string): boolean {
+        if (eventExpr === actualEventName) return true;
+        var regexString = '^' + eventExpr.replace(/\*/g, '([^.]+)').replace(/#/g, '([^.]+\.?)+') + '$';
+        return actualEventName.search(regexString) !== -1;
     }
 
     private ackMessage(message: ChannelMessage){
