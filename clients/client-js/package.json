@@ -1,5 +1,5 @@
 {
-  "name": "chanjs-client",
+  "name": "@bancolombia/chanjs-client",
   "version": "0.1.1",
   "description": "AsycnDataflow websocket browser client. By Bancolombia",
   "main": "dist/index.js",
