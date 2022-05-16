@@ -26,7 +26,7 @@ You can understand better the flow with this sequence diagram.
 ![imagen](https://user-images.githubusercontent.com/12372370/137554898-0d652b9c-2598-4e1b-b681-554e0a9f00e7.png)
 
 ```javascript
-import { AsyncClient } from 'chanjs-client';
+import { AsyncClient } from '@bancolombia/chanjs-client';
 
 ...
 const client = new AsyncClient({
@@ -55,6 +55,6 @@ client.listenEvent("event.some-name", (message) =>
 You can also use amqp-match style name expressions when susbscribing to events. Examples:
 
 ```javascript
-client.listenEvent("event.#", message => someCallback(message.payload));
-client.listenEvent("event.some.*", message => someCallback(message.payload));
+client.listenEvent("event.#", (message) => someCallback(message.payload));
+client.listenEvent("event.some.*", (message) => someCallback(message.payload));
 ```
