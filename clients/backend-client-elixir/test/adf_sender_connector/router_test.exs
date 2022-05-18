@@ -20,7 +20,11 @@ defmodule AdfSenderConnector.RouterTest do
   end
 
   test "should handle fail to request a message delivery" do
-    {:ok, pid} = Router.start_link([name: :demo2, sender_url: "http://localhost:8082"])
+    my_http_options = [
+      timeout: 10_000, recv_timeout: 10_000, max_connections: 1000
+    ]
+
+    {:ok, pid} = Router.start_link([name: :demo2, sender_url: "http://localhost:8082", http_options: my_http_options])
     response = Router.deliver_message(pid, "a", "b", %{"hello" => "world"})
     assert {:error, :channel_sender_econnrefused} == response
     Process.exit(pid, :kill)

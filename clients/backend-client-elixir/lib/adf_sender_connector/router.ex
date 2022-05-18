@@ -48,8 +48,7 @@ defmodule AdfSenderConnector.Router do
       Keyword.fetch!(state, :sender_url) <> "/ext/channel/deliver_message",
       request,
       [{"Content-Type", "application/json"}],
-      hackney: [:insecure, pool: :sender_http_pool],
-      timeout: 10_000, recv_timeout: 10_000, max_connections: 1000
+      parse_http_opts(state)
     )
   end
 

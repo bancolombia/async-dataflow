@@ -22,4 +22,16 @@ defmodule AdfSenderConnector.SpecTest do
     Process.exit(pid, :kill)
   end
 
+  test "should start process passing opts" do
+    my_http_options = [
+      hackney: [:insecure, pool: :some_pool],
+      timeout: 10_000, recv_timeout: 10_000, max_connections: 1000
+    ]
+
+    {:ok, pid} = FakeImplementor.start_link([name: :demospec, sender_url: "http://localhost:8082", http_opts: my_http_options])
+    assert is_pid(pid)
+    Process.exit(pid, :kill)
+  end
+
+
 end

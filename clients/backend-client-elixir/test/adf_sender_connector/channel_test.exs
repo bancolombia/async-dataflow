@@ -20,7 +20,11 @@ defmodule AdfSenderConnector.ChannelTest do
   end
 
   test "should handle fail to request a channel registration" do
-    {:ok, pid} = Channel.start_link([name: :demo2, sender_url: "http://localhost:8082"])
+    my_http_options = [
+      timeout: 10_000, recv_timeout: 10_000, max_connections: 1000
+    ]
+
+    {:ok, pid} = Channel.start_link([name: :demo2, sender_url: "http://localhost:8082", http_opts: my_http_options])
     response = Channel.create_channel(pid, "a", "b")
     assert {:error, :channel_sender_econnrefused} == response
     Process.exit(pid, :kill)

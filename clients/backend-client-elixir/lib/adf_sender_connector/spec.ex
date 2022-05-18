@@ -21,6 +21,10 @@ defmodule AdfSenderConnector.Spec do
           type: :string,
           required: true
         ],
+        http_opts: [
+          type: :keyword_list,
+          required: false
+        ],
         name: [
           type: :atom,
           required: true
@@ -109,6 +113,15 @@ defmodule AdfSenderConnector.Spec do
 
           _ ->
             {:error, :channel_sender_unknown_error}
+        end
+      end
+
+      defp parse_http_opts(opts) do
+        case Keyword.fetch(opts, :http_opts) do
+          {:ok, http_opts} ->
+            http_opts
+          :error ->
+            [timeout: 5_000, recv_timeout: 5_000, max_connections: 1000]
         end
       end
 

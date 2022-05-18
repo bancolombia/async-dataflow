@@ -10,7 +10,7 @@ defmodule AdfSenderConnectorTest do
   end
 
   test "create a channel" do
-    options = [name: :demo4, sender_url: "http://localhost:8082"]
+    options = [name: :demo4, sender_url: "http://localhost:8082", http_opts: []]
     {:ok, pid} = AdfSenderConnector.start_link(options)
 
     create_response = %HTTPoison.Response{
@@ -32,8 +32,16 @@ defmodule AdfSenderConnectorTest do
   test "fail to create a channel" do
     options = [name: :demo5, sender_url: "http://localhost:8082"]
     {:ok, pid} = AdfSenderConnector.start_link(options)
+
     assert {:error, :channel_sender_econnrefused} = AdfSenderConnector.create_channel(:demo5, "a", "b")
     Process.exit(pid, :normal)
+  end
+
+  test "fail to create a process due to invalid options" do
+    options = [name: :xxx, alpha: true]
+
+    assert :ignore == AdfSenderConnector.start_link(options)
+
   end
 
   test "deliver a message via channel" do

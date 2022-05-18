@@ -16,6 +16,10 @@ defmodule AdfSenderConnector do
     sender_url: [
       type: :string,
       required: true
+    ],
+    http_opts: [
+      type: :keyword_list,
+      required: false
     ]
   ]
 
@@ -38,7 +42,7 @@ defmodule AdfSenderConnector do
         |> Supervisor.init(strategy: :one_for_one)
       {:error, reason} ->
         Logger.error("Invalid configuration provided, #{inspect(reason)}")
-        raise reason
+        :ignore
     end
   end
 
