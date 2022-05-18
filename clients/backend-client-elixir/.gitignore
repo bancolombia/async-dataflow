@@ -1,0 +1,4 @@
+_build
+deps
+.elixir_ls
+generic_test_execution_sonarqube.xml
