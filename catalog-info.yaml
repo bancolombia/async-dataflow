@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: async-dataflow-poc-backstage
+  annotations:
+    github.com/project-slug: carlosbioingeniero/async-dataflow-poc-backstage
+spec:
+  type: other
+  lifecycle: unknown
+  owner: carl
