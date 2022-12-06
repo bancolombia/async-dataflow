@@ -17,51 +17,66 @@ end
 
 ## Usage
 
-In the most typical use of this client, you only need to add it as a child of your application. If you created your project via `Mix` (passing the `--sup` flag) this is handled in `lib/my_app/application.ex`. This file will already contain an empty list of children to add to your application - simply add entries for your connector to this list:
+In the most typical use of this client, you only need to add it as a child of your
+application. If you created your project via `Mix` (passing the `--sup` flag) this
+is handled in `lib/my_app/application.ex`. This file will already contain an empty
+list of children to add to your application - simply add entries for your 
+connector to this list:
 
 ```elixir
 children = [
-  {AdfSenderConnector, [name: :my_adf_sender, base_url: "http://sender.server:8082"}
+  AdfSenderConnector.spec(),
+  AdfSenderConnector.registry_spec()
 ]
 ```
 
-If you wish to start a process manually (for example, in iex), you can just use `AdfSenderConnector.start_link/2`:
-
-```elixir
-AdfSenderConnector.start_link([name: :my_adf_sender, base_url: "http://sender.server:8082"])
-```
-
-Options:
-
-- name: An `Atom` identifying the process.
-- base_url: The base url for the running instance of `Channel Sender`.
+This will add to the list of superviced processes, the connector process itself 
+and a registry of active channels.
 
 ### Registering a channel
 
 ```elixir
-{:ok, response} = AdfSenderConnector.create_channel(:my_adf_sender, "app_ref", "user_ref")
+options = [sender_url: "http://localhost:8888"]
+
+{:ok, response} = 
+   AdfSenderConnector.channel_registration("app_ref", "user_ref", options)
 ```
 
 Args:
+- Application reference, a binary identifier of the application for which a 
+  channel is being registered.
+- User reference, a binary identifier of the user for whom the channel is
+  being registered.
+- A keyword list of options
 
-- An `Atom` as the connector identifier.
-- Application reference, the identifier of the application for which a channel is being registered.
-- User reference, the reference of the user for whom the channel is being registered.
+  - `sender_url`: (Required) The base path of the ADF sender rest edpoint. Required.
+  - `http_opts` : (Optional) List of HTTPoison Request options to be used in the
+    connection and requests. Options are described 
+    in [HTTPoison docs](https://hexdocs.pm/httpoison/HTTPoison.Request.html).
 
-The registering channel response is a `Map` containing the channel reference and the secret needed in the frond end to actually create a tcp connection with the sender and authenticate it.
+The registering channel response is a `Map` containing the channel reference and 
+a secret. This data is needed in the frond end of your application, to actually
+create a tcp connection with the sender and authenticate it.
 
 Response example:
 
 ```elixir
-  {:ok, %{channel_ref: "xxx", channel_secret: "yyy"}}
+  {:ok, %{channel_ref: "channel.xxx1", channel_secret: "channel.s3crt.xyz"}}
 ```
 
 ### Requesting Message Delivery
 
-You can request `Channel sender` to deliver a message via a channel previously registered (and opened from the web o mobile clients UI).
+You can request `Channel sender` to deliver a message via a channel previously 
+registered (and opened from the web o mobile clients UI).
 
-You can use either the `deliver_message/2` function:
+You can use either the `route_message/3` function:
 
+  - `channel_ref`: The channel reference (or ID) obtained from the registration
+    process.
+  - `event_name` : The event name, wich will act as a routing key.
+  - `message`:   This can be either a %Message{} struct or a Map.
+
+Example 1:
 
 ```elixir
 alias AdfSenderConnector.Message
@@ -69,21 +84,22 @@ alias AdfSenderConnector.Message
 payload_to_route  %{"hello" => "world"}
 
 # You can use the Message struct and define all of its properties.
-message =  Message.new("channel.ref", "custom.message.id",
-  "custom.correlation.id", payload_to_route, "event.name")
+message =  Message.new("channel.xxx1", "custom.message.id", 
+    "custom.correlation.id", payload_to_route, "event.name")
 
-{:ok, response} = AdfSenderConnector.deliver_message(:my_adf_sender, message)
+{:ok, response} = AdfSenderConnector.route_message("channel.xxx1", "event.name", message)
 ```
 
-Or with the `deliver_message/4` function:
+Example 2:
 
 ```elixir
 payload_to_route  %{"hello" => "world"}
 
-# this function will build a Message struct with random message id and a nil correlation id.
-{:ok, response} = AdfSenderConnector.deliver_message(:my_adf_sender, "channel_ref", 
-  "event.name", payload_to_route)
+# a default %Message{} struct will be constructed on the fly, with a random message_id, and nil
+# correlation id.
+{:ok, response} = AdfSenderConnector.route_message("channel.xxx1", "event.name", payload_to_route)
 ```
+
 
 
 

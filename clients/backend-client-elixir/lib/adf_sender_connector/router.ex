@@ -9,20 +9,19 @@ defmodule AdfSenderConnector.Router do
 
   @doc """
   Requests Channel Sender to route a message, with the indicated event name via the channel_ref.
-  Internally the function will build a ProtocolMessage.
+  Internally the function will build a Message.
   """
-  @spec deliver_message(pid(), channel_ref(), event_name(), any()) :: :ok | {:error, any()}
-  def deliver_message(pid, channel_ref, event_name, message) when is_map(message) do
-    protocol_message = Message.new(channel_ref, message, event_name)
-    GenServer.call(pid, {:deliver_message, protocol_message})
+  @spec route_message(pid(), event_name(), any()) :: :ok | {:error, any()}
+  def route_message(pid, event_name, message) when is_map(message) do
+    GenServer.cast(pid, {:route_message, event_name, message})
   end
 
   @doc """
-  Requests Channel Sender to route a ProtocolMessage.
+  Requests Channel Sender to route a Message.
   """
-  @spec deliver_message(pid(), protocol_message()) :: :ok | {:error, any()}
-  def deliver_message(pid, protocol_message) when is_struct(protocol_message) do
-    GenServer.call(pid, {:deliver_message, protocol_message})
+  @spec route_message(pid(), protocol_message()) :: :ok | {:error, any()}
+  def route_message(pid, protocol_message) when is_struct(protocol_message) do
+    GenServer.cast(pid, {:route_message, protocol_message})
   end
 
   ##########################
@@ -30,20 +29,30 @@ defmodule AdfSenderConnector.Router do
   ##########################
 
   @doc false
-  def handle_call({:deliver_message, protocol_message}, _ctx, state) do
-
-    response = build_delivery_request(protocol_message)
-    |> request_deliver_msg(state)
-    |> decode_response
-
-    {:reply, response, state}
+  def handle_cast({:route_message, event_name, message}, state) do
+    build_protocol_msg(Keyword.fetch!(state, :name), message, event_name)
+    |> build_route_request
+    |> do_route_msg(state)
+    {:noreply, state}
   end
 
-  defp build_delivery_request(protocol_message) do
+  @doc false
+  def handle_cast({:route_message, protocol_message}, state) do
+    %{protocol_message | channel_ref: Keyword.fetch!(state, :name)}
+    |> build_route_request
+    |> do_route_msg(state)
+    {:noreply, state}
+  end
+
+  defp build_protocol_msg(channel_ref, message, event_name) do
+    Message.new(channel_ref, message, event_name)
+  end
+
+  defp build_route_request(protocol_message) do
     Jason.encode!(Map.from_struct(protocol_message))
   end
 
-  defp request_deliver_msg(request, state) do
+  defp do_route_msg(request, state) do
     HTTPoison.post(
       Keyword.fetch!(state, :sender_url) <> "/ext/channel/deliver_message",
       request,

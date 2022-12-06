@@ -1,4 +1,5 @@
 defmodule AdfSenderConnector.Message do
+  @derive Jason.Encoder
   defstruct ~w[channel_ref message_id correlation_id message_data event_name]a
 
   @moduledoc """

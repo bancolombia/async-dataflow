@@ -4,54 +4,66 @@ defmodule AdfSenderConnectorTest do
   import Mock
   alias AdfSenderConnector.Message
 
-  setup do
-    HTTPoison.start
+  setup_all do
+
+    children = [
+      AdfSenderConnector.spec(),
+      AdfSenderConnector.registry_spec()
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one)
+
    :ok
   end
 
-  test "create a channel" do
-    options = [name: :demo4, sender_url: "http://localhost:8082", http_opts: []]
-    {:ok, pid} = AdfSenderConnector.start_link(options)
+  test "should register a channel" do
+
+    options = [sender_url: "http://localhost:8888", http_opts: []]
 
     create_response = %HTTPoison.Response{
       status_code: 200,
-      body: "{ \"channel_ref\": \"xxx\", \"channel_secret\": \"yyy\"}"
+      body: "{ \"channel_ref\": \"dummy.channel.ref0\", \"channel_secret\": \"yyy0\"}"
     }
 
     with_mocks([
       {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
     ]) do
-
-      assert {:ok, %{channel_ref: "xxx", channel_secret: "yyy"}} = AdfSenderConnector.create_channel(:demo4, "a", "b")
-
+      assert {:ok, %{"channel_ref" => "dummy.channel.ref0", "channel_secret" => "yyy0"}} =
+        AdfSenderConnector.channel_registration("a0", "b0", options)
     end
 
-    Process.exit(pid, :normal)
   end
 
-  test "fail to create a channel" do
-    options = [name: :demo5, sender_url: "http://localhost:8082"]
-    {:ok, pid} = AdfSenderConnector.start_link(options)
-
-    assert {:error, :channel_sender_econnrefused} = AdfSenderConnector.create_channel(:demo5, "a", "b")
-    Process.exit(pid, :normal)
+  test "should fail to register a channel" do
+    options = [sender_url: "http://localhost:8888", http_opts: []]
+    assert {:error, :channel_sender_econnrefused} == AdfSenderConnector.channel_registration("a1", "b1", options)
   end
 
   test "fail to create a process due to invalid options" do
     options = [name: :xxx, alpha: true]
 
-    assert :ignore == AdfSenderConnector.start_link(options)
+    assert_raise NimbleOptions.ValidationError, fn ->
+      AdfSenderConnector.channel_registration("a2", "b2", options)
+    end
 
   end
 
   test "deliver a message via channel" do
-    options = [name: :demo6, sender_url: "http://localhost:8082"]
-    {:ok, pid} = AdfSenderConnector.start_link(options)
+
+
+    options = [sender_url: "http://localhost:8888", http_opts: []]
 
     create_response = %HTTPoison.Response{
       status_code: 200,
-      body: "{ \"channel_ref\": \"xxx\", \"channel_secret\": \"yyy\"}"
+      body: "{ \"channel_ref\": \"dummy.channel.ref2\", \"channel_secret\": \"yyy2\"}"
     }
+
+    with_mocks([
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
+    ]) do
+      assert {:ok, %{"channel_ref" => "dummy.channel.ref2", "channel_secret" => "yyy2"}}
+        = AdfSenderConnector.channel_registration("a2", "b2", options)
+    end
 
     deliver_response = %HTTPoison.Response{
       status_code: 200,
@@ -59,37 +71,34 @@ defmodule AdfSenderConnectorTest do
     }
 
     with_mocks([
-      {HTTPoison, [], [post: fn url, _params, _headers, _opts ->
-        case String.contains?(url, "/ext/channel/create") do
-          true -> {:ok, create_response}
-          false -> {:ok, deliver_response}
-        end
-      end]}
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, deliver_response} end]}
     ]) do
 
-      response_ch_openning = AdfSenderConnector.create_channel(:demo6, "a", "b")
-      assert {:ok, %{channel_ref: "xxx", channel_secret: "yyy"}} = response_ch_openning
+      # route a protocol message
+      message = Message.new("dummy.channel.ref2", %{"hello" => "world"}, "evt1")
+      assert :ok = AdfSenderConnector.route_message("dummy.channel.ref2", "evt1", message)
 
-      message = Message.new("ref1", %{"hello" => "world"}, "evt1")
-      response_msg_deliver = AdfSenderConnector.deliver_message(:demo6, message)
-      assert {:ok, %{result: "Ok"}} = response_msg_deliver
-
-      response_msg_deliver2 = AdfSenderConnector.deliver_message(:demo6, "ch1", "evt1", %{"hello" => "world"})
-      assert {:ok, %{result: "Ok"}} = response_msg_deliver2
-
+      # route data represented as a Map
+      assert :ok = AdfSenderConnector.route_message("dummy.channel.ref2", "evt1", %{"hello" => "world"})
     end
 
-    Process.exit(pid, :normal)
   end
 
   test "fail to deliver a message via channel" do
-    options = [name: :demo7, sender_url: "http://localhost:8082"]
-    {:ok, pid} = AdfSenderConnector.start_link(options)
+
+    options = [sender_url: "http://localhost:8888", http_opts: []]
 
     create_response = %HTTPoison.Response{
       status_code: 200,
-      body: "{ \"channel_ref\": \"xxx\", \"channel_secret\": \"yyy\"}"
+      body: "{ \"channel_ref\": \"dummy.channel.ref3\", \"channel_secret\": \"yyy3\"}"
     }
+
+    with_mocks([
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
+    ]) do
+      assert {:ok, %{"channel_ref" => "dummy.channel.ref3", "channel_secret" => "yyy3"}}
+        = AdfSenderConnector.channel_registration("a3", "b3", options)
+    end
 
     deliver_response = %HTTPoison.Response{
       status_code: 500,
@@ -97,24 +106,13 @@ defmodule AdfSenderConnectorTest do
     }
 
     with_mocks([
-      {HTTPoison, [], [post: fn url, _params, _headers, _opts ->
-        case String.contains?(url, "/ext/channel/create") do
-          true -> {:ok, create_response}
-          false -> {:ok, deliver_response}
-        end
-      end]}
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, deliver_response} end]}
     ]) do
 
-      response_ch_openning = AdfSenderConnector.create_channel(:demo7, "a", "b")
-      assert {:ok, %{channel_ref: "xxx", channel_secret: "yyy"}} = response_ch_openning
-
-      message = Message.new("ref1", %{"hello" => "world"}, "evt1")
-      response_msg_deliver = AdfSenderConnector.deliver_message(:demo7, message)
-      assert {:error, :channel_sender_unknown_error} = response_msg_deliver
-
+      message = Message.new("dummy.channel.ref3", %{"hello" => "world"}, "evt1")
+      assert :ok = AdfSenderConnector.route_message("dummy.channel.ref3", "evt1", message)
     end
 
-    Process.exit(pid, :normal)
   end
 
 end

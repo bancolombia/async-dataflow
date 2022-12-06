@@ -3,87 +3,86 @@ defmodule AdfSenderConnector do
   Client for ADF Channel Sender
   """
 
-  use Supervisor
+  use DynamicSupervisor
   require Logger
 
-  alias AdfSenderConnector.{Channel, Router}
-
-  @options_definition [
-    name: [
-      type: :atom,
-      required: true
-    ],
-    sender_url: [
-      type: :string,
-      required: true
-    ],
-    http_opts: [
-      type: :keyword_list,
-      required: false
-    ]
-  ]
+  alias AdfSenderConnector.{Channel, Router, Message}
 
   @doc """
   starts the process
   """
-  @spec start_link(Keyword.t) :: {atom, pid}
-  def start_link(options) when is_list(options) do
-    Supervisor.start_link(__MODULE__, options, [name: Keyword.fetch!(options, :name)])
+  # @spec start_link() :: {atom, pid}
+  def start_link() do
+    HTTPoison.start
+    DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  @spec init(any) ::
+          {:ok,
+           %{
+             extra_arguments: list,
+             intensity: non_neg_integer,
+             max_children: :infinity | non_neg_integer,
+             period: pos_integer,
+             strategy: :one_for_one
+           }}
   @doc false
   # Basic initialization
-  @spec init(options :: Keyword.t()) :: Supervisor.on_start
-  def init(options \\ []) do
-    case NimbleOptions.validate(options, @options_definition) do
-      {:ok, _} ->
-        options
-        |> services_spec
-        |> Supervisor.init(strategy: :one_for_one)
-      {:error, reason} ->
-        Logger.error("Invalid configuration provided, #{inspect(reason)}")
-        :ignore
-    end
+  # @spec init(options :: Keyword.t()) :: {:ok, any()}
+  def init(_options \\ []) do
+    DynamicSupervisor.init(strategy: :one_for_one)
   end
 
+  # def start_registry do
+  #   DynamicSupervisor.start_child(__MODULE__, registry_spec())
+  # end
+  def spec do
+    %{
+      id: AdfSenderConnector,
+      start: {AdfSenderConnector, :start_link, []}
+    }
+  end
+
+  def registry_spec do
+    %{
+      id: Registry.ADFSenderConnector,
+      start: {Registry, :start_link, [[keys: :unique, name: Registry.ADFSenderConnector]]}
+    }
+  end
+
+  @spec channel_registration(any, any, any) :: {:ok, any()} | {:error, any()}
   @doc """
   Request a channel registration
   """
-  def create_channel(server, application_ref, user_ref) do
-    {:ok, pid} = find_by_name(AdfSenderConnector.Channel, server)
-    Channel.create_channel(pid, application_ref, user_ref)
+  def channel_registration(application_ref, user_ref, options) do
+    new_ch = DynamicSupervisor.start_child(__MODULE__,
+      Channel.child_spec([
+        app_ref: application_ref,
+        user_ref: user_ref,
+        name: application_ref <> "." <> user_ref] ++ options))
+
+    case new_ch do
+      {:ok, pid} ->
+        Channel.exchange_credentials(pid)
+      _ ->
+        new_ch
+    end
   end
 
+  @spec route_message(pid(), any, any) :: :ok | {:error, any()}
   @doc """
   Request a message delivery by creating a protocol message with the data provided
   """
-  def deliver_message(server, channel_ref, event_name, message) do
-    {:ok, pid} = find_by_name(AdfSenderConnector.Router, server)
-    Router.deliver_message(pid, channel_ref, event_name, message)
-  end
-
-  @doc """
-  Request the delivery of a protocol message
-  """
-  def deliver_message(server, protocol_message) do
-    {:ok, pid} = find_by_name(AdfSenderConnector.Router, server)
-    Router.deliver_message(pid, protocol_message)
-  end
-
-  defp services_spec(options) do
-    [
-      {Registry, keys: :unique, name: Registry.ADFSenderConnector},
-      Channel.child_spec(options),
-      Router.child_spec(options)
-    ]
-  end
-
-  defp find_by_name(module, name) do
-    case Registry.lookup(Registry.ADFSenderConnector, Atom.to_string(module) <> "." <> Atom.to_string(name)) do
+  def route_message(channel_ref, event_name, message) do
+    case Registry.lookup(Registry.ADFSenderConnector, channel_ref) do
       [{pid, _}] ->
-        {:ok, pid}
+        if %Message{} == message do
+          Router.route_message(pid, message)
+        else
+          Router.route_message(pid, event_name, message)
+        end
       [] ->
-        :error
+        {:error, :unknown_channel_reference}
     end
   end
 
