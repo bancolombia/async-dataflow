@@ -1,4 +1,4 @@
-name: AsyncDataflow Sender Client Elixir CI/RM
+name: Async DataFlow channel sender elixir client CI/RM
 
 on:
   push:
@@ -10,6 +10,9 @@ on:
 
 jobs:
   build:
+    defaults:
+      run:
+        working-directory: clients/backend-client-elixir
     name: Build and test
     runs-on: ubuntu-latest
 
