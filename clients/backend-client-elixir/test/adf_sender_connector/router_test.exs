@@ -7,27 +7,27 @@ defmodule AdfSenderConnector.RouterTest do
 
   @moduletag :capture_log
 
-  setup do
-    {:ok, _} = Registry.start_link(keys: :unique, name: Registry.ADFSenderConnector)
-    HTTPoison.start
-   :ok
-  end
+  setup_all do
 
-  test "should start process" do
-    {:ok, pid} = Router.start_link([name: :demo, sender_url: "http://localhost:8082"])
-    assert is_pid(pid)
-    Process.exit(pid, :kill)
-  end
-
-  test "should handle fail to request a message delivery" do
-    my_http_options = [
-      timeout: 10_000, recv_timeout: 10_000, max_connections: 1000
+    children = [
+      AdfSenderConnector.spec(),
+      AdfSenderConnector.registry_spec()
     ]
 
-    {:ok, pid} = Router.start_link([name: :demo2, sender_url: "http://localhost:8082", http_options: my_http_options])
-    response = Router.deliver_message(pid, "a", "b", %{"hello" => "world"})
-    assert {:error, :channel_sender_econnrefused} == response
-    Process.exit(pid, :kill)
+    Supervisor.start_link(children, strategy: :one_for_one)
+
+    {:ok, pid} = Router.start_link([sender_url: "http://localhost:8082",
+        http_opts: [],
+        name: "bar.refX"])
+
+    assert is_pid(pid)
+
+    %{"process" => pid}
+  end
+
+  test "should route message", context do
+    assert :ok == Router.route_message(Map.fetch!(context, "process"), "my_event_name", %{})
+    # Process.exit(pid, :kill)
   end
 
 end

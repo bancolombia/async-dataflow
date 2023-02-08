@@ -26,8 +26,16 @@ defmodule AdfSenderConnector.Spec do
           required: false
         ],
         name: [
-          type: :atom,
+          type: :string,
           required: true
+        ],
+        app_ref: [
+          type: :string,
+          required: false
+        ],
+        user_ref: [
+          type: :string,
+          required: false
         ]
       ]
 
@@ -71,7 +79,9 @@ defmodule AdfSenderConnector.Spec do
         end
       end
 
-      defp via_tuple(name), do: {:via, Registry, {Registry.ADFSenderConnector,  Atom.to_string(__MODULE__) <> "." <> Atom.to_string(name)}}
+      defp via_tuple(process_alias) do
+       {:via, Registry, {Registry.ADFSenderConnector, process_alias}}
+      end
 
       # allow overriding of init
       defoverridable [init: 1, child_spec: 1]
@@ -88,8 +98,9 @@ defmodule AdfSenderConnector.Spec do
               adf_result
               |> Map.get(:body)
               |> Jason.decode!()
-              |> Enum.map(fn {key, val} -> {String.to_atom(key), val} end)
-              |> Enum.into(%{})}
+              # |> Enum.map(fn {key, val} -> {String.to_atom(key), val} end)
+              # |> Enum.into(%{})
+            }
 
           400 ->
 
@@ -121,7 +132,7 @@ defmodule AdfSenderConnector.Spec do
           {:ok, http_opts} ->
             http_opts
           :error ->
-            [timeout: 5_000, recv_timeout: 5_000, max_connections: 1000]
+            [timeout: 7_000, recv_timeout: 7_000, max_connections: 2000]
         end
       end
 
