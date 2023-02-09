@@ -30,15 +30,15 @@ bridge:
       ## The secret must be a valid Json containing the following keys: "virtualhost", "hostname", "username",
       ## "password", "port". For example:
       ##
-      ## { "virtualhost": "/", "hostname": "localhost", "username": "guest", "password": "guest", "port": 5672, "ssl": false}
+      ## { "virtualhost": "/", "hostname": "localhost", "username": <user name>, "password": <pw>, "port": 5672, "ssl": false}
       ##
       # secret: <secret name>
 
       ##
       ## Optionally and for local dev environments  Rabbitmq host and credentials can be configured directly 
       ## here: 
-      username: guest
-      password: guest
+      #username: 
+      #password: 
       hostname: localhost
       port: 5672
       virtualhost: /
