@@ -1,0 +1,213 @@
+---
+openapi: 3.0.0
+info:
+  title: API REST ADF Channel Bridge/Router
+  description: __Async DataFlow Channel Bridge__ its an Erlang/Elixir 
+    implementation of a message __Bridge__ and __Router__ to work with 
+    __Async DataFlow Channel Sender__. 
+    This swagger document focus on the rest endpoints exposed by the 
+    __Brigde__ functionality to enable registration of asyncronous channels.
+  version: 0.0.1
+tags:
+- name: ChannelBridge
+  description: Channel Bridge calls
+servers:
+  - url: "{scheme}://{host}:{port}/api/v1/channel-bridge-ex"
+    variables:
+      scheme: 
+        default: 'http'
+      host: 
+        default: 'localhost'
+      port: 
+        default: '8083'
+paths:
+  /ext/channel:
+    post:
+      tags:
+      - ChannelBridge
+      summary: Request new channel credentials
+      description: |
+        This endpoint internally Requests ADF-Channel Sender to register a new channel. 
+        This method returns a "channel_ref" and "channel_secret" which are 
+        necesary to authenticate the async-channel (socket).
+      operationId: register_channel
+      parameters:
+        - in: header
+          name: session-tracker
+          required: true
+          description: |
+            An unique user session identifier. This will be an __alias__ to the channel_ref
+            in ADF-Channel Sender. Must be unique per user and mantained
+            during an user session.
+          schema:
+            type: string
+            example: fff25f1c-e37a-4a8a-84c8-e5f92296b880
+        - in: header
+          name: application-id
+          required: false
+          description: |
+            Application ID, used for registering the async channel, with
+            in ADF-Channel Sender. If not provided, ADF-Bridge will default 
+            to "default_app".
+          schema:
+            type: string
+            example: "my-app"
+        - in: header
+          name: user-id
+          required: false
+          description: |
+            User ID, some form of user identification, if not provided ADF-Bridge will default
+            to "default_user".
+          schema:
+            type: string
+            example: "user1"     
+      responses:
+        "200":
+          description: |
+            ADF-Channel Sender credentials. 
+            
+            __channel_ref__ and __channel_secret__ should be used by the front end
+            client to authenticate the websocket connection with Async Dataflow 
+            Channel Sender.
+            
+            __session_tracker__ confirms the valued passed via _session-tracker_ header.
+            
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+        "400":
+          description: | 
+            Invalid request due to
+            - Channel already registered. The same _session-tracker_ was already
+              used to register a channel. This value must be unique.
+            - Other
+            
+            "code" attribute will contain specific error.
+            
+            The error payload should be homologated by Security Filters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Unknown error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "502":
+          description: |
+            Gateway Error. When integration with Async DataFlow Channel Sender fails.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'    
+    delete:
+      tags:
+      - ChannelBridge
+      summary: Deregister channels
+      description: |
+        Deregister channel.
+        
+        This stops message delivery from ADF Channel Bridge to Channel Sender. 
+        Meaning no further routing of messages to the specified channel.
+        
+        This operations releases any server side resources in  ADF Channel Bridge.
+        The _session-tracker_ cannot be used to re-register a channel for 
+        about 1 or 2 minutes.
+        
+        This action does not close any websockets opened by the front end client.
+      operationId: delete_channel
+      parameters:
+        - in: header
+          name: session-tracker
+          required: true
+          description: |
+            The unique user session identifier. 
+          schema:
+            type: string
+            example: fff25f1c-e37a-4a8a-84c8-e5f92296b880
+      responses:
+        "200":
+          description: |
+            Channel routing succesfully un-registered. No more messages will be 
+            routed via this channel. 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloseResponse'
+        "400":
+          description: |
+            Bad Request. Either because
+            - No session-tracker was provided.
+            - No channel exists realated to that session-tacker.
+            - Channel is already closed/closing. And any server resources are
+              pending for releasing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'   
+
+components:
+  schemas:
+    ChannelResponse:
+      required:
+      - result
+      type: object
+      properties:
+        result:
+          type: object
+          $ref: '#/components/schemas/ChannelRegistration'
+    CloseResponse:
+      required:
+      - result
+      type: object
+      properties:
+        result:
+          type: string
+          example: ok
+    ErrorResponse:
+      required:
+      - errors
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Error'          
+    Error:
+      type: object
+      properties:
+        reason:
+          type: string
+          example: reason
+        domain:
+          type: string
+          example: domain
+        code:
+          type: string
+          example: ADF00000
+        message:
+          type: string
+          example: message
+        type:
+          type: string
+          example: type          
+    ChannelRegistration:
+      description: ADF channel sender credentials to open websocket connection
+      required:
+      - session_tracker
+      - channel_ref
+      - channel_secret
+      type: object
+      properties:
+        session_tracker:
+          type: string
+          example: fff25f1c-e37a-4a8a-84c8-e5f92296b880
+        channel_ref:
+          type: string
+          example: 2aafabeaa5c836eea4aa139e3c0b533f.example
+        channel_secret:
+          type: string
+          example: SFMyNTY.g2gDaANtAAAAQTJhYWZhYmVhYTVj.example.somestring
