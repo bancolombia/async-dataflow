@@ -8,13 +8,23 @@ defmodule AdfSenderConnector do
 
   alias AdfSenderConnector.{Channel, Router, Message}
 
+  @default_local "http://localhost:8081"
+
   @doc """
   starts the process
   """
   # @spec start_link() :: {atom, pid}
+  def start_link(init_args, opts \\ []) do
+    Logger.debug("AdfSenderConnector.start_link args #{inspect(init_args)}")
+    Logger.debug("AdfSenderConnector.start_link opts #{inspect(opts)}")
+    HTTPoison.start
+    DynamicSupervisor.start_link(__MODULE__, [init_args], name: __MODULE__)
+  end
+
   def start_link() do
     HTTPoison.start
-    DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
+    Logger.warn("No sender endpoint provided. Using default endpoint https://localhost:8081")
+    DynamicSupervisor.start_link(__MODULE__, [sender_url: @default_local], name: __MODULE__)
   end
 
   @spec init(any) ::
@@ -27,19 +37,14 @@ defmodule AdfSenderConnector do
              strategy: :one_for_one
            }}
   @doc false
-  # Basic initialization
-  # @spec init(options :: Keyword.t()) :: {:ok, any()}
-  def init(_options \\ []) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+  def init(options \\ []) do
+    DynamicSupervisor.init(strategy: :one_for_one, extra_arguments: options)
   end
 
-  # def start_registry do
-  #   DynamicSupervisor.start_child(__MODULE__, registry_spec())
-  # end
-  def spec do
+  def spec(args \\ []) do
     %{
       id: AdfSenderConnector,
-      start: {AdfSenderConnector, :start_link, []}
+      start: {AdfSenderConnector, :start_link, args}
     }
   end
 
@@ -54,7 +59,7 @@ defmodule AdfSenderConnector do
   @doc """
   Request a channel registration
   """
-  def channel_registration(application_ref, user_ref, options) do
+  def channel_registration(application_ref, user_ref, options \\ []) do
     new_ch = DynamicSupervisor.start_child(__MODULE__,
       Channel.child_spec([
         app_ref: application_ref,
