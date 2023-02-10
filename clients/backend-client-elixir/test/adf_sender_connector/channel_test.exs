@@ -21,7 +21,7 @@ defmodule AdfSenderConnector.ChannelTest do
 
   test "should start channel process" do
 
-    options = [sender_url: "http://localhost:8888", http_opts: [], name: "foo"]
+    options = [http_opts: [], name: "foo"]
 
     create_response = %HTTPoison.Response{
       status_code: 200,
@@ -32,7 +32,7 @@ defmodule AdfSenderConnector.ChannelTest do
       {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
     ]) do
 
-      {:ok, pid} = Channel.start_link(options)
+      {:ok, pid} = Channel.start_link({:sender_url, "http://localhost:8888"}, options)
       assert is_pid(pid)
       Process.exit(pid, :normal)
 
@@ -42,7 +42,7 @@ defmodule AdfSenderConnector.ChannelTest do
 
   test "should start channel process, then should exchange credentials" do
 
-    options = [sender_url: "http://localhost:8888", http_opts: [], app_ref: "app", user_ref: "user1", name: "bar"]
+    options = [http_opts: [], app_ref: "app", user_ref: "user1", name: "bar"]
 
     create_response = %HTTPoison.Response{
       status_code: 200,
@@ -53,7 +53,7 @@ defmodule AdfSenderConnector.ChannelTest do
       {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
     ]) do
 
-      {:ok, pid} = Channel.start_link(options)
+      {:ok, pid} = Channel.start_link({:sender_url, "http://localhost:8888"}, options)
       assert is_pid(pid)
 
       {:ok, _response} = Channel.exchange_credentials(pid)

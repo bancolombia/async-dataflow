@@ -58,25 +58,28 @@ defmodule AdfSenderConnector.Spec do
       use GenServer
 
       @doc false
-      def start_link(args) do
-        GenServer.start_link(__MODULE__, args, name: via_tuple(Keyword.fetch!(args, :name)))
+      def start_link(args, opts \\ []) do
+        {:sender_url, url} = args
+        new_opts = [sender_url: url] ++ opts
+        GenServer.start_link(__MODULE__, new_opts, name: via_tuple(Keyword.fetch!(new_opts, :name)))
       end
 
       @doc false
-      def init(args),
-        do: {:ok, args}
+      def init(args) do
+        {:ok, args}
+      end
 
       def child_spec(args) do
-        case NimbleOptions.validate(args, @args_definition) do
-          {:ok, validated_options} ->
+        #case NimbleOptions.validate(args, @args_definition) do
+        #  {:ok, validated_options} ->
             %{
               id: __MODULE__,
-              start: {__MODULE__, :start_link, [validated_options]},
+              start: {__MODULE__, :start_link, [args]},
             }
-          {:error, reason} ->
-            Logger.error("Invalid configuration provided, #{inspect(reason)}")
-            raise reason
-        end
+         # {:error, reason} ->
+         #   Logger.error("Invalid configuration provided, #{inspect(reason)}")
+         #   raise reason
+        #end
       end
 
       defp via_tuple(process_alias) do

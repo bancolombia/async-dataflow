@@ -25,7 +25,7 @@ connector to this list:
 
 ```elixir
 children = [
-  AdfSenderConnector.spec(),
+  AdfSenderConnector.spec([sender_url: "http://localhost:8888"]),
   AdfSenderConnector.registry_spec()
 ]
 ```
@@ -36,10 +36,8 @@ and a registry of active channels.
 ### Registering a channel
 
 ```elixir
-options = [sender_url: "http://localhost:8888"]
-
 {:ok, response} = 
-   AdfSenderConnector.channel_registration("app_ref", "user_ref", options)
+   AdfSenderConnector.channel_registration("app_ref", "user_ref")
 ```
 
 Args:
@@ -49,7 +47,6 @@ Args:
   being registered.
 - A keyword list of options
 
-  - `sender_url`: (Required) The base path of the ADF sender rest edpoint. Required.
   - `http_opts` : (Optional) List of HTTPoison Request options to be used in the
     connection and requests. Options are described 
     in [HTTPoison docs](https://hexdocs.pm/httpoison/HTTPoison.Request.html).

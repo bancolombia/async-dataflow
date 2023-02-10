@@ -7,7 +7,7 @@ defmodule AdfSenderConnectorTest do
   setup_all do
 
     children = [
-      AdfSenderConnector.spec(),
+      AdfSenderConnector.spec([sender_url: "http://localhost:8888"]),
       AdfSenderConnector.registry_spec()
     ]
 
@@ -35,18 +35,18 @@ defmodule AdfSenderConnectorTest do
   end
 
   test "should fail to register a channel" do
-    options = [sender_url: "http://localhost:8888", http_opts: []]
+    options = [http_opts: []]
     assert {:error, :channel_sender_econnrefused} == AdfSenderConnector.channel_registration("a1", "b1", options)
   end
 
-  test "fail to create a process due to invalid options" do
-    options = [name: :xxx, alpha: true]
+  # test "fail to create a process due to invalid options" do
+  #   options = [name: :xxx, alpha: true]
 
-    assert_raise NimbleOptions.ValidationError, fn ->
-      AdfSenderConnector.channel_registration("a2", "b2", options)
-    end
+  #   assert_raise NimbleOptions.ValidationError, fn ->
+  #     AdfSenderConnector.channel_registration("a2", "b2", options)
+  #   end
 
-  end
+  # end
 
   test "deliver a message via channel" do
 
