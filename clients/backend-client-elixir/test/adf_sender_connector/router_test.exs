@@ -16,8 +16,8 @@ defmodule AdfSenderConnector.RouterTest do
 
     Supervisor.start_link(children, strategy: :one_for_one)
 
-    {:ok, pid} = Router.start_link([sender_url: "http://localhost:8082",
-        http_opts: [],
+    {:ok, pid} = Router.start_link({:sender_url, "http://localhost:8082"},
+        [http_opts: [],
         name: "bar.refX"])
 
     assert is_pid(pid)
