@@ -1,0 +1,87 @@
+bridge:
+  rest_port: 8083
+  plug:
+    max_keepalive: 2000
+    active_n: 200
+  channel_reply_timeout: 2000
+  cache_expiration: 900
+  request_app_identifier:
+    strategy: lookup
+    field: $.req_headers['application-id']
+  request_user_identifier:
+    - $.req_headers['user-id']
+  request_channel_identifier: 
+    - $.req_headers['session-tracker']
+  cloud_event_channel_identifier:
+    - $.subject
+  event_bus:
+    rabbitmq:
+      bindings:
+        - name: domainEvents
+          routing_key:
+            - business.#
+      queue: adf_bridge_ex_queue
+      
+      ##
+      ## Rabbitmq host and credentials can be configured with an AWS Secret, indicating the secret name.
+      ## The secret must be a valid Json containing the following keys: "virtualhost", "hostname", "username",
+      ## "password", "port". For example:
+      ##
+      ## { "virtualhost": "/", "hostname": "localhost", "username": <user name>, "password": <pw>, "port": 5672, "ssl": false}
+      ##
+      # secret: <secret name>
+
+      ##
+      ## Optionally and for local dev environments  Rabbitmq host and credentials can be configured directly 
+      ## here: 
+      #username: 
+      #password: 
+      hostname: localhost
+      port: 5672
+      virtualhost: /
+      ssl: false
+
+      ## producer and processor concurrency
+      # producer_module: "BroadwayRabbitMQ.Producer"
+      producer_concurrency: 1
+      producer_prefetch: 2
+      processor_concurrency: 2
+      processor_max_demand: 1
+    # sqs:
+    #   queue: http://localhost:4566/000000000000/queue0
+    #   producer_concurrency: 1
+    #   processor_concurrency: 2
+    #   processor_max_demand: 1
+  authenticator: ChannelBridgeEx.Core.Auth.PassthroughAuth
+  mutator: ChannelBridgeEx.Core.CloudEvent.Mutator.DefaultMutator
+
+sender:
+  rest_endpoint: http://localhost:8081
+
+aws:
+  ## creds for local dev::
+  creds:
+    access_key_id:
+      - SYSTEM:AWS_ACCESS_KEY_ID
+      - instance_role
+    secret_access_key:
+      - SYSTEM:AWS_SECRET_ACCESS_KEY
+      - instance_role
+  ## secretsmanager local endpoint configuration for local dev:
+  # secretsmanager:
+  #   scheme: http://
+  #   host: localhost
+  #   region: us-east-1
+  #   port: 4566
+  # sqs:
+  #   scheme: http://
+  #   host: localhost
+  #   region: us-east-1
+  #   port: 4566
+  debug_requests: true
+
+logger:
+  level: info
+
+
+
