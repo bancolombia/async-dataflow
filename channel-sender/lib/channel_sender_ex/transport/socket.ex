@@ -4,10 +4,20 @@ defmodule ChannelSenderEx.Transport.Socket do
   """
   @behaviour :cowboy_websocket
   @channel_key "channel"
+
+  # Error code to indicate a generic bad request
+  @invalid_request_code "1006"
+
+  # Error code to indicate bad request, specifically when
+  # not providing a valid channel reference
+  @invalid_channel_code "1007"
+
   @invalid_secret_code 1008
+
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
+  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
 
@@ -33,32 +43,62 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def init(req = %{method: "GET"}, _opts) do
-    case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
-      {@channel_key, channel} when byte_size(channel) > 10 ->
-        case :cowboy_req.parse_header("sec-websocket-protocol", req) do
-          :undefined ->
-            {:cowboy_websocket, req, _state = {channel, :pre_auth, @default_protocol_encoder},
-             ws_opts()}
+    init_result = get_relevant_request_info(req)
+      |> check_channel_registered
+      |> process_subprotocol_selection(req)
 
-          sub_protocols ->
-            {encoder, req} =
-              case Enum.member?(sub_protocols, "binary_flow") do
-                true ->
-                  {BinaryEncoder,
-                   :cowboy_req.set_resp_header("sec-websocket-protocol", "binary_flow", req)}
-
-                false ->
-                  {JsonEncoder,
-                   :cowboy_req.set_resp_header("sec-websocket-protocol", "json_flow", req)}
-              end
-
-            {:cowboy_websocket, req, _state = {channel, :pre_auth, encoder}, ws_opts()}
-        end
-
-      _ ->
-        req = :cowboy_req.reply(400, req)
-        {:ok, req, _state = []}
+    case init_result do
+      {:cowboy_websocket, _, _, _} = res ->
+        res
+      {:error, desc} ->
+        :cowboy_req.reply(400, %{<<"x-error-code">> => desc}, req)
     end
+  end
+
+  defp get_relevant_request_info(req) do
+    case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
+      {@channel_key, channel} = resp when byte_size(channel) > 10 ->
+        resp
+      _ ->
+        {:error, @invalid_request_code}
+    end
+  end
+
+  defp check_channel_registered({@channel_key, channel_ref} = res) do
+    case ChannelRegistry.lookup_channel_addr(channel_ref) do
+      :noproc -> {:error, @invalid_channel_code}
+      _ -> res
+    end
+  end
+
+  defp check_channel_registered({:error, _desc} = res) do
+    res
+  end
+
+  defp process_subprotocol_selection({@channel_key, channel}, req) do
+    case :cowboy_req.parse_header("sec-websocket-protocol", req) do
+      :undefined ->
+        {:cowboy_websocket, req, _state = {channel, :pre_auth, @default_protocol_encoder},
+         ws_opts()}
+
+      sub_protocols ->
+        {encoder, req} =
+          case Enum.member?(sub_protocols, "binary_flow") do
+            true ->
+              {BinaryEncoder,
+               :cowboy_req.set_resp_header("sec-websocket-protocol", "binary_flow", req)}
+
+            false ->
+              {JsonEncoder,
+               :cowboy_req.set_resp_header("sec-websocket-protocol", "json_flow", req)}
+          end
+
+        {:cowboy_websocket, req, _state = {channel, :pre_auth, encoder}, ws_opts()}
+    end
+  end
+
+  defp process_subprotocol_selection({:error, _} = err, _req) do
+    err
   end
 
   @impl :cowboy_websocket

@@ -165,15 +165,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert {:binary, _} = assert_receive_and_close(channel, conn_stream)
   end
 
-  test "Should connect to channel when is not immediately available", %{port: port} do
+  test "Should not connect to channel when not previoulsy registered", %{port: port} do
     {app_id, user_ref} = {"App1", "User1234"}
     channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
     channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
-    {conn, stream} = assert_connect(port, channel_ref, channel_secret)
-    authenticate(conn, channel_secret)
-    refute_receive {:gun_ws, ^conn, ^stream, data_string}, 300
-    {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, app_id, user_ref})
-    assert_authenticate(conn, stream, 750)
+    {conn, stream} = assert_reject(port, channel_ref, channel_secret)
   end
 
 
@@ -310,6 +306,17 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
       end
 
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
+    {conn, stream}
+  end
+
+  defp assert_reject(port, channel, secret, sub_protocol \\ nil) do
+    conn =
+      case sub_protocol do
+        nil -> connect(port, channel)
+        sub_protocol -> connect(port, channel, sub_protocol)
+      end
+
+    assert_receive {:gun_response, ^conn, stream, :fin, 400, _headers}
     {conn, stream}
   end
 
