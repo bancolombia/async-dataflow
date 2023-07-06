@@ -1,14 +1,15 @@
-defmodule AdfSenderConnector.Channel do
+defmodule AdfSenderConnector.Credentials do
   @moduledoc """
-  Async Dataflow Rest client for /ext/channel/create endpoint
+  Async Dataflow Rest client for /ext/channel/create endpoint to exchange credentials
   """
 
   use AdfSenderConnector.Spec
+  
   alias AdfSenderConnector.Router
   require Logger
 
   @doc """
-  Request Channel Sender to register a channel for the application and user indicated.
+  Request Channel Sender to register a channel for the application and user indicated. Returns appropriate credentials.
   """
   @spec exchange_credentials(pid()) :: {:ok, any()} | {:error, any()}
   def exchange_credentials(pid) do
@@ -28,10 +29,10 @@ defmodule AdfSenderConnector.Channel do
       |> decode_response
 
     case response do
-      {:ok, creds} ->
-        start_router_process(Map.fetch!(creds, "channel_ref"), state)
       {:error, reason} ->
-        Logger.error("Error routing message, #{inspect(reason)}")
+        Logger.error("Error exchanging credentials, #{inspect(reason)}")
+      _ -> 
+        Logger.debug("Credentials exchanged")
         response
     end
 
@@ -52,11 +53,6 @@ defmodule AdfSenderConnector.Channel do
       [{"Content-Type", "application/json"}],
       parse_http_opts(state)
     )
-  end
-
-  defp start_router_process(channel_ref, options) do
-    new_options = Keyword.delete(options, :name)
-    DynamicSupervisor.start_child(AdfSenderConnector, Router.child_spec([name: channel_ref] ++ new_options))
   end
 
 end

@@ -3,7 +3,7 @@ Code.compiler_options(ignore_module_conflict: true)
 defmodule AdfSenderConnector.ChannelTest do
   use ExUnit.Case
   import Mock
-  alias AdfSenderConnector.Channel
+  alias AdfSenderConnector.Credentials
 
   @moduletag :capture_log
 
@@ -32,7 +32,7 @@ defmodule AdfSenderConnector.ChannelTest do
       {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
     ]) do
 
-      {:ok, pid} = Channel.start_link({:sender_url, "http://localhost:8888"}, options)
+      {:ok, pid} = Credentials.start_link({:sender_url, "http://localhost:8888"}, options)
       assert is_pid(pid)
       Process.exit(pid, :normal)
 
@@ -53,10 +53,10 @@ defmodule AdfSenderConnector.ChannelTest do
       {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
     ]) do
 
-      {:ok, pid} = Channel.start_link({:sender_url, "http://localhost:8888"}, options)
+      {:ok, pid} = Credentials.start_link({:sender_url, "http://localhost:8888"}, options)
       assert is_pid(pid)
 
-      {:ok, _response} = Channel.exchange_credentials(pid)
+      {:ok, _response} = Credentials.exchange_credentials(pid)
 
       Process.exit(pid, :normal)
     end

@@ -4,10 +4,11 @@ defmodule AdfSenderConnectorTest do
   import Mock
   alias AdfSenderConnector.Message
 
+  @sender_url "http://localhost:8888"
   setup_all do
 
     children = [
-      AdfSenderConnector.spec([sender_url: "http://localhost:8888"]),
+      AdfSenderConnector.spec([sender_url: @sender_url]),
       AdfSenderConnector.registry_spec()
     ]
 
@@ -16,9 +17,9 @@ defmodule AdfSenderConnectorTest do
    :ok
   end
 
-  test "should register a channel" do
+  test "should exchange credentials" do
 
-    options = [sender_url: "http://localhost:8888", http_opts: []]
+    options = [sender_url: @sender_url, http_opts: []]
 
     create_response = %HTTPoison.Response{
       status_code: 200,
@@ -50,8 +51,8 @@ defmodule AdfSenderConnectorTest do
 
   test "deliver a message via channel" do
 
-
-    options = [sender_url: "http://localhost:8888", http_opts: []]
+    ### first exchange credentials
+    options = [sender_url: @sender_url, http_opts: []]
 
     create_response = %HTTPoison.Response{
       status_code: 200,
@@ -65,6 +66,10 @@ defmodule AdfSenderConnectorTest do
         = AdfSenderConnector.channel_registration("a2", "b2", options)
     end
 
+    ### then create a process to map that name
+    AdfSenderConnector.start_router_process("dummy.channel.ref2")
+
+    ### and then try to route a message
     deliver_response = %HTTPoison.Response{
       status_code: 200,
       body: "{ \"result\": \"Ok\" }"
@@ -86,8 +91,9 @@ defmodule AdfSenderConnectorTest do
 
   test "fail to deliver a message via channel" do
 
-    options = [sender_url: "http://localhost:8888", http_opts: []]
+    options = [sender_url: @sender_url, http_opts: []]
 
+    ### first exchange credentials
     create_response = %HTTPoison.Response{
       status_code: 200,
       body: "{ \"channel_ref\": \"dummy.channel.ref3\", \"channel_secret\": \"yyy3\"}"
@@ -100,6 +106,10 @@ defmodule AdfSenderConnectorTest do
         = AdfSenderConnector.channel_registration("a3", "b3", options)
     end
 
+    ### then create a process to map that name
+    AdfSenderConnector.start_router_process("dummy.channel.ref3")
+
+    ### and then try to route a message
     deliver_response = %HTTPoison.Response{
       status_code: 500,
       body: "{ \"error\": \"some error desc\" }"

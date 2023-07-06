@@ -4,7 +4,7 @@ defmodule AdfSenderConnector.MixProject do
   def project do
     [
       app: :adf_sender_connector,
-      version: "0.2.0",
+      version: "0.2.1",
       elixir: "~> 1.13",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,

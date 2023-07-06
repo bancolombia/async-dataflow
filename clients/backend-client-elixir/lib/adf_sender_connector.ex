@@ -6,7 +6,7 @@ defmodule AdfSenderConnector do
   use DynamicSupervisor
   require Logger
 
-  alias AdfSenderConnector.{Channel, Router, Message}
+  alias AdfSenderConnector.{Credentials, Router, Message}
 
   @default_local "http://localhost:8081"
 
@@ -14,9 +14,7 @@ defmodule AdfSenderConnector do
   starts the process
   """
   # @spec start_link() :: {atom, pid}
-  def start_link(init_args, opts \\ []) do
-    Logger.debug("AdfSenderConnector.start_link args #{inspect(init_args)}")
-    Logger.debug("AdfSenderConnector.start_link opts #{inspect(opts)}")
+  def start_link(init_args, _opts \\ []) do
     HTTPoison.start
     DynamicSupervisor.start_link(__MODULE__, [init_args], name: __MODULE__)
   end
@@ -61,18 +59,29 @@ defmodule AdfSenderConnector do
   """
   def channel_registration(application_ref, user_ref, options \\ []) do
     new_ch = DynamicSupervisor.start_child(__MODULE__,
-      Channel.child_spec([
+      Credentials.child_spec([
         app_ref: application_ref,
         user_ref: user_ref,
         name: application_ref <> "." <> user_ref] ++ options))
 
     case new_ch do
       {:ok, pid} ->
-        Channel.exchange_credentials(pid)
+        Credentials.exchange_credentials(pid)
       _ ->
         new_ch
     end
   end
+
+
+  @doc """
+  Starts a process to deliver messages.
+  """
+  @spec start_router_process(any, any) :: :ok | {:error, any()}
+  def start_router_process(channel_ref, options \\ []) do
+    new_options = Keyword.delete(options, :name)
+    DynamicSupervisor.start_child(AdfSenderConnector, AdfSenderConnector.Router.child_spec([name: channel_ref] ++ new_options))
+  end
+
 
   @spec route_message(pid(), any, any) :: :ok | {:error, any()}
   @doc """
