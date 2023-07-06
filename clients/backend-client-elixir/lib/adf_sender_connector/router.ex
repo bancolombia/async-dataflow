@@ -33,6 +33,7 @@ defmodule AdfSenderConnector.Router do
     build_protocol_msg(Keyword.fetch!(state, :name), message, event_name)
     |> build_route_request
     |> do_route_msg(state)
+    |> decode_response
     {:noreply, state}
   end
 
@@ -41,6 +42,8 @@ defmodule AdfSenderConnector.Router do
     %{protocol_message | channel_ref: Keyword.fetch!(state, :name)}
     |> build_route_request
     |> do_route_msg(state)
+    |> decode_response
+    
     {:noreply, state}
   end
 
