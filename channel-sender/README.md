@@ -17,7 +17,7 @@ Distributed Elixir Cluster implementation of real time with websockets and notif
 
 ### Requirements
 
-- Elixir >= 1.10
+- Elixir >= 1.12
 - Mix
 
 ### Install

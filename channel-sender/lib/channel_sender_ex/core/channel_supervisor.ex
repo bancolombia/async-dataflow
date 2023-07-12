@@ -2,11 +2,27 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @moduledoc """
     Module to start supervised channels in a distributed way
   """
-  alias ChannelSenderEx.Core.ChannelRegistry
+  use Horde.DynamicSupervisor
+  require Logger
+
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.RulesProvider
 
-  @supervisor_module Application.get_env(:channel_sender_ex, :channel_supervisor_module)
+  def start_link(_) do
+    result = Horde.DynamicSupervisor.start_link(__MODULE__, [strategy: :one_for_one, shutdown: 1000], name: __MODULE__)
+    Logger.debug("ChannelSupervisor: #{inspect(result)}")
+    result
+  end
+
+  def init(init_arg) do
+    [members: members()]
+    |> Keyword.merge(init_arg)
+    |> Horde.DynamicSupervisor.init()
+  end
+
+  defp members() do
+    Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
+  end
 
   @type channel_ref :: String.t()
   @type application :: String.t()
@@ -14,13 +30,13 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @type channel_init_args :: {channel_ref(), application(), user_ref()}
   @spec start_channel(channel_init_args()) :: any()
   def start_channel(args) do
-    @supervisor_module.start_child(__MODULE__, channel_child_spec(args))
+    Horde.DynamicSupervisor.start_child(__MODULE__, channel_child_spec(args))
   end
 
   @spec channel_child_spec(channel_init_args()) :: any()
   @compile {:inline, channel_child_spec: 1}
   def channel_child_spec(channel_args = {channel_ref, _application, _user_ref}) do
-    channel_child_spec(channel_args, ChannelRegistry.via_tuple(channel_ref))
+    channel_child_spec(channel_args, via_tuple(channel_ref))
   end
 
   @compile {:inline, channel_child_spec: 2}
@@ -32,4 +48,9 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
       restart: :transient
     }
   end
+
+  defp via_tuple(name) do
+    {:via, Horde.Registry, {ChannelSenderEx.Core.ChannelRegistry, name}}
+  end
+
 end
