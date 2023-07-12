@@ -93,7 +93,7 @@ defmodule ChannelSenderEx.Core.Channel do
     waiting_timeout = round(RulesProvider.get(@token_max_age) * 1000)
     {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
   end
-  
+
   def waiting(:state_timeout, :waiting_timeout, data) do
     {:stop, :normal, %{data | stop_cause: :waiting_timeout}}
   end
@@ -123,15 +123,15 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state, new_data, actions}
   end
 
-  def waiting({:timeout, {:redelivery, ref}}, _, data) do
+  def waiting({:timeout, {:redelivery, _ref}}, _, _data) do
     {:keep_state_and_data, :postpone}
   end
 
-  def waiting({:call, from}, event, data) do
+  def waiting({:call, _from}, _event, _data) do
     :keep_state_and_data
   end
 
-  def waiting(:cast, event, data) do
+  def waiting(:cast, _event, _data) do
     :keep_state_and_data
   end
 
@@ -191,7 +191,7 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state, new_data, actions}
   end
 
-  defp new_token_message(data = %{application: app, channel: channel, user_ref: user}) do
+  defp new_token_message(_data = %{application: app, channel: channel, user_ref: user}) do
     new_token = ChannelSenderEx.Core.ChannelIDGenerator.generate_token(channel, app, user)
     ProtocolMessage.of(UUID.uuid4(:hex), ":n_token", new_token)
   end
@@ -270,10 +270,11 @@ defmodule ChannelSenderEx.Core.Channel do
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
 
-  def connected(:info, m = {:DOWN, _ref, :process, _object, _reason}, _data) do
+  def connected(:info, _m = {:DOWN, _ref, :process, _object, _reason}, _data) do
     :keep_state_and_data
   end
 
+  @impl true
   def terminate(reason, state, data) do
     IO.inspect({:terminating, reason, state, data})
     :ok

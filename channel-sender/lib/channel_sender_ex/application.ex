@@ -4,15 +4,10 @@ defmodule ChannelSenderEx.Application do
   @moduledoc false
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Transport.EntryPoint
-  alias ChannelSenderEx.Core.ChannelSupervisor
-  alias ChannelSenderEx.Core.ChannelRegistry
-
   use Application
-
-  @supervisor_module Application.get_env(:channel_sender_ex, :channel_supervisor_module)
-  @registry_module Application.get_env(:channel_sender_ex, :registry_module)
   @no_start Application.get_env(:channel_sender_ex, :no_start)
   @http_port Application.get_env(:channel_sender_ex, :rest_port, 8080)
+  @topology Application.get_env(:channel_sender_ex, :topology, [ strategy: Cluster.Strategy.Gossip ])
 
   def start(_type, _args) do
     ChannelSenderEx.Utils.ClusterUtils.discover_and_connect_local()
@@ -28,11 +23,19 @@ defmodule ChannelSenderEx.Application do
 
   defp children(_no_start = false) do
     [
-      {@registry_module, name: ChannelRegistry, keys: :unique, members: :auto},
-      {@supervisor_module, name: ChannelSupervisor, strategy: :one_for_one, members: :auto},
+      {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
+      ChannelSenderEx.Core.ChannelRegistry,
+      ChannelSenderEx.Core.ChannelSupervisor,
+      ChannelSenderEx.Core.NodeObserver,
       {Plug.Cowboy, scheme: :http, plug: RestController, options: [port: @http_port]}
     ]
   end
 
   defp children(_no_start = true), do: []
+
+  defp topologies do
+    [
+      background_job: @topology
+    ]
+  end
 end

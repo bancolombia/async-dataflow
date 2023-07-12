@@ -103,7 +103,6 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def websocket_init(state) do
-#    IO.puts("Connected with params: #{inspect(state)}")
     {_commands = [], state}
   end
 

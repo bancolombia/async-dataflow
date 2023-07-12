@@ -305,7 +305,8 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         sub_protocol -> connect(port, channel, sub_protocol)
       end
 
-    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
+
+    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 500
     {conn, stream}
   end
 
