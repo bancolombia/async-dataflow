@@ -16,7 +16,7 @@ you need to have a running instances of [async-dataflow-channel-sender](https://
 ### Install
 
 ```npm
-npm install chanjs-client --save
+npm i @bancolombia/chanjs-client --save
 ```
 
 ### AsyncClient basic usage example
