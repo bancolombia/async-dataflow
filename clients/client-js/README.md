@@ -1,6 +1,6 @@
 # Client JS
 
-[![NPM](https://nodei.co/npm/chanjs-client.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/chanjs-client/)
+[![NPM](https://nodei.co/npm/@bancolombia/chanjs-client.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/@bancolombia/chanjs-client)
 
 Javascript library for async data flow implementation for browsers.
 
