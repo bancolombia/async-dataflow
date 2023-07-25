@@ -7,4 +7,7 @@ config :channel_sender_ex,
        initial_redelivery_time: 900,
        socket_idle_timeout: 30000,
        rest_port: 8091,
-       max_age: 900
+       max_age: 900,
+       topology: [
+        strategy: Cluster.Strategy.Gossip
+      ]

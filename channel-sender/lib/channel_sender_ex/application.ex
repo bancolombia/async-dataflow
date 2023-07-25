@@ -7,7 +7,6 @@ defmodule ChannelSenderEx.Application do
   use Application
   @no_start Application.get_env(:channel_sender_ex, :no_start)
   @http_port Application.get_env(:channel_sender_ex, :rest_port, 8080)
-  @topology Application.get_env(:channel_sender_ex, :topology, [ strategy: Cluster.Strategy.Gossip ])
 
   def start(_type, _args) do
     ChannelSenderEx.Utils.ClusterUtils.discover_and_connect_local()
@@ -35,7 +34,7 @@ defmodule ChannelSenderEx.Application do
 
   defp topologies do
     [
-      background_job: @topology
-    ]
+      k8s: Application.get_env(:channel_sender_ex, :topology)
+    ] |> IO.inspect
   end
 end
