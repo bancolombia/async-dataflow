@@ -1,0 +1,87 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: adfsender-gw
+  namespace: sendernm
+spec:
+  selector:
+    istio: ingressgateway 
+  servers:
+    - port:
+        name: secure-port
+        number: 443
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: adfsender-credential
+      hosts:
+        - adfsender.example.com
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: adfsender-vs-socket
+  namespace: sendernm
+spec:
+  hosts:
+    - adfsender.example.com
+  gateways:
+    - adfsender-gw
+  http:
+    - match:
+        - uri:
+            prefix: /ext/socket
+      rewrite:
+        uri: /ext/socket
+      route:
+        - destination:
+            host: adfsender
+            port:
+              number: 8082
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: adfsender-vs-registration
+  namespace: sendernm
+spec:
+  hosts:
+    - adfsender
+  http:
+    - match:
+        - uri:
+            prefix: /ext/channel
+      rewrite:
+        uri: /ext/channel
+      route:
+        - destination:
+            host: adfsender
+            port:
+              number: 8081
+    - match:
+        - uri:
+            prefix: /health
+      rewrite:
+        uri: /health
+      route:
+        - destination:
+            host: adfsender
+            port:
+              number: 8081              
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: adfsender-vs-epmd
+  namespace: sendernm
+spec:
+  hosts:
+  - adfsender-headless
+  tcp:
+  - match:
+    - port: 4369
+    route:
+    - destination:
+        host: adfsender-headless
+        port:
+          number: 4369   

@@ -3,7 +3,7 @@
 #===============
 FROM elixir:1.12-alpine as build
 
-ARG BUILD_ENV=dev
+ARG BUILD_ENV=prod
 ARG BUILD_VER=0.1.2
 
 WORKDIR /build

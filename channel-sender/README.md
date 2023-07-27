@@ -48,25 +48,22 @@ Run make `https://editor.swagger.io/` add the `swagger.yaml` file and you get a 
 
 In the shell:
 
-```elixir
-iex -S mix
-or
- MIX_ENV=<CONFIG-FILE-NAME> iex --erl "-name async-node1@127.0.0.1" -S mix
+```bash
+$ iex -S mix
 ```
 
-### Connect nodes
+or to run several instances locally
 
-Can connect the nodes with a self-discovery strategy as a central register or broadcast, you can also connect the nodes manually with the following task. **this task is useful in development environment.**
+```bash
+$ MIX_ENV=<CONFIG-FILE-NAME> iex --erl "-name async-node1@127.0.0.1" -S mix
 
-```elixir
-Node.connect(:"node-name@ip")
 ```
 
-and verify with:
+### Connect nodes in erlang cluster in k8s
 
-```elixir
-Node.list()
-```
+ADF Sender incorporate `libcluster` dependency in order to facilitate the automatic configuration of erlang clusters in kubernetes.
+
+In folder `deploy_samples\k8s` we have included manifests to deploy ADF sender on kubernetes (and also if istio is present).
 
 ## Clients
 

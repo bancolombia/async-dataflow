@@ -10,4 +10,7 @@ config :channel_sender_ex,
   no_start: true,
   socket_idle_timeout: 60000,
   socket_port: 8082,
-  rest_port: 8081
+  rest_port: 8081,
+  topology: [
+    strategy: Cluster.Strategy.Gossip
+  ]

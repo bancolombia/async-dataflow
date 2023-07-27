@@ -9,5 +9,5 @@ config :channel_sender_ex,
   rest_port: 8081,
   max_age: 900,
   topology: [
-      strategy: Cluster.Strategy.Gossip
+    strategy: Cluster.Strategy.Gossip
   ]

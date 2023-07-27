@@ -9,4 +9,7 @@ config :channel_sender_ex,
   max_age: 900,
   socket_idle_timeout: 60000,
   socket_port: 8082,
-  rest_port: 8081
+  rest_port: 8081,
+  topology: [
+    strategy: Cluster.Strategy.Gossip
+  ]
