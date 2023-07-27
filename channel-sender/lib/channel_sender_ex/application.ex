@@ -5,6 +5,7 @@ defmodule ChannelSenderEx.Application do
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Transport.EntryPoint
   use Application
+  require Logger
   @no_start Application.get_env(:channel_sender_ex, :no_start)
   @http_port Application.get_env(:channel_sender_ex, :rest_port, 8080)
 
@@ -33,8 +34,10 @@ defmodule ChannelSenderEx.Application do
   defp children(_no_start = true), do: []
 
   defp topologies do
-    [
+    topology = [
       k8s: Application.get_env(:channel_sender_ex, :topology)
-    ] |> IO.inspect
+    ]
+    Logger.debug("Topology selected: #{inspect(topology)}")
+    topology
   end
 end

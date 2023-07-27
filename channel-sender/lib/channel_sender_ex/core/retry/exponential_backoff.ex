@@ -24,7 +24,7 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
       try do
         action_fn.(actual_delay)
       catch
-        _type, err -> :retry
+        _type, _err -> :retry
       end
     end)
     case val do
