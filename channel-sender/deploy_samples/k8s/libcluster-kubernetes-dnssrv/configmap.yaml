@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adfsender-config
+  namespace: sendernm
+data:
+  env.sh: |-
+    #!/bin/sh
+    export RELEASE_DISTRIBUTION=name
+    export RELEASE_NODE=channel_sender_ex@$(hostname -f)
+  runtime.exs: |-
+    import Config
+
+    config :channel_sender_ex,
+    secret_base:
+      {"aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc", "socket auth"},
+    socket_port: 8082,
+    initial_redelivery_time: 900,
+    socket_idle_timeout: 30000,
+    rest_port: 8091,
+    max_age: 900,
+    # libcluster topology for this demostration. 
+    # To see other topologies supported by libcluster 
+    # see library documentation.
+    topology: [
+      strategy: Cluster.Strategy.Kubernetes.DNSSRV,
+        config: [
+          service: "adfsender-headless",
+          application_name: "channel_sender_ex",
+          namespace: "sendernm",
+          polling_interval: 5000
+        ]
+    ]
