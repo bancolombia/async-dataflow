@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
         - name: adfsender
-          image: bancolombia/async-dataflow-channel-sender:0.1.3
+          image: bancolombia/async-dataflow-channel-sender:0.1.4
           env:                   
             - name: POD_IP
               valueFrom:
@@ -90,10 +90,10 @@ spec:
               memory: 250M
           volumeMounts:
           - name: config-volume
-            mountPath: /app/releases/0.1.3/env.sh
+            mountPath: /home/adfuser/releases/0.1.4/env.sh
             subPath: env.sh
           - name: config-volume
-            mountPath: /app/releases/0.1.3/runtime.exs
+            mountPath: /home/adfuser/releases/0.1.4/runtime.exs
             subPath: runtime.exs
       volumes:
         - name: config-volume

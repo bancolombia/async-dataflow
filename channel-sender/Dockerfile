@@ -4,7 +4,6 @@
 FROM elixir:1.12-alpine as build
 
 ARG BUILD_ENV=prod
-ARG BUILD_VER=0.1.3
 
 WORKDIR /build
 
@@ -21,16 +20,14 @@ RUN export MIX_ENV=${BUILD_ENV} && \
     mix release channel_sender_ex
 
 # Extract Release archive to /rel for copying in next stage
-RUN RELEASE_DIR=`ls -d _build/${BUILD_ENV}/` && \
+RUN RELEASE_FILE=`ls -d _build/${BUILD_ENV}/*.gz` && \
     mkdir /export && \
-    tar -xf "${RELEASE_DIR}/channel_sender_ex-${BUILD_VER}.tar.gz" -C /export
+    tar -xf "${RELEASE_FILE}" -C /export
 
 #===================
 # Deployment Stage
 #===================
 FROM alpine:3.17
-
-ARG BUILD_REL=channel_sender_ex
 
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
@@ -42,9 +39,13 @@ RUN apk upgrade --no-cache && \
       ca-certificates \
       bash
 
-WORKDIR /app
+RUN addgroup -S adfuser && adduser -S adfuser -G adfuser
 
-COPY --from=build /export/ .
+WORKDIR /home/adfuser
 
-ENTRYPOINT ["/app/bin/channel_sender_ex"]
+COPY --from=build --chown=adfuser:adfuser /export/ .
+
+USER adfuser
+
+ENTRYPOINT ["/home/adfuser/bin/channel_sender_ex"]
 CMD ["start"]   
