@@ -30,8 +30,6 @@ RUN RELEASE_DIR=`ls -d _build/${BUILD_ENV}/` && \
 #===================
 FROM alpine:3.17
 
-ARG BUILD_REL=channel_sender_ex
-
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
       ncurses-libs \
@@ -42,9 +40,13 @@ RUN apk upgrade --no-cache && \
       ca-certificates \
       bash
 
-WORKDIR /app
+RUN addgroup -S adfuser && adduser -S adfuser -G adfuser
 
-COPY --from=build /export/ .
+WORKDIR /home/adfuser
 
-ENTRYPOINT ["/app/bin/channel_sender_ex"]
+COPY --from=build --chown=adfuser:adfuser /export/ .
+
+USER adfuser
+
+ENTRYPOINT ["/home/adfuser/bin/channel_sender_ex"]
 CMD ["start"]   
