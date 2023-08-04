@@ -29,7 +29,10 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   def connect_socket_to_channel(channel_ref, socket_pid) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       :noproc -> :noproc
-      pid -> Channel.socket_connected(pid, socket_pid)
+      pid ->
+        timeout = Application.get_env(:channel_sender_ex,
+                            :on_connected_channel_reply_timeout)
+        Channel.socket_connected(pid, socket_pid, timeout)
     end
   catch
     _type, _err -> :noproc
@@ -37,7 +40,3 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
 
 
 end
-
-
-
-

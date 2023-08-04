@@ -11,6 +11,19 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   @moduletag :capture_log
 
   setup_all do
+    Application.put_env(:channel_sender_ex,
+    :accept_channel_reply_timeout,
+    1000)
+
+    Application.put_env(:channel_sender_ex,
+      :on_connected_channel_reply_timeout,
+      2000)
+
+    Application.put_env(:channel_sender_ex, :secret_base, {
+        "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
+        "socket auth"
+    })
+
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
     Helper.compile(:channel_sender_ex)
     :ok

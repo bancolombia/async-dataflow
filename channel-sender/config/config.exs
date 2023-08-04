@@ -1,11 +1,8 @@
 import Config
 
 config :channel_sender_ex,
-  channel_supervisor_module: Horde.DynamicSupervisor,
-  registry_module: Horde.Registry,
   app_repo: ChannelSenderEx.Repository.ApplicationRepo,
   channel_shutdown_tolerance: 10_000,
-  no_start: false,
   min_disconnection_tolerance: 50,
   socket_event_bus: ChannelSenderEx.Core.PubSub.SocketEventBus
 

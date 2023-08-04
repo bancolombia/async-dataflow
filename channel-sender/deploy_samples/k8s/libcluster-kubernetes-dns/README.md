@@ -110,34 +110,43 @@ Building an Erlang Cluster with `libcluster` strategy named:  [`Cluster.Strategy
 
 ### 2.1. ADF Sender configuration
 
-a. **Topology config**
+a. **Basic Sender Configuration**
 
-You can set topology related configuration in `config\runtime.exs`:
+You can provide all sender configuration via a yaml file. 
 
-```elixir
-import Config
+For containers using prod release, path should be: `/app/config/config.yaml` for mounting the file.
 
-config :logger, level: :info
+config.yaml:
+```yaml
+channel_sender_ex:
+  rest_port: 8081
+  socket_port: 8082
+  secret_generator:
+    base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
+    salt: "socket auth"
+    max_age: 900
+  initial_redelivery_time: 900
+  socket_idle_timeout: 30000
+  channel_shutdown_tolerance: 10000
+  min_disconnection_tolerance: 50
+  on_connected_channel_reply_timeout: 2000
+  accept_channel_reply_timeout: 1000
+  no_start: false
+  # --- libcluster related config ---
+  topology:
+    strategy: Elixir.Cluster.Strategy.Kubernetes
+    config: 
+      service: "adfsender-headless"
+      application_name: "channel_sender_ex"
+      namespace: "sendernm"
+      polling_interval: 5000
+  # --- end libcluster configuration ---
 
-config :channel_sender_ex,
-  secret_base:
-    {"aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc", "socket auth"},
-  socket_port: 8082,
-  initial_redelivery_time: 900,
-  socket_idle_timeout: 30000,
-  rest_port: 8081,
-  max_age: 900,
-  topology: [
-    strategy: Elixir.Cluster.Strategy.Kubernetes.DNS,
-        config: [
-            service: "adfsender-headless"
-            application_name: "channel_sender_ex"
-            namespace: "sendernm"
-            polling_interval: 5000
-        ]
-    ]
+logger:
+  level: debug
 ```
-where:
+
+Note the specifics in the libcluster configuration:
 
 - `service` it's the headless service name defined in `app.yaml`.
 - `application_name` it's the elixir release name. See `mix.exs`. Default release name is `channel_sender_ex`.
@@ -145,11 +154,11 @@ where:
 
 b. **Define related env vars for release**
 
-via `rel/env.sh.eex` file:
+You must mount a file in the following path `/app/config/env.sh`, performing any env configuration:
 
-```elixir
+```bash
 export RELEASE_DISTRIBUTION=name
-export RELEASE_NODE=<%= @release.name %>@${POD_IP}
+export RELEASE_NODE=channel_sender_ex@${POD_IP}
 ```
 
 check env var POD_IP being injected in `app.yaml`.

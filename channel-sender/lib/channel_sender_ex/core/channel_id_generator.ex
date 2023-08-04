@@ -7,10 +7,6 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
   import Plug.Crypto, only: [verify: 4, sign: 3]
   alias ChannelSenderEx.Core.RulesProvider
 
-  @application_name :channel_sender_ex
-  @secret_key :secret_base
-  @max_age :max_age
-
   @type application() :: String.t()
   @type user_ref() :: String.t()
   @type channel_ref() :: String.t()
@@ -51,11 +47,11 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
   end
 
   defp get_secret_and_salt!() do
-    case get_env(@application_name, @secret_key) do
+    case get_env(:channel_sender_ex, :secret_base) do
       data = {_secret, _salt} -> data
       other -> raise "Secret base no properly configured for application: #{other}"
     end
   end
 
-  defp max_age(), do: RulesProvider.get(@max_age)
+  defp max_age(), do: RulesProvider.get(:max_age)
 end

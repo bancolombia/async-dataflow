@@ -22,6 +22,7 @@ RUN export MIX_ENV=${BUILD_ENV} && \
 # Extract Release archive to /rel for copying in next stage
 RUN RELEASE_FILE=`ls -d _build/${BUILD_ENV}/*.gz` && \
     mkdir /export && \
+    cp container_utils/runner.sh /export && \
     tar -xf "${RELEASE_FILE}" -C /export
 
 #===================
@@ -41,11 +42,14 @@ RUN apk upgrade --no-cache && \
 
 RUN addgroup -S adfuser && adduser -S adfuser -G adfuser
 
-WORKDIR /home/adfuser
+WORKDIR /app
 
 COPY --from=build --chown=adfuser:adfuser /export/ .
 
 USER adfuser
 
-ENTRYPOINT ["/home/adfuser/bin/channel_sender_ex"]
-CMD ["start"]   
+VOLUME /app/config
+
+ENTRYPOINT ["/bin/bash"]
+CMD ["/app/runner.sh"]  
+

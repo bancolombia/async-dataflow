@@ -16,7 +16,9 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBus do
   def connect_channel(channel, socket_pid, count) do
     case ChannelRegistry.lookup_channel_addr(channel) do
       pid when is_pid(pid) ->
-        :ok = Channel.socket_connected(pid, socket_pid)
+        timeout = Application.get_env(:channel_sender_ex,
+                            :on_connected_channel_reply_timeout)
+        :ok = Channel.socket_connected(pid, socket_pid, timeout)
         pid
       :noproc ->
         Process.sleep(350)

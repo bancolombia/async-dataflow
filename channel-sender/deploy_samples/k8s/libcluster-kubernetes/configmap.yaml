@@ -8,31 +8,33 @@ data:
     #!/bin/sh
     export RELEASE_DISTRIBUTION=name
     export RELEASE_NODE=channel_sender_ex@${POD_NAME}.${POD_NAME_DNS}
-  runtime.exs: |-
-    import Config
-
-    config :channel_sender_ex,
-    secret_base:
-      {"aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc", "socket auth"},
-    socket_port: 8082,
-    initial_redelivery_time: 900,
-    socket_idle_timeout: 30000,
-    rest_port: 8081,
-    max_age: 900,
-    # libcluster topology for this demostration. 
-    # To see other topologies supported by libcluster 
-    # see library documentation.
-    topology: [
-      strategy: Cluster.Strategy.Kubernetes,
-        config: [
-          mode: :hostname,
-          kubernetes_ip_lookup_mode: :pods,
-          kubernetes_service_name: "adfsender-headless",
-          kubernetes_node_basename: "channel_sender_ex",
-          kubernetes_selector: "cluster=beam",
-          namespace: "sendernm",
+  config.yaml: |-
+    channel_sender_ex:
+      rest_port: 8081
+      socket_port: 8082
+      secret_generator:
+        base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
+        salt: "socket auth"
+        max_age: 900
+      initial_redelivery_time: 900
+      socket_idle_timeout: 30000
+      channel_shutdown_tolerance: 10000
+      min_disconnection_tolerance: 50
+      on_connected_channel_reply_timeout: 2000
+      accept_channel_reply_timeout: 1000
+      no_start: false
+      topology:
+        strategy: Elixir.Cluster.Strategy.Kubernetes
+        config: 
+          mode: :hostname
+          kubernetes_ip_lookup_mode: :pods
+          kubernetes_service_name: "adfsender-headless"
+          kubernetes_node_basename: "channel_sender_ex"
+          kubernetes_selector: "cluster=beam"
+          namespace: "sendernm"
           polling_interval: 5000
-        ]
-    ]
+
+    logger:
+      level: debug
 
 
