@@ -10,7 +10,7 @@ The demo templates rely on [libcluster](https://hexdocs.pm/libcluster/readme.htm
 
 These templates also asume istio is installed and enforcing mtls cluster-wide.
 
-## Folders
+## Strategies
 
 a. [libcluster-kubernetes](./libcluster-kubernetes/README.md): Templates for deploying sender using  `libcluster` strategy `Cluster.Strategy.Kubernetes`.
 

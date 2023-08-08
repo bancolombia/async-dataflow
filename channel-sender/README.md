@@ -29,7 +29,7 @@ mix compile
 
 ### Configuration
 
-Open and edit the config/dev.exs file to configure, you can create and set new environment files.
+Open and edit the `config.yaml` file to set up configurations.
 | **Parameters** | Description | Default Value |
 | -------------------------------- | -------------------------------------- | ------------------ |
 | `socket_port` | Port to atend Web Sockets requests | 8082 |
@@ -63,7 +63,7 @@ $ MIX_ENV=<CONFIG-FILE-NAME> iex --erl "-name async-node1@127.0.0.1" -S mix
 
 ADF Sender incorporate `libcluster` dependency in order to facilitate the automatic configuration of erlang clusters in kubernetes.
 
-In folder `deploy_samples\k8s` we have included manifests to deploy ADF sender on kubernetes (and also if istio is present).
+In folder [deploy_samples\k8s](./deploy_samples/k8s/README.md) we have included manifests to deploy ADF sender on kubernetes (and also if istio is present), using 3 of the strategies supported by `libcluster`.
 
 ## Clients
 

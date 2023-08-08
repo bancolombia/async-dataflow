@@ -7,8 +7,18 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
   @moduletag :capture_log
 
   setup_all do
+    Application.put_env(:channel_sender_ex, :secret_base, {
+      "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
+      "socket auth"
+    })
+
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
     Helper.compile(:channel_sender_ex)
+
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :secret_base)
+    end)
+
     :ok
   end
 

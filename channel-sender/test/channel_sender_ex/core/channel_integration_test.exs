@@ -9,11 +9,22 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
   @moduletag :capture_log
 
-  @supervisor_module Application.get_env(:channel_sender_ex, :channel_supervisor_module)
-  @registry_module Application.get_env(:channel_sender_ex, :registry_module)
-
   setup_all do
     IO.puts("Starting Applications for Socket Test")
+
+    Application.put_env(:channel_sender_ex,
+      :accept_channel_reply_timeout,
+      1000)
+
+    Application.put_env(:channel_sender_ex,
+      :on_connected_channel_reply_timeout,
+      2000)
+
+    Application.put_env(:channel_sender_ex, :secret_base, {
+        "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
+        "socket auth"
+      })
+
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
@@ -26,14 +37,16 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
       event_name: "event.example"
     }
 
-    {:ok, pid_registry} = @registry_module.start_link(name: ChannelRegistry, keys: :unique)
+    {:ok, pid_registry} = Horde.Registry.start_link(name: ChannelRegistry, keys: :unique)
 
     {:ok, pid_supervisor} =
-      @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+      Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
 
     on_exit(fn ->
       true = Process.exit(pid_registry, :normal)
       true = Process.exit(pid_supervisor, :normal)
+      Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
+      Application.delete_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
       IO.puts("Supervisor and Registry was terminated")
     end)
 
@@ -58,6 +71,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     channel: channel,
     secret: secret
   } do
+
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
     assert {:accepted_connected, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
@@ -123,7 +137,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
   defp assert_connect_and_authenticate(port, channel, secret) do
     conn = connect(port, channel)
-    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
+    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 500
     :gun.ws_send(conn, {:text, "Auth::#{secret}"})
 
     assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}

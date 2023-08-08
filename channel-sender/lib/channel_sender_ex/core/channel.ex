@@ -7,21 +7,7 @@ defmodule ChannelSenderEx.Core.Channel do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
 
-  # Max allowed time in waiting before terminate the channel
-  #  @waiting_timeout Application.get_env(:channel_sender_ex, :channel_waiting_timeout, 30)
-  #  @message_time_to_live Application.get_env(:channel_sender_ex, :message_time_to_live, 8000)
-  @token_max_age :max_age
-  @min_disconnection_tolerance :min_disconnection_tolerance
-  @on_connected_channel_reply_timeout Application.get_env(
-                                        :channel_sender_ex,
-                                        :on_connected_channel_reply_timeout,
-                                        2000
-                                      )
-  @accept_channel_reply_timeout Application.get_env(
-                                  :channel_sender_ex,
-                                  :accept_channel_reply_timeout,
-                                  1000
-                                )
+  @on_connected_channel_reply_timeout 2000
 
   @type delivery_ref() :: {pid(), reference()}
   @type output_message() :: {delivery_ref(), ProtocolMessage.t()}
@@ -62,7 +48,10 @@ defmodule ChannelSenderEx.Core.Channel do
   @type deliver_response :: :accepted_waiting | :accepted_connected
   @spec deliver_message(:gen_statem.server_ref(), ProtocolMessage.t()) :: deliver_response()
   def deliver_message(server, message) do
-    GenStateMachine.call(server, {:deliver_message, message}, @accept_channel_reply_timeout)
+    GenStateMachine.call(server, {:deliver_message, message}, Application.get_env(
+      :channel_sender_ex,
+      :accept_channel_reply_timeout
+    ))
   end
 
   @spec start_link(any()) :: :gen_statem.start_ret()
@@ -90,7 +79,7 @@ defmodule ChannelSenderEx.Core.Channel do
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
   def waiting(:enter, _old_state, data) do
-    waiting_timeout = round(RulesProvider.get(@token_max_age) * 1000)
+    waiting_timeout = round(RulesProvider.get(:max_age) * 1000)
     {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
   end
 
@@ -325,8 +314,8 @@ defmodule ChannelSenderEx.Core.Channel do
   @spec calculate_refresh_token_timeout() :: integer()
   @compile {:inline, calculate_refresh_token_timeout: 0}
   defp calculate_refresh_token_timeout() do
-    token_validity = RulesProvider.get(@token_max_age)
-    tolerance = RulesProvider.get(@min_disconnection_tolerance)
+    token_validity = RulesProvider.get(:max_age)
+    tolerance = RulesProvider.get(:min_disconnection_tolerance)
     min_timeout = token_validity / 2
     round(max(min_timeout, token_validity - tolerance) * 1000)
   end

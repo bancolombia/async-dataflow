@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
         - name: adfsender
-          image: bancolombia/async-dataflow-channel-sender:0.1.4
+          image: bancolombia/async-dataflow-channel-sender:0.1.5
           env:                   
             - name: ERLANG_COOKIE
               value: "secret"
@@ -86,11 +86,11 @@ spec:
               memory: 250M
           volumeMounts:
           - name: config-volume
-            mountPath: /home/adfuser/releases/0.1.4/env.sh
+            mountPath: /app/config/env.sh
             subPath: env.sh
           - name: config-volume
-            mountPath: /home/adfuser/releases/0.1.4/runtime.exs
-            subPath: runtime.exs
+            mountPath: /app/config/config.yaml
+            subPath: config.yaml
       volumes:
         - name: config-volume
           configMap:

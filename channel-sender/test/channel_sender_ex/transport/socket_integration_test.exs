@@ -15,13 +15,25 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   @moduletag :capture_log
 
-  @supervisor_module Application.get_env(:channel_sender_ex, :channel_supervisor_module)
-  @registry_module Application.get_env(:channel_sender_ex, :registry_module)
   @binary "binary_flow"
   @json "json_flow"
 
   setup_all do
     IO.puts("Starting Applications for Socket Test")
+
+    Application.put_env(:channel_sender_ex,
+      :accept_channel_reply_timeout,
+      1000)
+
+    Application.put_env(:channel_sender_ex,
+      :on_connected_channel_reply_timeout,
+      2000)
+
+    Application.put_env(:channel_sender_ex, :secret_base, {
+        "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
+        "socket auth"
+    })
+
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
@@ -34,12 +46,16 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
       event_name: "event.example"
     }
 
-    {:ok, pid_registry} = @registry_module.start_link(name: ChannelRegistry, keys: :unique)
+    {:ok, pid_registry} = Horde.Registry.start_link(name: ChannelRegistry, keys: :unique)
 
     {:ok, pid_supervisor} =
-      @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+      Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+
 
     on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
+      Application.delete_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
+      Application.delete_env(:channel_sender_ex, :secret_base)
       true = Process.exit(pid_registry, :normal)
       true = Process.exit(pid_supervisor, :normal)
       IO.puts("Supervisor and Registry was terminated")
@@ -63,7 +79,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   test "Should connect to socket", %{port: port, channel: channel} do
     conn = connect(port, channel)
-    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
+    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 300
     :gun.close(conn)
   end
 
@@ -351,4 +367,5 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   defp decode_message({:binary, data}) do
     IO.inspect(BinaryEncoder.decode_message(data))
   end
+
 end
