@@ -134,7 +134,7 @@ channel_sender_ex:
   no_start: false
   # --- libcluster related config ---
   topology:
-    strategy: Elixir.Cluster.Strategy.Kubernetes
+    strategy: Elixir.Cluster.Strategy.Kubernetes.DNS
     config: 
       service: "adfsender-headless"
       application_name: "channel_sender_ex"
