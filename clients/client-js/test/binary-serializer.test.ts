@@ -2,7 +2,6 @@ import * as chai from 'chai';
 
 import {ChannelMessage} from "../src/channel-message";
 import {MessageDecoder} from "../src/serializer";
-import {MessageEvent} from "./support/event"
 import {BinaryDecoder} from "../src/binary-decoder";
 import "fast-text-encoding"
 

@@ -6,7 +6,7 @@ export class Utils{
         return (baseTime - rest) + Math.random() * rest;
     }
 
-    public static expBackoff(initial: number, max: number, actualRetry: number, jitterFn: Function = (x) => x){
+    public static expBackoff(initial: number, max: number, actualRetry: number, jitterFn: (x: number) => number){
         const base = initial * Math.pow(2, actualRetry);
         if (base > max){
             return jitterFn(max)

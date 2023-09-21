@@ -3,7 +3,6 @@ import * as chai from 'chai';
 import {JsonDecoder} from "../src/json-decoder";
 import {ChannelMessage} from "../src/channel-message";
 import {MessageDecoder} from "../src/serializer";
-import {MessageEvent} from "./support/event"
 
 const assert = chai.assert;
 describe('Json Serializer Tests', function()  {
