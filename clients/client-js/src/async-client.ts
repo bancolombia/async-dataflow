@@ -152,8 +152,8 @@ export class AsyncClient {
 
     private matchHandlerExpr(eventExpr: string, actualEventName: string): boolean {
         if (eventExpr === actualEventName) return true;
-        const regexString = '^' + eventExpr.replace(/\*/g, '([^.]+)').replace(/#/g, '([^.]+\.?)+') + '$';
-        return actualEventName.search(regexString) !== -1;
+        const regexString = '^' + eventExpr.replace(/\*/g, '([^.]+)').replace(/#/g, '([^.]+\\.?)+') + '$';
+                return actualEventName.search(regexString) !== -1;
     }
 
     private deDupFilter(message_id: string): boolean {
