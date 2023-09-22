@@ -38,6 +38,8 @@ const client = new AsyncClient({
 ...
 ```
 
+### Configuration parameters
+
 | **Parameters**          | Description                                                                                                                                   | Default Value |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | socket_url              | [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender) cluster url                         |               |
@@ -45,6 +47,11 @@ const client = new AsyncClient({
 | channel_secret          | token getted from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender)   |               |
 | heartbeat_interval      | time in milliseconds to verify socket connection **this parameter must be less than the socket_idle_timeout on the channel sender**           | 750           |
 | enable_binary_transport | boolean parameter to indicate use binary protocol                                                                                             | false         |
+| dedupCacheDisable | boolean flag to control dedup operations of messages by its `message_id`. If `true` no dedup operation will be performed. | false |
+| dedupCacheMaxSize | max ammount of elements to cache in the dedup process. Only if `dedupCacheDisable` is false. | 500 |
+| dedupCacheTtl | time to live of cached elements in the dedup operation (in minutes). Only if `dedupCacheDisable` is false. | 15 |
+
+### Subscribing to events
 
 ```javascript
 client.listenEvent("event.some-name", (message) =>
@@ -58,3 +65,5 @@ You can also use amqp-match style name expressions when susbscribing to events. 
 client.listenEvent("event.#", (message) => someCallback(message.payload));
 client.listenEvent("event.some.*", (message) => someCallback(message.payload));
 ```
+
+Messages will be delivered **at least once**, as Channel-Sender implements delivery guarantee. If your application is sensible to the reception of eventually duplicated messages, you can make use of the simple dedup operation this client provides, by caching message_ids by certain time and only invokig your callback once, or by implementing your own dedup operation.

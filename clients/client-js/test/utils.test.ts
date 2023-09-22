@@ -29,7 +29,7 @@ describe('Utils Tests', function()  {
             [11, 6000],
         ];
 
-        const results = [0,1,2,3,4,5,6,7,8,9,10,11].map(x => [x, Utils.expBackoff(10, 6000, x)]);
+        const results = [0,1,2,3,4,5,6,7,8,9,10,11].map(x => [x, Utils.expBackoff(10, 6000, x, (x) => x)]);
         assert.deepEqual(expected, results);
     });
 

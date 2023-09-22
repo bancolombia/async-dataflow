@@ -6,11 +6,12 @@ import {RetryTimer} from "../src/retry-timer";
 const assert = chai.assert;
 describe('Exponential Retry Timer Tests', function()  {
 
+    let timer: RetryTimer;
+    
     it('Should retry with exponential delay' ,async () => {
-        let times = [];
         let counter = 0;
         let lastTime = Date.now();
-        let timer = null;
+        let times: number[] = [];
 
         let retryProcess = new Promise(resolve => {
             timer = new RetryTimer(() => {

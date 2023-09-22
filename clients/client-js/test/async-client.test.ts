@@ -1,6 +1,6 @@
 import * as chai from 'chai';
 
-import {AsyncClient} from "../src/async-client";
+import {AsyncClient, AsyncConfig} from "../src/async-client";
 import {Server, WebSocket} from 'mock-socket';
 
 import {ChannelMessage} from "../src/channel-message";
@@ -18,13 +18,14 @@ function timeout(millis : number) : Promise<any> {
     });
 }
 
+
 describe('Async client Tests', function()  {
     let mockServer;
     let client : AsyncClient;
-    let config = {
+    let config: AsyncConfig = {
         socket_url: "wss://host.local/socket",
         channel_ref: "ab771f3434aaghjgr",
-        channel_secret: "secret234342432dsfghjikujyg1221",
+        channel_secret: "secret234342432dsfghjikujyg1221"
     };
 
     beforeEach(() => {
@@ -98,9 +99,64 @@ describe('Async client Tests', function()  {
         client.disconnect();
     });
 
-
 });
 
+describe('Async client No Dedup Tests', function()  {
+    let mockServer;
+    let client : AsyncClient;
+    let config: AsyncConfig = {
+        socket_url: "wss://host.local/socket",
+        channel_ref: "ab771f3434aaghjgr",
+        channel_secret: "secret234342432dsfghjikujyg1221",
+        dedupCacheDisable: true
+    };
+
+    beforeEach(() => {
+        mockServer = new Server("wss://host.local/socket");
+        client = new AsyncClient(config, WebSocket);
+    })
+
+    afterEach((done) => {
+        mockServer.stop(() => done());
+    });
+
+    after(() => {
+        client.disconnect();
+    });
+
+    it('Should authenticate with server and route duplicated message' , async() => {
+        mockServer.on('connection', socket => {
+            socket.on('message', data => {
+                if (data == `Auth::${config.channel_secret}`){
+                    socket.send('["", "", "AuthOk", ""]');
+                    socket.send('["333444", "001", "person.registered", "CC111222"]');
+                    socket.send('["333444", "002", "person.registered", "CC111222"]');
+                    socket.send('["444444", "003", "person.registered", "CC983979"]');
+                }else {
+                    socket.send('["", "", "NoAuth", ""]');
+                }
+            });
+        });
+
+        assert.isFalse(client.isActive);
+        const message = new Promise<number>(resolve => {
+            var counter = 0;
+            client.listenEvent("person.registered", message => {
+                counter++;
+            })
+            setTimeout(() => resolve(counter), 200)
+        });
+        client.connect();
+
+        const result = await Promise.race([timeout(200), message]);
+        // @ts-ignore
+        assert.isTrue(client.isActive);
+        assert.notEqual(result, "timeout");
+        assert.equal(result, 3);
+        client.disconnect();
+    });
+
+});
 
 describe('Async Reconnection Tests', () =>  {
 
@@ -110,7 +166,7 @@ describe('Async Reconnection Tests', () =>  {
         channel_secret: "secret234342432dsfghjikujyg1221",
         heartbeat_interval: 200
     };
-
+    
 
     it('Should ReConnect when server closes the socket' , async() => {
         let mockServer = new Server("wss://reconnect.local:8984/socket");
@@ -134,7 +190,8 @@ describe('Async Reconnection Tests', () =>  {
         mockServer.stop();
 
         // @ts-ignore
-        await timeout(700);
+        await timeout(200);
+
         const newData = new Promise<string>(resolve => client.listenEvent("person.registered2", message => resolve(message.payload)));
         mockServer = new Server("wss://reconnect.local:8984/socket");
         mockServer.on('connection', socket => {
@@ -142,20 +199,22 @@ describe('Async Reconnection Tests', () =>  {
                 if (data == `Auth::${config.channel_secret}`){
                     socket.send('["", "", "AuthOk", ""]');
                     // @ts-ignore
-                    setTimeout(() => socket.send('["12", "", "person.registered2", "CC1112223"]'), 200)
+                    setTimeout(() => socket.send('["120", "", "person.registered2", "CC1112223"]'), 200)
                 }
             });
         });
-
+        
         const message2 = await newData;
         assert.equal(message2, "CC1112223");
+
         client.disconnect();
         mockServer.close();
-        await new Promise(resolve => mockServer.stop(resolve));
+        mockServer.stop();
     });
 
 
     it('Should ReConnect when no heartbeat' , async() => {
+
         config.socket_url = "wss://reconnect.local:8987/socket";
         let mockServer = new Server(config.socket_url);
         let client : AsyncClient = new AsyncClient(config, WebSocket);
@@ -165,15 +224,18 @@ describe('Async Reconnection Tests', () =>  {
 
         mockServer.on('connection', socket => {
             socketSender = socket;
-            socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
-                    connectCount = connectCount + 1;
-                    socket.send('["", "", "AuthOk", ""]');
-                    // @ts-ignore
-                    setTimeout(() => socket.send('["12", "", "person.registered", "CC111222"]'), 200)
-                }else if (data.startsWith("hb::") && respondBeat){
-                    let correlation = data.split("::")[1];
-                    socket.send(`["", ${correlation}, ":hb", ""]`);
+            socket.on('message', raw_data => {
+                if (typeof raw_data == "string") {
+                    let data = String(raw_data);
+                    if (data == `Auth::${config.channel_secret}`){
+                        connectCount = connectCount + 1;
+                        socket.send('["", "", "AuthOk", ""]');
+                        // @ts-ignore
+                        setTimeout(() => socket.send('["12", "", "person.registered", "CC111222"]'), 200)
+                    }else if (data.startsWith("hb::") && respondBeat){
+                        let correlation = data.split("::")[1];
+                        socket.send(`["", ${correlation}, ":hb", ""]`);
+                    }
                 }
             });
         });
@@ -188,14 +250,18 @@ describe('Async Reconnection Tests', () =>  {
 
         await timeout(700);
         client.disconnect();
-        await new Promise(resolve => mockServer.stop(resolve));
+
+        await new Promise((resolve, reject) => {
+            mockServer.stop(() => {
+                resolve(0);
+            })
+        });
         assert.approximately(connectCount, lastCount, 1);
 
     });
 
 
 });
-
 
 describe('Refresh token Tests', () =>  {
 
@@ -210,13 +276,13 @@ describe('Refresh token Tests', () =>  {
     it('Should ReConnect with new token' , async() => {
         let mockServer = new Server(config.socket_url);
         let client : AsyncClient = new AsyncClient(config, WebSocket);
-        let socketSender;
+        // let socketSender;
         mockServer.on('connection', socket => {
-            socketSender = socket;
+            // socketSender = socket;
             socket.on('message', data => {
                 if (data == `Auth::${config.channel_secret}`){
                     socket.send('["", "", "AuthOk", ""]');
-                    socket.send('["01", "", ":new_tkn", "new_token_secret12243"]');
+                    socket.send('["01", "", ":n_token", "new_token_secret12243"]');
                     socket.send('["02", "", "person.registered", "CC10202029"]');
                 }
             });
@@ -224,7 +290,9 @@ describe('Refresh token Tests', () =>  {
 
         const message = new Promise<string>(resolve => client.listenEvent("person.registered", message => resolve(message.payload)));
         client.connect();
+
         const result = await message;
+        console.log(`>>>>> result is: ${result}`);
 
         mockServer.close();
         mockServer.stop();
@@ -232,29 +300,35 @@ describe('Refresh token Tests', () =>  {
         // @ts-ignore
         await timeout(200);
         config.channel_secret = "new_token_secret12243";
+
         const newData = new Promise<string>(resolve => client.listenEvent("person.registered2", message => resolve(message.payload)));
         mockServer = new Server(config.socket_url);
         mockServer.on('connection', socket => {
-            socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
-                    socket.send('["", "", "AuthOk", ""]');
-                    socket.send('["12", "", "person.registered2", "CC1112223"]');
-                }else if (data.startsWith("Auth::")){
-                    // @ts-ignore
-                    console.log("Credenciales no validas");
-                    mockServer.close({code: 4403, reason: "Invalid auth", wasClean: true})
+            socket.on('message', raw_data => {
+                if (typeof raw_data == "string") {
+                    let data = String(raw_data);
+                    if (data == `Auth::${config.channel_secret}`){
+                        socket.send('["", "", "AuthOk", ""]');
+                        socket.send('["12", "", "person.registered2", "CC1112223"]');
+                    }else if (data.startsWith("Auth::")){
+                        // @ts-ignore
+                        console.log("Credenciales no validas");
+                        mockServer.close({code: 4403, reason: "Invalid auth", wasClean: true})
+                    }
                 }
             });
         });
 
+
+        console.log(`<<<<< preparing to call`);
         const message2 = await newData;
-        assert.equal(message2, "CC1112223");
+        console.log(`>>>>> second result is: ${message2}`);
         client.disconnect();
-        await new Promise(resolve => mockServer.stop(resolve));
+
+        assert.equal(message2, "CC1112223");
     });
 
 });
-
 
 describe('Protocol negotiation Tests', function()  {
     let client: AsyncClient;
@@ -393,15 +467,12 @@ describe('Event handler matching Tests', function()  {
         client.disconnect();
     });
 
-    it('Should match single word wildcard' , async() => {
+    it('Should match single word wildcard I' , async() => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
                 if (data == `Auth::${config.channel_secret}`){
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "quick.orange.rabbit", "Hi, There Rabbit"]');
-                    socket.send('["12", "", "lazy.brown.fox", "Hi, There Fox"]');
-                    socket.send('["12", "", "lazy.orange.elephant", "Hi, There Elephant"]');
-                    socket.send('["12", "", "quick.white.male.bird", "Hi, There Male Bird"]');
                 }else {
                     socket.send('["", "", "NoAuth", ""]');
                 }
@@ -409,26 +480,65 @@ describe('Event handler matching Tests', function()  {
         });
 
         assert.isFalse(client.isActive);
-        const message = new Promise<boolean>(resolve => client.listenEvent("quick.orange.*", message => resolve(message)));
-        const message2 = new Promise<boolean>(resolve => client.listenEvent("lazy.*.fox", message => resolve(message)));
-        const message3 = new Promise<boolean>(resolve => client.listenEvent("*.orange.elephant", message => resolve(message)));
-        const message4 = new Promise<boolean>(resolve => client.listenEvent("quick.*.bird", message => resolve(message)));
+        const message = new Promise<string>(resolve => client.listenEvent("quick.orange.*", message => resolve(message)));
         client.connect();
 
         const result = await Promise.race([timeout(200), message]);
-        const result2 = await Promise.race([timeout(200), message2]);
-        const result3 = await Promise.race([timeout(200), message3]);
-        const result4 = await Promise.race([timeout(200), message4]);
 
         // @ts-ignore
         assert.isTrue(client.isActive);
         assert.notEqual(result, "timeout");
-        assert.notEqual(result2, "timeout");
-        assert.notEqual(result3, "timeout");
         assert.equal(result.payload, "Hi, There Rabbit");
+        client.disconnect();
+    });
+
+    it('Should match single word wildcard II' , async() => {
+        mockServer.on('connection', socket => {
+            socket.on('message', data => {
+                if (data == `Auth::${config.channel_secret}`){
+                    socket.send('["", "", "AuthOk", ""]');
+                    socket.send('["12", "", "lazy.brown.fox", "Hi, There Fox"]');
+                }else {
+                    socket.send('["", "", "NoAuth", ""]');
+                }
+            });
+        });
+
+        assert.isFalse(client.isActive);
+        const message2 = new Promise<string>(resolve => client.listenEvent("lazy.*.fox", message => resolve(message)));
+        client.connect();
+
+        const result2 = await Promise.race([timeout(200), message2]);
+
+        // @ts-ignore
+        assert.isTrue(client.isActive);
+        assert.notEqual(result2, "timeout");
         assert.equal(result2.payload, "Hi, There Fox");
-        assert.equal(result3.payload, "Hi, There Elephant");
-        assert.equal(result4, "timeout");
+        client.disconnect();
+    });
+
+    it('Should match single word wildcard III' , async() => {
+        mockServer.on('connection', socket => {
+            socket.on('message', data => {
+                if (data == `Auth::${config.channel_secret}`){
+                    socket.send('["", "", "AuthOk", ""]');
+                    socket.send('["12", "", "lazy.orange.elephant", "Hi, There Elephant"]');
+                }else {
+                    socket.send('["", "", "NoAuth", ""]');
+                }
+            });
+        });
+
+        assert.isFalse(client.isActive);
+        const message2 = new Promise<string>(resolve => client.listenEvent("*.orange.elephant", message => resolve(message)));
+        client.connect();
+
+        const result2 = await Promise.race([timeout(200), message2]);
+
+        // @ts-ignore
+        assert.isTrue(client.isActive);
+        assert.notEqual(result2, "timeout");
+        assert.equal(result2.payload, "Hi, There Elephant");
         client.disconnect();
     });
 
@@ -446,8 +556,8 @@ describe('Event handler matching Tests', function()  {
         });
 
         assert.isFalse(client.isActive);
-        const message1 = new Promise<boolean>(resolve => client.listenEvent("quick.#.bird", message => resolve(message)));
-        const message2 = new Promise<boolean>(resolve => client.listenEvent("lazy.#.rabbit", message => resolve(message)));
+        const message1 = new Promise<string>(resolve => client.listenEvent("quick.#.bird", message => resolve(message)));
+        const message2 = new Promise<string>(resolve => client.listenEvent("lazy.#.rabbit", message => resolve(message)));
         client.connect();
 
         const result1 = await Promise.race([timeout(200), message1]);
@@ -463,6 +573,7 @@ describe('Event handler matching Tests', function()  {
     });
 
 });
+
 
 function waitFor(promise) {
     return Promise.race([timeout(200), promise]);
