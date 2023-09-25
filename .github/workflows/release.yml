@@ -1,7 +1,8 @@
 name: Deploy image Async DataFlow channel sender
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'sender_*' # Push events to matching sender_*, i.e. sender_1.5.0
 jobs:
   deploy:
     defaults:
