@@ -1,0 +1,30 @@
+name: Deploy Async DataFlow channel sender JS client
+
+on:
+  push:
+    tags:
+      - 'chanjs_*' # Push events to matching chanjs_*, i.e. chanjs_0.2.0
+jobs:
+  build:
+    defaults:
+      run:
+        working-directory: clients/client-js
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    # Setup .npmrc file to publish to npm
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        registry-url: 'https://registry.npmjs.org'
+    - run: npm install
+    - run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    - uses: actions/setup-node@v3
+      with:
+        registry-url: 'https://npm.pkg.github.com'
+        scope: '@bancolombia'
+    - run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
