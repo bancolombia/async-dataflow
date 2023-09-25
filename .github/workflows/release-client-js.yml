@@ -1,8 +1,9 @@
 name: Deploy Async DataFlow channel sender JS client
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'chanjs_*' # Push events to matching chanjs_*, i.e. chanjs_0.2.0
 jobs:
   build:
     defaults:
