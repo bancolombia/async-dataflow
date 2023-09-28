@@ -2,11 +2,8 @@ name: Async DataFlow channel sender elixir client CI/RM
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  release:
-    types: [ published ]
+    tags:
+      - 'sender_client_elixir_*' # Push events to matching sender_client_elixir_*
 
 jobs:
   build:
