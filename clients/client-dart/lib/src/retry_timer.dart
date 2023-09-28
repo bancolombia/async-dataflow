@@ -1,6 +1,8 @@
 import 'dart:async';
-import 'utils.dart';
+
 import 'package:logging/logging.dart';
+
+import 'utils.dart';
 
 class RetryTimer {
   final _log = Logger('RetryTimer');

@@ -6,8 +6,8 @@ import 'package:logging/logging.dart';
 import 'package:web_socket_channel/io.dart';
 
 import 'async_config.dart';
-import 'retry_timer.dart';
 import 'channel_message.dart';
+import 'retry_timer.dart';
 import 'transport.dart';
 
 /// Async Data Flow Low Level Client
@@ -16,9 +16,7 @@ import 'transport.dart';
 /// Sender.
 ///
 class AsyncClient {
- 
   final _log = Logger('AsyncClient');
-
   static const String JSON_FLOW = 'json_flow';
   static const String BINARY_FLOW = 'binary_flow';
   static const String RESPONSE_AUTH_OK = 'AuthOk';
@@ -26,7 +24,6 @@ class AsyncClient {
   static const String RESPONSE_NEW_TOKEN = ':n_token';
   static const String EVENT_KIND_SYSTEM = 'system_event';
   static const String EVENT_KIND_USER = 'user_event';
-
   static final Random _random = Random.secure();
 
   final AsyncConfig _config;
@@ -147,7 +144,7 @@ class AsyncClient {
   void _openChannel() {
     try {
       _channel = IOWebSocketChannel.connect(
-        _config.socketUrl + '?channel=' + _config.channelRef,
+        '${_config.socketUrl}?channel=${_config.channelRef}',
         protocols: _subProtocols,
         headers: _buildHeaders(),
       );
