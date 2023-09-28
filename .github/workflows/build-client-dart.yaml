@@ -1,13 +1,12 @@
-name: Deploy Async DataFlow channel sender Dart client
-
+name: "flutter-actions"
 on:
-  push:
-    tags:
-      - 'channel_sender_client_*' # Push events to matching chanjs_*, i.e. chanjs_0.2.0
+  pull_request:
+    paths:
+      - 'clients/client-dart/**' 
+    branches:
+      - master
 jobs:
-  publish:
-    name: 'Publish to pub.dev'
-    environment: pub.dev
+  build:
     permissions:
       id-token: write
     defaults:
@@ -23,6 +22,6 @@ jobs:
           channel: stable
           version: 3.7.12
       - name: Install dependencies
-        run: dart pub get
-      - name: Publish to pub.dev
-        run: dart pub publish -f
+        run: flutter pub get
+      - name: Run test
+        run: flutter test
