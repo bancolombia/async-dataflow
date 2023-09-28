@@ -1,6 +1,8 @@
 # See https://dart.dev/tools/pub/publishing#what-files-are-published
 
 /coverage/*
+/build/*
+/test/*
 /doc/*
 /metrics/*
 /tool/*
