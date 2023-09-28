@@ -7,12 +7,13 @@ class Utils {
     var rest = baseTime * randomFactor;
     var rng = Random();
     var jitter = (baseTime - rest) + rng.nextDouble() * rest;
+
     return jitter.toInt();
   }
 
   static int expBackoff(int initial, int max, int actualRetry,
       [Function? jitterFn]) {
-    var curatedFn;
+    Function curatedFn;
     if (jitterFn == null) {
       curatedFn = _defaultJitterFn;
     } else {
@@ -29,10 +30,8 @@ class Utils {
   }
 
   static String? checkString(String data) {
-    if (data.trim().isEmpty) {
-      return '';
-    } else {
-      return data.trim();
-    }
+    var trim = data.trim();
+
+    return trim.isEmpty ? '' : trim;
   }
 }
