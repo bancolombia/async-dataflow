@@ -7,40 +7,40 @@ import 'channel_message.dart';
 import 'message_decoder.dart';
 
 class BinaryDecoder extends MessageDecoder<Uint8List> {
-  final Utf8Decoder _decoder = Utf8Decoder(allowMalformed: false);
+  final Utf8Decoder _decoder = const Utf8Decoder(allowMalformed: false);
   final int _offset = 4;
 
   @override
-  ChannelMessage decode(Uint8List? eventData) {
-    if (eventData == null || eventData.isEmpty) {
+  ChannelMessage decode(Uint8List? event) {
+    if (event == null || event.isEmpty) {
       throw ArgumentError('Invalid binary data; empty list');
     }
 
-    if (eventData.first != 255) {
+    if (event.first != 255) {
       throw ArgumentError('Invalid binary data; no control byte match');
     }
 
-    var msgIdSize = eventData[1];
-    var corrIdSize = eventData[2];
-    var evtNameSize = eventData[3];
+    var msgIdSize = event[1];
+    var corrIdSize = event[2];
+    var evtNameSize = event[3];
 
-    var messageId = _extract(eventData, 0, msgIdSize);
-    var correlationId = _extract(eventData, msgIdSize, corrIdSize);
-    var event = _extract(eventData, msgIdSize + corrIdSize, evtNameSize);
-    var payload =
-        _extract(eventData, msgIdSize + corrIdSize + evtNameSize, null);
+    var messageId = _extract(event, 0, msgIdSize);
+    var correlationId = _extract(event, msgIdSize, corrIdSize);
+    var eventData = _extract(event, msgIdSize + corrIdSize, evtNameSize);
+    var payload = _extract(event, msgIdSize + corrIdSize + evtNameSize, null);
 
     return ChannelMessage(_checkString(messageId), _checkString(correlationId),
-        _checkString(event), _formatPayload(payload));
+        _checkString(eventData), _formatPayload(payload));
   }
 
   String _extract(Uint8List data, int start, int? size) {
-    var _start = _offset + start;
+    var start0 = _offset + start;
     if (size == null) {
-      return _decoder.convert(data, _start);
+      return _decoder.convert(data, start0);
     } else {
-      var _size = _start + size;
-      return _decoder.convert(data, _start, _size);
+      var size0 = start0 + size;
+
+      return _decoder.convert(data, start0, size0);
     }
   }
 
@@ -65,4 +65,3 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
     }
   }
 }
-

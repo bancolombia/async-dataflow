@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:test/test.dart';
-
 import 'package:channel_sender_client/src/binary_decoder.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Parsing binary data', () {
     test('parses binary message', () {
-      final binary_message = Uint8List.fromList([
+      final binaryMessage = Uint8List.fromList([
         255,
         11,
         15,
@@ -65,7 +64,7 @@ void main() {
         49
       ]);
 
-      final msg = BinaryDecoder().decode(binary_message);
+      final msg = BinaryDecoder().decode(binaryMessage);
       expect(msg, isNotNull);
       expect(msg.messageId, equals('message_id2'));
       expect(msg.correlationId, equals('correlation_id2'));
@@ -74,24 +73,24 @@ void main() {
     });
 
     test('parses binary message with json payload', () {
-      var message_id = 'message_id2';
-      var correlation_id = 'correlation_id2';
+      var messageId = 'message_id2';
+      var correlationId = 'correlation_id2';
       var event = 'event_name2';
       var payload = '{ "hello": "world" }';
 
       var dataHeaders = [
         255,
-        message_id.length,
-        correlation_id.length,
+        messageId.length,
+        correlationId.length,
         event.length
       ];
-      var binary_message = dataHeaders +
-          utf8.encode(message_id) +
-          utf8.encode(correlation_id) +
+      var binaryMessage = dataHeaders +
+          utf8.encode(messageId) +
+          utf8.encode(correlationId) +
           utf8.encode(event) +
           utf8.encode(payload);
 
-      final msg = BinaryDecoder().decode(Uint8List.fromList(binary_message));
+      final msg = BinaryDecoder().decode(Uint8List.fromList(binaryMessage));
       expect(msg, isNotNull);
       expect(msg.messageId, equals('message_id2'));
       expect(msg.correlationId, equals('correlation_id2'));
@@ -100,9 +99,9 @@ void main() {
     });
 
     test('parses binary frame for auth ok', () {
-      final binary_message =
+      final binaryMessage =
           Uint8List.fromList([255, 0, 0, 6, 65, 117, 116, 104, 79, 107]);
-      final msg = BinaryDecoder().decode(binary_message);
+      final msg = BinaryDecoder().decode(binaryMessage);
       expect(msg, isNotNull);
       expect(msg.messageId, equals(null));
       expect(msg.correlationId, equals(null));

@@ -1,11 +1,10 @@
-import 'package:test/test.dart';
-
 import 'package:channel_sender_client/src/json_decoder.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Json decoding', () {
     test('should parse authOk event', () {
-      final trama = '["", "", "AuthOk", ""]';
+      const trama = '["", "", "AuthOk", ""]';
 
       final msg = JsonDecoder().decode(trama);
       expect(msg, isNotNull);
@@ -16,7 +15,7 @@ void main() {
     });
 
     test('should parse heartbeat event', () {
-      final trama = '["", "1", ":hb", ""]';
+      const trama = '["", "1", ":hb", ""]';
 
       final msg = JsonDecoder().decode(trama);
       expect(msg, isNotNull);
@@ -27,7 +26,7 @@ void main() {
     });
 
     test('should parse user event with json content', () {
-      final trama =
+      const trama =
           '["msg-id-0001","correlation-id-002","event.productCreated","{\\"code\\":\\"100\\", \\"title\\":\\"process after 5000ms\\", \\"detail\\":\\"some detail 89bd02d1da483efaa5389cbd4ca65bbd\\", \\"level\\":\\"info\\"}"]';
 
       final msg = JsonDecoder().decode(trama);
@@ -36,13 +35,15 @@ void main() {
       expect(msg.messageId, equals('msg-id-0001'));
       expect(msg.correlationId, equals('correlation-id-002'));
       expect(msg.event, equals('event.productCreated'));
-      expect(msg.payload, equals('{"code":"100", "title":"process after 5000ms", "detail":"some detail 89bd02d1da483efaa5389cbd4ca65bbd", "level":"info"}'));
-      
+      expect(
+        msg.payload,
+        equals(
+            '{"code":"100", "title":"process after 5000ms", "detail":"some detail 89bd02d1da483efaa5389cbd4ca65bbd", "level":"info"}'),
+      );
     });
 
     test('should parse user event with no json content', () {
-
-      final trama =
+      const trama =
           '["msg-id-0003","correlation-id-004","event.productCreated","Hello World"]';
 
       final msg = JsonDecoder().decode(trama);
@@ -55,8 +56,7 @@ void main() {
     });
 
     test('should parse user event with no payload', () {
-
-      final trama =
+      const trama =
           '["msg-id-0003","correlation-id-004","event.productCreated",""]';
 
       final msg = JsonDecoder().decode(trama);
@@ -69,8 +69,7 @@ void main() {
     });
 
     test('should parse user event with weird payload', () {
-
-      final trama =
+      const trama =
           '["msg-id-0003","correlation-id-004","event.productCreated",".,.,.,%%#@"]';
 
       final msg = JsonDecoder().decode(trama);
@@ -81,10 +80,5 @@ void main() {
       expect(msg.event, equals('event.productCreated'));
       expect(msg.payload, equals('.,.,.,%%#@'));
     });
-
   });
-
-  
-
 }
-
