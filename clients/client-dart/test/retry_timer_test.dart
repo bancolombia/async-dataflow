@@ -11,8 +11,8 @@ void main() {
 
     test('Should retry with exponential delay', () async {
       var doSomething = () async {
-        print('Dummy function called');
-        throw 'Some error';
+        Logger.root.info('Dummy function called');
+        throw ArgumentError('Some error');
       };
 
       var retyTimer = RetryTimer(doSomething);
@@ -27,8 +27,8 @@ void main() {
 
     test('Should retry with exponential delay, custom params', () async {
       var doSomething = () async {
-        print('Dummy function called');
-        throw 'Some error';
+        Logger.root.info('Dummy function called');
+        throw ArgumentError('Some error');
       };
 
       var customJitter = (int num) {
@@ -48,8 +48,8 @@ void main() {
 
     test('Should cancel retry timer', () async {
       var doSomething = () async {
-        print('Dummy function called');
-        throw 'Some error';
+        Logger.root.info('Dummy function called');
+        throw ArgumentError('Some error');
       };
 
       var retyTimer = RetryTimer(doSomething);

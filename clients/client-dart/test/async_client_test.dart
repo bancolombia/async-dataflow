@@ -48,9 +48,9 @@ void main() {
       log.finest('------ Done connecting -------');
 
       var subscriber = client.subscribeTo('event.productCreated', (event) {
-        print('SUB 1 JUST RECEIVED: $event');
+        log.info('SUB 1 JUST RECEIVED: $event');
       }, onError: (err) {
-        print('SUB 1 JUST RECEIVED AN ERROR: $err');
+        log.severe('SUB 1 JUST RECEIVED AN ERROR: $err');
       });
 
       await Future.delayed(const Duration(seconds: 2));

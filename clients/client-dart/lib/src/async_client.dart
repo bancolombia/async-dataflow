@@ -58,6 +58,10 @@ class AsyncClient {
     });
   }
 
+  void dispose() {
+    _localStream.close();
+  }
+
   /// Opens up the connection and performs auth flow.
   ///
   AsyncClient connect() {
