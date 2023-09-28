@@ -1,6 +1,7 @@
+import 'package:logging/logging.dart';
+
 import '../lib/src/async_client.dart';
 import '../lib/src/async_config.dart';
-import 'package:logging/logging.dart';
 
 void main(List<String> arguments) async {
   Logger.root.level = Level.ALL;
@@ -31,7 +32,7 @@ void main(List<String> arguments) async {
     print('SUB 2 JUST RECEIVED AN ERROR: $err');
   });
 
-  await Future.delayed(Duration(seconds: 30));
+  await Future.delayed(const Duration(seconds: 30));
 
   await client.disconnect();
 }

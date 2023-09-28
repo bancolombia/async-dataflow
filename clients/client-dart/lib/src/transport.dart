@@ -1,12 +1,13 @@
 import 'dart:async';
-import 'package:channel_sender_client/src/channel_message.dart';
+
 import 'package:logging/logging.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import 'message_decoder.dart';
 import 'binary_decoder.dart';
+import 'channel_message.dart';
 import 'json_decoder.dart';
+import 'message_decoder.dart';
 
 class Transport {
   final _log = Logger('Transport');
@@ -89,7 +90,7 @@ class Transport {
     if (_heartbeatTimer != null) {
       _heartbeatTimer!.cancel();
     }
-    
+
     _signalSocketError(error);
   }
 
@@ -123,6 +124,7 @@ class Transport {
       const reason = 'heartbeat timeout. Attempting to re-establish connection';
       _log.warning('transport: $reason');
       _abnormalClose(reason);
+
       return;
     }
     pendingHeartbeatRef = _makeRef();
@@ -142,6 +144,7 @@ class Transport {
     } else {
       _ref = newRef;
     }
+
     return _ref.toString();
   }
 
