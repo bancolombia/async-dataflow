@@ -91,10 +91,7 @@ void main() {
       await Future.delayed(const Duration(seconds: 3));
 
       expect(hbCounter, equals('2'));
-      await sub1.cancel().then((value) async {
-        await webSocket.close();
-        await localStream.close();
-      });
+      await sub1.cancel();
     });
   });
 }
