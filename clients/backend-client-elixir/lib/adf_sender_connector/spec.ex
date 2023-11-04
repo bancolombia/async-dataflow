@@ -46,13 +46,6 @@ defmodule AdfSenderConnector.Spec do
       @type correlation_id() :: String.t()
       @type event_name() :: String.t()
       @type message_data() :: iodata()
-      @type protocol_message :: %{
-        channel_ref: channel_ref(),
-        message_id: message_id(),
-        correlation_id: correlation_id(),
-        message_data: message_data(),
-        event_name: event_name()
-      }
 
       # inherit server
       use GenServer
@@ -70,16 +63,10 @@ defmodule AdfSenderConnector.Spec do
       end
 
       def child_spec(args) do
-        #case NimbleOptions.validate(args, @args_definition) do
-        #  {:ok, validated_options} ->
-            %{
-              id: __MODULE__,
-              start: {__MODULE__, :start_link, [args]},
-            }
-         # {:error, reason} ->
-         #   Logger.error("Invalid configuration provided, #{inspect(reason)}")
-         #   raise reason
-        #end
+        %{
+          id: __MODULE__,
+          start: {__MODULE__, :start_link, [args]},
+        }
       end
 
       defp via_tuple(process_alias) do
