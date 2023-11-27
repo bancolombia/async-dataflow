@@ -1,6 +1,6 @@
 Code.compiler_options(ignore_module_conflict: true)
 
-defmodule AdfSenderConnector.ChannelTest do
+defmodule AdfSenderConnector.CredentialsTest do
   use ExUnit.Case
   import Mock
   alias AdfSenderConnector.Credentials
@@ -19,7 +19,7 @@ defmodule AdfSenderConnector.ChannelTest do
    :ok
   end
 
-  test "should start channel process" do
+  test "should start creds process" do
 
     options = [http_opts: [], name: "foo"]
 
@@ -40,7 +40,7 @@ defmodule AdfSenderConnector.ChannelTest do
 
   end
 
-  test "should start channel process, then should exchange credentials" do
+  test "should start creds process, then should exchange credentials" do
 
     options = [http_opts: [], app_ref: "app", user_ref: "user1", name: "bar"]
 
@@ -63,15 +63,27 @@ defmodule AdfSenderConnector.ChannelTest do
 
   end
 
-  # test "should handle fail to request a channel registration" do
-  #   my_http_options = [
-  #     timeout: 10_000, recv_timeout: 10_000, max_connections: 1000
-  #   ]
+  test "should handle fail to request a channel registration" do
 
-  #   {:ok, pid} = Channel.start_link([name: :demo2, sender_url: "http://localhost:8082", http_opts: my_http_options])
-  #   response = Channel.create_channel(pid, "a", "b")
-  #   assert {:error, :channel_sender_econnrefused} == response
-  #   Process.exit(pid, :kill)
-  # end
+    options = [http_opts: [], app_ref: "app", user_ref: "user1", name: "foo"]
+
+    create_response = %HTTPoison.Response{
+      status_code: 500,
+      body: "{}"
+    }
+
+    with_mocks([
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
+    ]) do
+
+      {:ok, pid} = Credentials.start_link({:sender_url, "http://localhost:8888"}, options)
+      assert is_pid(pid)
+
+      assert {:error, :channel_sender_unknown_error} == Credentials.exchange_credentials(pid)
+
+      Process.exit(pid, :normal)
+    end
+
+  end
 
 end

@@ -9,7 +9,7 @@ defmodule AdfSenderConnector.Message do
   @type channel_ref() :: String.t()
   @type message_id() :: String.t()
   @type correlation_id() :: String.t()
-  @type message_data() :: iodata()
+  @type message_data() :: any()
   @type event_name() :: String.t()
   @type t() :: AdfSenderConnector.Message.t()
 

@@ -63,7 +63,7 @@ defmodule AdfSenderConnectorTest do
       {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
     ]) do
       assert {:ok, %{"channel_ref" => "dummy.channel.ref2", "channel_secret" => "yyy2"}}
-        = AdfSenderConnector.channel_registration("a2", "b2", options)
+        == AdfSenderConnector.channel_registration("a2", "b2", options)
     end
 
     ### then create a process to map that name
@@ -81,10 +81,10 @@ defmodule AdfSenderConnectorTest do
 
       # route a protocol message
       message = Message.new("dummy.channel.ref2", %{"hello" => "world"}, "evt1")
-      assert :ok = AdfSenderConnector.route_message("dummy.channel.ref2", "evt1", message)
+      assert {:ok, %{"result" => "Ok"}} == AdfSenderConnector.route_message("dummy.channel.ref2", "evt1", message)
 
       # route data represented as a Map
-      assert :ok = AdfSenderConnector.route_message("dummy.channel.ref2", "evt1", %{"hello" => "world"})
+      assert {:ok, %{"result" => "Ok"}} == AdfSenderConnector.route_message("dummy.channel.ref2", "evt1", %{"hello" => "world"})
     end
 
   end
@@ -103,7 +103,7 @@ defmodule AdfSenderConnectorTest do
       {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
     ]) do
       assert {:ok, %{"channel_ref" => "dummy.channel.ref3", "channel_secret" => "yyy3"}}
-        = AdfSenderConnector.channel_registration("a3", "b3", options)
+        == AdfSenderConnector.channel_registration("a3", "b3", options)
     end
 
     ### then create a process to map that name
@@ -120,7 +120,7 @@ defmodule AdfSenderConnectorTest do
     ]) do
 
       message = Message.new("dummy.channel.ref3", %{"hello" => "world"}, "evt1")
-      assert :ok = AdfSenderConnector.route_message("dummy.channel.ref3", "evt1", message)
+      assert {:error, :channel_sender_unknown_error} == AdfSenderConnector.route_message("dummy.channel.ref3", "evt1", message)
     end
 
   end

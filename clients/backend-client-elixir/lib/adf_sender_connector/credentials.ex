@@ -4,8 +4,7 @@ defmodule AdfSenderConnector.Credentials do
   """
 
   use AdfSenderConnector.Spec
-  
-  alias AdfSenderConnector.Router
+
   require Logger
 
   @doc """
@@ -31,7 +30,7 @@ defmodule AdfSenderConnector.Credentials do
     case response do
       {:error, reason} ->
         Logger.error("Error exchanging credentials, #{inspect(reason)}")
-      _ -> 
+      _ ->
         Logger.debug("Credentials exchanged")
         response
     end
@@ -50,7 +49,7 @@ defmodule AdfSenderConnector.Credentials do
     HTTPoison.post(
       Keyword.fetch!(state, :sender_url) <> "/ext/channel/create",
       request,
-      [{"Content-Type", "application/json"}],
+      [{"content-type", "application/json"}],
       parse_http_opts(state)
     )
   end

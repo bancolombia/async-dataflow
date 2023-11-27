@@ -8,7 +8,44 @@ defmodule AdfSenderConnector do
 
   alias AdfSenderConnector.{Credentials, Router, Message}
 
+  @typedoc """
+  Channel sender base URL
+  """
+  @type sender_url :: String.t()
+
+  @typedoc """
+  Application reference
+  """
+  @type application_ref :: String.t()
+
+  @typedoc """
+  User reference
+  """
+  @type user_ref :: String.t()
+
+  @typedoc """
+  Channel reference
+  """
+  @type channel_ref :: String.t()
+
+  @typedoc """
+  Event name
+  """
+  @type event_name :: String.t()
+
+  @typedoc """
+  Event payload as a Message struct
+  """
+  @type message :: %Message{}
+
+
+  @typedoc """
+  Event payload as a Map
+  """
+  @type message_data :: map()
+
   @default_local "http://localhost:8081"
+
 
   @doc """
   starts the process
@@ -21,7 +58,7 @@ defmodule AdfSenderConnector do
 
   def start_link() do
     HTTPoison.start
-    Logger.warn("No sender endpoint provided. Using default endpoint https://localhost:8081")
+    Logger.warning("No sender endpoint provided. Using default endpoint https://localhost:8081")
     DynamicSupervisor.start_link(__MODULE__, [sender_url: @default_local], name: __MODULE__)
   end
 
@@ -53,37 +90,49 @@ defmodule AdfSenderConnector do
     }
   end
 
-  @spec channel_registration(any, any, any) :: {:ok, any()} | {:error, any()}
+  @spec channel_registration(application_ref(), user_ref(), list()) :: {:ok, map()} | {:error, any()}
   @doc """
   Request a channel registration
   """
   def channel_registration(application_ref, user_ref, options \\ []) do
-    new_ch = DynamicSupervisor.start_child(__MODULE__,
+    case find_creds_process(application_ref <> "." <> user_ref) do
+      :noproc ->
+        {:ok, pid} = start_creds_proc(application_ref, user_ref, options)
+        Credentials.exchange_credentials(pid)
+      pid ->
+        Credentials.exchange_credentials(pid)
+    end
+  end
+
+  defp start_creds_proc(application_ref, user_ref, options) do
+    DynamicSupervisor.start_child(__MODULE__,
       Credentials.child_spec([
         app_ref: application_ref,
         user_ref: user_ref,
         name: application_ref <> "." <> user_ref] ++ options))
-
-    case new_ch do
-      {:ok, pid} ->
-        Credentials.exchange_credentials(pid)
-      _ ->
-        new_ch
-    end
   end
 
+  defp find_creds_process(name) do
+    case Registry.lookup(Registry.ADFSenderConnector, name) do
+      [{pid, _}] ->
+        pid
+      [] ->
+        :noproc
+    end
+  end
 
   @doc """
   Starts a process to deliver messages.
   """
-  @spec start_router_process(any, any) :: :ok | {:error, any()}
+  @spec start_router_process(channel_ref(), list()) :: :ok | {:error, any()}
   def start_router_process(channel_ref, options \\ []) do
     new_options = Keyword.delete(options, :name)
-    DynamicSupervisor.start_child(AdfSenderConnector, AdfSenderConnector.Router.child_spec([name: channel_ref] ++ new_options))
+    Logger.debug("Starting routing process: #{inspect(channel_ref)}")
+    DynamicSupervisor.start_child(__MODULE__, Router.child_spec([name: channel_ref] ++ new_options))
   end
 
 
-  @spec route_message(pid(), any, any) :: :ok | {:error, any()}
+  @spec route_message(channel_ref(), event_name(), message() | message_data()) :: {:ok, map()} | {:error, any()}
   @doc """
   Request a message delivery by creating a protocol message with the data provided
   """
@@ -96,6 +145,7 @@ defmodule AdfSenderConnector do
           Router.route_message(pid, event_name, message)
         end
       [] ->
+        Logger.warning(":unknown_channel_reference #{inspect(channel_ref)}")
         {:error, :unknown_channel_reference}
     end
   end
