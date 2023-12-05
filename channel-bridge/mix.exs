@@ -11,9 +11,7 @@ defmodule ChannelBridge.MixProject do
         async_dataflow_bridge: [
           applications: [
             bridge_helper_config: :permanent,
-            bridge_core: :permanent,
-            bridge_restapi: :permanent,
-            bridge_rabbitmq: :permanent
+            bridge_core: :permanent
           ]
         ],
       ]
