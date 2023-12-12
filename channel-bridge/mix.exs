@@ -13,7 +13,9 @@ defmodule ChannelBridge.MixProject do
             bridge_helper_config: :permanent,
             bridge_core: :permanent,
             bridge_rabbitmq: :permanent,
-            bridge_secretmanager: :permanent
+            bridge_secretmanager: :permanent,
+            bridge_restapi: :permanent,
+            bridge_restapi_auth: :permanent
           ]
         ],
       ]
