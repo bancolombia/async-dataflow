@@ -3,11 +3,80 @@
 # Async DataFlow
 
 The Async DataFlow component aims to deliver asynchronous responses in real time to client applications, thus enabling end-to-end asynchronois flows without losing the ability to respond in real time or eventually, send data to client applications as a result of asynchronous operations and oriented to `messages / commands / events` on the platform.
-![imagen](https://user-images.githubusercontent.com/12372370/137362047-34f5d048-9f1a-4065-8a09-dc97318bf42e.png)
+
 
 ## Repository
 
 - [Channel Sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender) Distributed Elixir Cluster implementation of real time with websockets and notifications channels.
+
+```mermaid
+    C4Dynamic
+    Boundary(aa, "Client side applications") {
+        Component(cli, "Single Page Application or Mobile App", "Javascript / Angular /Flutter", "")
+    }
+
+    Boundary(xx, "ADF") {
+        Component(sender, "Channel Sender", "", "")
+    }
+
+    Boundary(zz, "Backend") {
+        Component(abl, "Async business logic")
+    }
+
+    Rel(cli, sender, "create connection")
+    Rel(cli, abl, "Call Http or another entry point definition")
+    Rel(abl, cli, "Return Http Empty response")
+    Rel(abl, sender, "Send Response (Http)")
+    Rel(sender, cli, "Send Response (websocket)")
+
+    UpdateElementStyle(sender, $fontColor="black", $bgColor="orange", $borderColor="black")
+
+    UpdateRelStyle(cli, sender, $offsetX="-40", $offsetY="-20")
+    UpdateRelStyle(cli, abl,  $offsetX="-240", $offsetY="-40")
+    UpdateRelStyle(abl, cli,  $offsetX="30", $offsetY="-40")
+    UpdateRelStyle(abl, sender,  $offsetX="-60", $offsetY="40")
+    UpdateRelStyle(sender, cli, $offsetX="-40", $offsetY="20")
+    
+    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="2")
+```
+
+
+- [Channel Bridge](https://github.com/bancolombia/async-dataflow/tree/master/channel-bridge) Distributed Elixir Cluster implementation of a async messages router.
+
+```mermaid
+    C4Dynamic
+
+    Boundary(zz, "Backend") {
+        Component(abl, "Async business logic")
+        SystemDb(bus, "Event bus")
+    }
+    
+    Boundary(xx, "ADF") {
+        Component(sender, "Channel Sender", "", "")
+        Component(bridge, "Channel Bridge", "", "")
+    }
+
+    Boundary(aa, "Client side applications") {
+        Component(cli, "Single Page Application or Mobile App", "Javascript / Angular /Flutter", "")
+    }
+
+    Rel(abl, bus, "Emit event")
+    Rel(bus, bridge, "Subscribe event")
+    Rel(bridge, sender, "route [Http]")
+    Rel(sender, cli, "Push response [websocket]")
+
+    UpdateElementStyle(sender, $fontColor="black", $bgColor="orange", $borderColor="black")
+    UpdateElementStyle(bridge, $fontColor="black", $bgColor="green", $borderColor="black")
+
+    UpdateRelStyle(abl, bus,  $offsetX="-40", $offsetY="-40")
+    UpdateRelStyle(bus, bridge, $offsetX="-40", $offsetY="-20")
+    UpdateRelStyle(bridge, sender, $offsetX="-33", $offsetY="-20")
+    UpdateRelStyle(sender, cli, $offsetX="-40", $offsetY="-10")
+    
+    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+```
+
+
 - [Client JS](https://github.com/bancolombia/async-dataflow/tree/master/clients/client-js) Javascript library for async data flow implementation for browsers.
 - [Client Dart](https://github.com/bancolombia/async-dataflow/tree/master/clients/client-dart) Dart library for async data flow implementation for flutter applications.
 
