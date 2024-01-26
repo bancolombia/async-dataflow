@@ -154,4 +154,4 @@ $ MIX_ENV=<ENV-NAME> iex --erl "-name channel_bridge_ex0@127.0.0.1" -S mix
 
 ADF Bridge incorporate `libcluster` dependency in order to facilitate the automatic configuration of erlang clusters in kubernetes.
 
-In folder [deploy_samples\k8s](./deploy_samples/k8s/README.md) we have included manifests to deploy ADF sender on kubernetes (and also if istio is present), using 3 of the strategies supported by `libcluster`.
+In folder [deploy_samples\k8s](./deploy_samples/k8s/README.md) we have included manifests to deploy ADF bridge on kubernetes (and also if istio is present), using 3 of the strategies supported by `libcluster`.

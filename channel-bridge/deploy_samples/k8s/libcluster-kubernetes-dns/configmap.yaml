@@ -7,7 +7,7 @@ data:
   env.sh: |-
     #!/bin/sh
     export RELEASE_DISTRIBUTION=name
-    export RELEASE_NODE=channel_bridge_ex@${POD_NAME}.${POD_NAME_DNS}
+    export RELEASE_NODE=channel_bridge_ex@${POD_IP}
   config.yaml: |-
     bridge:
       port: 8080
@@ -59,13 +59,10 @@ data:
         #   processor_max_demand: 1
 
       topology:
-        strategy: Elixir.Cluster.Strategy.Kubernetes
-        config: 
-          mode: :hostname
-          kubernetes_ip_lookup_mode: :pods
-          kubernetes_service_name: "adfbridge-headless"
-          kubernetes_node_basename: "channel_bridge_ex"
-          kubernetes_selector: "cluster=beam"
+        strategy: Cluster.Strategy.Kubernetes.DNS
+        config:
+          service: "adfbridge-headless"
+          application_name: "channel_bridge_ex"
           namespace: "bridgenm"
           polling_interval: 5000
 
@@ -92,5 +89,3 @@ data:
 
     logger:
       level: debug
-
-
