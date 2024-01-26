@@ -34,4 +34,4 @@ jobs:
       - name: Run tests
         run: mix test --cover --export-coverage defaul
       - name: Calculate coverage
-        run: mix text.coverage
+        run: mix test.coverage
