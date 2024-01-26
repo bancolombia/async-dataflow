@@ -9,80 +9,105 @@ Distributed Elixir Cluster implementation of a async messages router.
 
 ## How it works
 
-Channel Bridge adds a layer to Sender providing authorization functionality. 
+Channel Bridge adds a layer to Channel-Sender providing:
 
-```mermaid
-    C4Component
-    Component(spa, "Single Page Application", "javascript and angular", "Customers via their web browser.")
-    Component(ma, "Mobile App", "Flutter", "Customers using their mobile mobile device.")
+1. **Authorization**
 
-    Container_Boundary(xx, "ADF") {
-        Component(bridge, "Channel Bridge", "Rest Endpoint", "Validate user credentials")
-        Component(sender, "Channel Sender", "Rest Endpoint", "Handles channel registration")
+    Sender's Rest endpoint provides logic to generate a channel identifier (channel reference) and a channel secret. As this endpoint has no auth or authz logic, Channel brige fills this gap serving as a proxy for Sender's endpoint adding auth logic (eg. validating user creds). This way sender's rest endpoint can remain private and not publicly available. 
 
-        Rel(bridge, sender, "exchange creds", "JSON/HTTPS")
-    }
 
-    Rel(spa, bridge, "Presents user creds", "JSON/HTTPS")
-    Rel(ma, bridge, "Presents user creds", "JSON/HTTPS")
-    
+    ```mermaid
+    sequenceDiagram
+        autonumber
+        SPA / Mobile App->>+ADF Channel Bridge: Hello I wish to register a channel to receive async events.
+        ADF Channel Bridge->>ADF Channel Bridge: Perform validations
+        ADF Channel Bridge->>+ADF Channel Sender: Perfect!, please generate  channel ref and secret
+        ADF Channel Sender-->>-ADF Channel Bridge: sure, here you go...
+        ADF Channel Bridge-->>-SPA / Mobile App: Your ref and secret sir
+        SPA / Mobile App->>SPA / Mobile App: Ok, now I'm ready to open this channel
+    ```
 
-    UpdateRelStyle(spa, bridge, $offsetX="-110", $offsetY="40")
-    UpdateRelStyle(ma, bridge, $offsetX="80", $offsetY="-40")
-    UpdateRelStyle(bridge, sender,  $offsetX="-40", $offsetY="-40")
+    Steps:
 
-```
+    (1) clients will need to provide information to identify this channel, for example: the application name or Id, the user name, and an alias to this channel. Also present some credentials.
 
-Once the channel credentials have been obtained:
+    (2) Channel bridge performs authentication e.g. Validating a JWT in the `authorization` header.
 
-```mermaid
-    C4Component
-    Component(spa, "Single Page Application", "javascript and angular", "Customers via their web browser.")
-    Component(ma, "Mobile App", "Flutter", "Customers using their mobile mobile device.")
+    (3) Sender's rest endpoint, is called to obtain a channel reference (ref) and a secret to physically open the channel later.
 
-    Container_Boundary(xx, "ADF") {
-        Component(bridge, "Channel Bridge", "", "")
-        Component(sender, "Channel Sender", "Websocket Endpoint", "Handle channels")
+    (6) client persist this tuple (Ref, Secret) for the next phase. 
 
-    }
+    Additional details about this process can be read [here](./docs/channel_authentication.md).
 
-    Rel(spa, sender, "Open realtime channel", "Websocket")
-    Rel(ma, sender, "Open realtime channel", "Websocket")
-    
-    UpdateRelStyle(spa, sender, $offsetX="-170", $offsetY="-40")
-    UpdateRelStyle(ma, sender, $offsetX="10", $offsetY="-40")
-```
 
-Message Flow:
+2) **Openning a channel**
 
-```mermaid
-    C4Component
-    Component(spa, "Single Page Application", "javascript and angular", "Customers via their web browser.")
-    Component(ma, "Mobile App", "Flutter", "Customers using their mobile mobile device.")
+    Once the client has obtained a channel reference and a secret, can proceed to open the channel.
 
-    Container_Boundary(b, "Application Backend") {
-        Component(backend, "Backend App", "", "Executes some logic")
-        Component(ev, "Event Broker", "", "Eg: RabbitMQ")
-    }
+    ```mermaid
+    sequenceDiagram
+        autonumber
+        SPA / Mobile App->>+ADF Channel Sender: (websocket) Open channel with this `ref` 
+        ADF Channel Sender->>ADF Channel Sender: OK, ref is valid
+        ADF Channel Sender-->>SPA / Mobile App: ok, it's open.
+        SPA / Mobile App->>ADF Channel Sender: (Websocket) I'm sending my `secret`.
+        ADF Channel Sender->>ADF Channel Sender: Secret is validated
+        ADF Channel Sender-->>-SPA / Mobile App: ok, everithing's good, leaving channel open.
+        Note right of SPA / Mobile App: Now I'm ready to receive events!
+    ```
 
-    Container_Boundary(a, "ADF") {
-        Component(bridge, "Channel Bridge", "", "Event suscriber")
-        Component(sender, "Channel Sender", "Websocket Endpoint", "Handle channels")
-    }
+    Steps:
 
-    Rel(sender, spa, "message pushed", "Websocket")
-    Rel(sender, ma, "message pushed", "Websocket")
-    Rel(backend, ev, "event emitted", "")
-    Rel(ev, bridge, "message pulled", "")
-    Rel(bridge, sender, "Call route endpoint", "JSON/HTTPS")
-    
-    UpdateRelStyle(backend, ev, $offsetX="-34", $offsetY="-20")
-    UpdateRelStyle(ev, bridge, $offsetX="-34", $offsetY="-20")
-    UpdateRelStyle(bridge, sender, $offsetX="-45", $offsetY="-20")
-    UpdateRelStyle(sender, spa, $offsetX="-100", $offsetY="-60")
-    UpdateRelStyle(sender, ma, $offsetX="10", $offsetY="-60")
-```
+    (1) Client having obtained a channel ref and secret opens the websocket connection.
 
+    (2) Sender validates the ref and verifies its was previuosly generated.
+
+    (3) Sender leaves channel open and waits (for a small time windows) for the secret to be sent by the client.
+
+    (4) Client sends secret
+
+    (5) Sender verifies the secret
+
+    (6) if checks out, the channel is left open, in any other case, connection will be closed by the server.
+
+    See details about channel opening process [here](./docs/channel_opening.md).
+
+
+3. **Message Routing**
+
+    Any component in your backend architecture can route messages to any connected front-end, by publishing an event to a Message Broker or Event Bus.
+
+    ```mermaid
+    sequenceDiagram
+        autonumber
+        activate Backend Service
+        Backend Service->>Backend Service: Some bussiness logic performed.
+        Backend Service->>RabbitMQ: Publish an event <br>with an specific payload.
+        deactivate Backend Service
+        activate RabbitMQ
+        RabbitMQ -)ADF Channel Bridge: Event subscribed!
+        deactivate RabbitMQ
+        activate ADF Channel Bridge
+        ADF Channel Bridge->>ADF Channel Bridge: Check payload for a channel <br>alias and search for an<br>existing channel registered.
+        ADF Channel Bridge-)ADF Channel Sender: Yay! There is a channel<br>with that alias, please<br>deliver this message.
+        deactivate ADF Channel Bridge
+        activate ADF Channel Sender
+        ADF Channel Sender-)+SPA / Mobile App: Here is your event!
+        SPA / Mobile App-->>-ADF Channel Sender: ACK
+        deactivate ADF Channel Sender
+    ```
+
+    Steps:
+
+    (1 & 2) Some backend process or service performs an operation and as s result an event is published to an event broker.
+
+    (3 & 4) The event is ingested by Channel Bridge, and inspect the message payload for a pre-configured path in order to extract some data to be considered a channel alias.
+
+    (5 & 6) if the alias actually exists and is linked to a channel opened by a client, then Channel Sender will be instructed to deliver the message via such channel.
+
+    (7) the client ACKs the message (or redelivery will be performed until message is ack'ed).
+
+    Please see [Message routing](./docs/message_routing.md) for more information on routing.
 
 
 ## Install
@@ -101,7 +126,14 @@ mix compile
 
 ## Configuration
 
-Open and edit the `config.yaml` file to set up configurations.
+- For local dev environment, open and edit the `config-local.yaml` file to set up configurations.
+- Make sure `config\dev.exs` contains the path to file to use.
+
+  ```elixir
+  config :bridge_core,
+  env: Mix.env(),
+  config_file: "./config-local.yaml"
+  ```
 
 ## Run
 
@@ -114,7 +146,7 @@ $ iex -S mix
 or to run several instances locally
 
 ```bash
-$ MIX_ENV=<CONFIG-FILE-NAME> iex --erl "-name async-node1@127.0.0.1" -S mix
+$ MIX_ENV=<ENV-NAME> iex --erl "-name channel_bridge_ex0@127.0.0.1" -S mix
 
 ```
 

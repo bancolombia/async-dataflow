@@ -24,7 +24,7 @@ defmodule BridgeRabbitmq.Application do
     Supervisor.start_link(children, opts)
   end
 
-  defp build_child_spec(config) do
+  def build_child_spec(config) do
     rabbit_config = get_in(config, [:bridge, "event_bus", "rabbitmq"])
     new_config = Map.put_new(rabbit_config, "broker_url", parse_connection_details(rabbit_config))
     {BridgeRabbitmq.Subscriber, [new_config]}
@@ -48,7 +48,7 @@ defmodule BridgeRabbitmq.Application do
         print_secret(secret_json)
         build_uri(secret_json)
       {:error, reason} ->
-        throw(reason)
+        raise reason
     end
   end
 

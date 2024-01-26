@@ -1,7 +1,7 @@
 Code.compiler_options(ignore_module_conflict: true)
 
 defmodule BridgeCoreTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   @moduletag :capture_log
   import Mock
@@ -13,6 +13,12 @@ defmodule BridgeCoreTest do
     ChannelRegistry.start_link(nil)
     ChannelSupervisor.start_link(nil)
     :ok
+  end
+
+  test "Should not start app twice" do
+
+    assert {:error, {:already_started, _}} = BridgeCore.start(:normal, [])
+
   end
 
   test "should start session" do
@@ -114,4 +120,30 @@ defmodule BridgeCoreTest do
     close_result = BridgeCore.end_session("z")
     assert {:error, :noproc} == close_result
   end
+
+  test "should parse topology configuration default" do
+    assert [k8s: [{:strategy, Cluster.Strategy.Gossip}]] == BridgeCore.topologies()
+  end
+
+  test "should parse topology configuration k8s" do
+
+    String.to_atom("Elixir.Cluster.Strategy.Gossip")
+
+    with_mocks([
+      {BridgeHelperConfig, [], [get: fn _, _ ->
+         %{
+            "strategy" => "Elixir.Cluster.Strategy.Gossip",
+            "config" => %{
+              "mode" => ":hostname",
+              "kubernetes_service_name" => "bridge"
+            }
+          }
+      end]}
+    ]) do
+      assert [k8s: [{:strategy, Cluster.Strategy.Gossip}, {:config, [kubernetes_service_name: "bridge", mode: :hostname]}]]
+         == BridgeCore.topologies()
+    end
+
+  end
+
 end

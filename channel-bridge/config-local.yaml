@@ -46,6 +46,17 @@ bridge:
     #   producer_prefetch: 2
     #   processor_concurrency: 2
     #   processor_max_demand: 1
+  topology:
+    strategy: Elixir.Cluster.Strategy.Gossip
+    # strategy: Elixir.Cluster.Strategy.Kubernetes
+    # config: 
+    #   mode: :hostname
+    #   kubernetes_ip_lookup_mode: :pods
+    #   kubernetes_service_name: "adfbridge-headless"
+    #   kubernetes_node_basename: "channel_bridge_ex"
+    #   kubernetes_selector: "cluster=beam"
+    #   namespace: "bridgenm"
+    #   polling_interval: 5000
 
 sender:
   url: http://localhost:8081

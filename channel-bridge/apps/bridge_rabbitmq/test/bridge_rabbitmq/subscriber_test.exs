@@ -90,6 +90,27 @@ defmodule BridgeRabbitmq.SubscriberTest do
 
   end
 
+  test "should process bindings II", %{init_args: init_args}  do
+
+    conn_config = %{
+      "producer_module" => nil,
+      "queue" => "x",
+      "broker_url" => "amqp://guest:guest@localhost",
+      "producer_prefetch" => 1,
+      "bindings" => [%{"name" => "x", "routing_key" => ["f"]}],
+      "producer_concurrency" => 1,
+      "processor_concurrency" => 1,
+      "processor_max_demand" => 1,
+    }
+
+    {:ok, pid} = Subscriber.start_link([conn_config])
+
+    assert is_pid(pid)
+
+    assert :ok == Subscriber.stop()
+
+  end
+
   # test "should process received messages, custom fn", %{init_args: init_args}  do
 
   #   config = Map.put(init_args.conn_config, "handle_message_fn", fn(_msg) ->

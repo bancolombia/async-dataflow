@@ -101,8 +101,8 @@ defmodule BridgeCore.ChannelTest do
 
     assert :ready == channel.status
 
-    channel = Channel.set_status(channel, :closed, :ok)
-    assert :closed == channel.status
+    new_channel = Channel.set_status(channel, :closed, :ok)
+    assert :closed == new_channel.status
   end
 
   test "Should update channel" do
