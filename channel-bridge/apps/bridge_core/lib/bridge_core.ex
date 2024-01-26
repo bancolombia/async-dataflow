@@ -8,8 +8,6 @@ defmodule BridgeCore do
 
   alias BridgeCore.CloudEvent
   alias BridgeCore.Channel
-  # alias BridgeCore.AppClient
-  # alias BridgeCore.User
   alias BridgeCore.Boundary.ChannelSupervisor
   alias BridgeCore.Boundary.ChannelManager
   alias BridgeCore.Boundary.ChannelRegistry
@@ -34,7 +32,7 @@ defmodule BridgeCore do
       _ ->
         [
           {Task.Supervisor, name: BridgeCore.TaskSupervisor},
-          # {Cluster.Supervisor, [topologies(), [name: BridgeCore.ClusterSupervisor]]},
+          {Cluster.Supervisor, [topologies(), [name: BridgeCore.ClusterSupervisor]]},
           ChannelRegistry,
           ChannelSupervisor,
           NodeObserver,
@@ -46,17 +44,6 @@ defmodule BridgeCore do
     opts = [strategy: :one_for_one, name: BridgeCore.Supervisor]
     Supervisor.start_link(children, opts)
   end
-
-  # @doc """
-  # Starts a session given a channel alias, an application referenca and a user rerefence.
-  # """
-  # @spec start_session(binary(), binary(), binary()) :: {:ok, {Channel.t(), atom()}} | {:error, any()}
-  # def start_session(channel_alias, application_ref, user_ref) do
-  #   start_session(
-  #     Channel.new(channel_alias, AppClient.new(application_ref, ""), User.new(user_ref)),
-  #     []
-  #   )
-  # end
 
   @doc """
   Starts a session given a channel and a list of options.
@@ -130,4 +117,49 @@ defmodule BridgeCore do
     end
   end
 
+  def topologies do
+    topology = [
+      k8s: parse_libcluster_topology()
+    ]
+    topology
+  end
+
+  defp parse_libcluster_topology() do
+    topology = BridgeHelperConfig.get([:bridge, "topology"], nil)
+    case topology do
+      nil ->
+        Logger.warning("No libcluster topology defined!!! -> Using Default [Gossip]")
+        [ strategy: Cluster.Strategy.Gossip ]
+      _ ->
+        IO.inspect(topology, label: "topology strategy")
+        [
+          strategy: String.to_existing_atom(topology["strategy"]),
+          config: parse_config_key(topology["config"])
+        ]
+    end
+  end
+
+  defp parse_config_key(cfg) do
+    case cfg do
+      nil ->
+        []
+      _ ->
+        Enum.map(cfg, fn({key, value}) ->
+          {String.to_atom(key), process_param(value)}
+        end)
+    end
+  end
+
+  defp process_param(param) when is_integer(param) do
+    param
+  end
+
+  defp process_param(param) when is_binary(param) do
+    case String.starts_with?(param, ":") do
+      true ->
+        String.to_atom(String.replace_leading(param, ":", ""))
+      false ->
+        param
+    end
+  end
 end

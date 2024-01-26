@@ -16,10 +16,9 @@ defmodule BridgeHelperConfig.ApplicationConfig do
 
     config_file = case file_path do
       e when e in [nil, ""] ->
-        Logger.warning("No configuration file specified, looking for default file: #{@default_file}")
-        Application.get_env(:channel_bridge, :config_file, @default_file)
+        raise ArgumentError, "No configuration file specified"
       _ ->
-        Logger.info("Searching configuration file #{inspect(file_path)}")
+        Logger.info("Loading configuration file #{inspect(file_path)}")
         file_path
     end
 
@@ -98,4 +97,5 @@ defmodule BridgeHelperConfig.ApplicationConfig do
       v -> v
     end
   end
+
 end

@@ -46,8 +46,6 @@ defmodule BridgeCore.Boundary.ChannelManager do
   def init({channel, _mutator} = args) do
     Process.flag(:trap_exit, true)
 
-    # new_args = Map.put(args, "mutator", Application.get_env(:channel_bridge, :event_mutator))
-
     Enum.map(channel.procs, fn {ch_ref, _} ->
       AdfSenderConnector.start_router_process(ch_ref, [])
     end)

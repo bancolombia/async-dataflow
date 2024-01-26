@@ -5,12 +5,24 @@ defmodule BridgeHelperConfig.Application do
 
   use Application
   require Logger
+  @default_file "config-local.yaml"
 
   @impl true
   def start(_type, args) do
+
+    config_file_path = Application.get_env(:bridge_core, :config_file)
+    |> (fn
+      nil ->
+        Logger.warning("No configuration file specified, looking for default file: #{@default_file}")
+        @default_file
+      value -> value
+    end).()
+
+    new_args = args ++ [file_path: config_file_path]
+
     children = [
       # Starts a worker by calling: BridgeHelperConfig.Worker.start_link(arg)
-      {BridgeHelperConfig.ConfigManager, args}
+      {BridgeHelperConfig.ConfigManager, new_args}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
