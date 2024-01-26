@@ -12,7 +12,7 @@ jobs:
   build:
     defaults:
       run:
-        working-directory: channel_bridge
+        working-directory: channel-bridge
     name: Build and test
     runs-on: ubuntu-latest
 
