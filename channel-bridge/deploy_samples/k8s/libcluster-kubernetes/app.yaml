@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: adfbridge
+  namespace: bridgenm
+  labels:
+    app: adfbridge
+spec:
+  selector:
+    app: adfbridge
+  ports:
+    - name: rest-http
+      targetPort: 8080
+      port: 8080   
+---
+## headless service to allow pod to pod comunication for epmd port
+apiVersion: v1
+kind: Service
+metadata:
+  name: adfbridge-headless
+  namespace: bridgenm 
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: adfbridge
+  ports:
+    - name: epmd-tcp
+      port: 4369
+      targetPort: 4369
+      protocol: TCP     
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: adfbridge
+  namespace: bridgenm
+  labels:
+    app: adfbridge
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: adfbridge
+      cluster: beam
+  serviceName: "adfbridge-headless"
+  template:
+    metadata:
+      annotations:
+        ## annotations required for istio-proxy to detect ports
+        traffic.sidecar.istio.io/includeOutboundPorts: "4369"
+        traffic.sidecar.istio.io/includeInboundPorts: "4369, 8081"
+      labels:
+        app: adfbridge
+        cluster: beam
+    spec:
+      containers:
+        - name: adfbridge
+          image: bancolombia/async-dataflow-channel-bridge:latest
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name    # requires read-pods-role role 
+            - name: POD_NAME_DNS  # see declared file env.sh in configMap
+              value: adfbridge-headless.bridgenm.svc.cluster.local                          
+            - name: RELEASE_COOKIE
+              value: "secret"
+          ports:
+            - name: rest-http
+              protocol: TCP
+              containerPort: 8080
+            - name: epmd-tcp
+              protocol: TCP
+              containerPort: 4369
+          resources:
+            requests:
+              cpu: 250m
+              memory: 150M
+            limits:
+              cpu: 250m
+              memory: 250M
+          volumeMounts:
+          - name: config-volume
+            mountPath: /app/config/env.sh
+            subPath: env.sh
+          - name: config-volume
+            mountPath: /app/config/config.yaml
+            subPath: config.yaml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: adfbridge-config
