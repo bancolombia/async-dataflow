@@ -1,0 +1,72 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: adfbridge-gw
+  namespace: bridgenm
+spec:
+  selector:
+    istio: ingressgateway 
+  servers:
+    - port:
+        name: secure-port
+        number: 443
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: adfbridge-credential
+      hosts:
+        - adfbridge.example.com
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: adfbridge-vs
+  namespace: bridgenm
+spec:
+  hosts:
+    - adfbridge.example.com
+  http:
+    - match:
+        - uri:
+            prefix: /ext/channel
+      rewrite:
+        uri: /api/v1/channel-bridge-ex/ext/channel
+      route:
+        - destination:
+            host: adfbridge
+            port:
+              number: 8080
+    - match:
+        - uri:
+            prefix: /health
+      rewrite:
+        uri: /api/v1/channel-bridge-ex/health
+      route:
+        - destination:
+            host: adfbridge
+            port:
+              number: 8080
+          headers:
+            response:
+              add:
+                access-control-allow-headers: "Authorization,Content-Type,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken,Keep-Alive,X-Requested-With,If-Modified-Since,X-CSRF-Token,application-id,sub"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: adfbridge-vs-epmd
+  namespace: bridgenm
+spec:
+  hosts:
+  - adfbridge-headless
+  # - adfbridge-headless.bridgenm.svc.cluster.local
+  # - adfbridge-0.adfbridge-headless.bridgenm.svc.cluster.local
+  # - adfbridge-1.adfbridge-headless.bridgenm.svc.cluster.local
+  tcp:
+  - match:
+    - port: 4369
+    route:
+    - destination:
+        host: adfbridge-headless
+        port:
+          number: 4369   

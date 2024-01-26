@@ -67,7 +67,7 @@ spec:
             - name: POD_NAME_DNS  # see declared file env.sh in configMap
               value: adfbridge-headless.bridgenm.svc.cluster.local                          
             - name: RELEASE_COOKIE
-              value: "secret"
+              value: "secret"              
           ports:
             - name: rest-http
               protocol: TCP
