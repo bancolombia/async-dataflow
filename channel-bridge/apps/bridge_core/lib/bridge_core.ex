@@ -12,8 +12,12 @@ defmodule BridgeCore do
   alias BridgeCore.Boundary.ChannelManager
   alias BridgeCore.Boundary.ChannelRegistry
   alias BridgeCore.Boundary.NodeObserver
+  alias BridgeCore.Sender.Connector
 
-  @default_mutator "Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator"
+  @default_mutator %{
+    "mutator_module" => "Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator",
+    "config" => nil
+  }
 
   @doc false
   @impl Application
@@ -23,6 +27,7 @@ defmodule BridgeCore do
 
     children = case (Application.get_env(:bridge_core, :env)) do
       e when e in [:test, :bench] ->
+        Logger.debug("Running in test mode")
         [
           {Task.Supervisor, name: BridgeCore.TaskSupervisor},
           AdfSenderConnector.spec([sender_url: sender_url_cfg]),
@@ -30,6 +35,7 @@ defmodule BridgeCore do
         ]
 
       _ ->
+        Logger.debug("Running in production mode")
         [
           {Task.Supervisor, name: BridgeCore.TaskSupervisor},
           {Cluster.Supervisor, [topologies(), [name: BridgeCore.ClusterSupervisor]]},
@@ -56,21 +62,39 @@ defmodule BridgeCore do
         channel_registration = obtain_credentials(channel)
         case channel_registration do
           {:ok, registered_channel} ->
-            mutator = String.to_existing_atom(
-              BridgeHelperConfig.get([:bridge, "cloud_event_mutator"], @default_mutator)
+
+            mutator_setup = BridgeHelperConfig.get([:bridge, "cloud_event_mutator"], @default_mutator)
+            ChannelSupervisor.start_channel_process(
+              registered_channel,
+              mutator_setup
             )
+
+            {:ok, {registered_channel, mutator_setup}}
+
+          {:error, _reason} = err ->
+            err
+        end
+
+      {:ok, pid} ->
+        # channel process already exists
+        Logger.debug("Channel already registered with alias : #{channel.channel_alias}")
+
+        {:ok, {existing_channel, mutator}} = ChannelManager.get_channel_info(pid)
+        existing_channel_with_new_credentials = obtain_credentials(existing_channel)
+        case existing_channel_with_new_credentials do
+          {:ok, registered_channel} ->
+
             ChannelSupervisor.start_channel_process(
               registered_channel,
               mutator
             )
+
             {:ok, {registered_channel, mutator}}
 
           {:error, _reason} = err ->
             err
         end
-      {:ok, pid} ->
-        # Logger.warning("Channel process already exists for alias #{inspect(channel.channel_alias)}")
-        ChannelManager.get_channel_info(pid)
+
     end
   end
 
@@ -96,7 +120,7 @@ defmodule BridgeCore do
 
   defp obtain_credentials(channel) do
     Task.Supervisor.async(BridgeCore.TaskSupervisor, fn ->
-      with {:ok, creds} <- AdfSenderConnector.channel_registration(channel.application_ref.id, channel.user_ref.id)
+      with {:ok, creds} <- Connector.channel_registration(channel.application_ref.id, channel.user_ref.id)
       do
         {:ok, Channel.update_credentials(channel, creds["channel_ref"], creds["channel_secret"]) }
       else
@@ -131,7 +155,6 @@ defmodule BridgeCore do
         Logger.warning("No libcluster topology defined!!! -> Using Default [Gossip]")
         [ strategy: Cluster.Strategy.Gossip ]
       _ ->
-        IO.inspect(topology, label: "topology strategy")
         [
           strategy: String.to_existing_atom(topology["strategy"]),
           config: parse_config_key(topology["config"])

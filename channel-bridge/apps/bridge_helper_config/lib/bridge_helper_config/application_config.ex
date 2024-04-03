@@ -4,12 +4,10 @@ defmodule BridgeHelperConfig.ApplicationConfig do
 
   require Logger
 
-  @default_file "config-local.yaml"
-
   # configuration elements to be loaed as atoms
   @atom_keys [
     [:bridge, "channel_authenticator"],
-    [:bridge, "cloud_event_mutator"]
+    [:bridge, "cloud_event_mutator", "mutator_module"]
   ]
 
   def load(file_path \\ nil) do
@@ -58,9 +56,20 @@ defmodule BridgeHelperConfig.ApplicationConfig do
   end
 
   defp load_atoms(config) do
-
     @atom_keys
-    |> Enum.map(fn(k) -> {List.last(k), get_in(config, k)} end)
+    |> Enum.map(fn(k) ->
+      res = get_in(config, k)
+      |> String.to_atom
+      |> Code.ensure_compiled
+
+      case res do
+        {:error, _} ->
+          Logger.warning("invalid configuration for key #{k}, not a valid atom detected. Errors may occur during runtime")
+          nil
+        {:module, m}  ->
+          {k, m}
+      end
+    end)
     |> Enum.filter(fn({k,v}) ->
       case v do
         nil ->
@@ -69,19 +78,9 @@ defmodule BridgeHelperConfig.ApplicationConfig do
         _ -> true
       end
     end)
-    |> Enum.map(fn({k,v}) ->
-      res = String.to_atom(v)
-      |> Code.ensure_compiled
-      case res do
-        {:error, _} ->
-          Logger.warning("invalid configuration for key #{k}, value #{v} is not a valid atom. Errors may occur during runtime")
-          nil
-        {:module, _}  ->
-          v
-      end
+    |> Enum.reduce(config, fn({k,v}, acc) ->
+      put_in(acc, k, v)
     end)
-
-    config
   end
 
   defp set_logging_config(config) do

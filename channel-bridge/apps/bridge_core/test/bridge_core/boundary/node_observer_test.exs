@@ -1,16 +1,21 @@
 defmodule BridgeCore.Boundary.NodeObserverTest do
   use ExUnit.Case
 
-  import Mock
+  alias BridgeCore.Boundary.{NodeObserver, ChannelRegistry, ChannelSupervisor}
 
-  alias BridgeCore.Boundary.NodeObserver
-  alias BridgeCore.Boundary.ChannelRegistry
-  alias BridgeCore.Boundary.ChannelSupervisor
-
-  test "Should start nodeobserver" do
+  setup do
     {:ok, rpid} = ChannelRegistry.start_link(nil)
     {:ok, spid} = ChannelSupervisor.start_link(nil)
 
+    on_exit(fn ->
+      Process.exit(rpid, :kill)
+      Process.exit(spid, :kill)
+    end)
+
+    :ok
+  end
+
+  test "Should start nodeobserver" do
     {:ok, pid} = NodeObserver.start_link(nil)
     assert is_pid(pid)
 

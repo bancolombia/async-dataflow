@@ -44,13 +44,13 @@ defmodule BridgeApi.Rest.RestRouter do
   match(_, do: send_resp(conn, 404, "Resource not found"))
 
   defp start_session(conn) do
-    build_data_map(conn)
+    build_request_data(conn)
     |> RestHelper.start_session()
     |> send_response(conn)
   end
 
   defp delete_channel(conn) do
-    build_data_map(conn)
+    build_request_data(conn)
     |> RestHelper.close_channel()
     |> send_response(conn)
   end
@@ -62,8 +62,8 @@ defmodule BridgeApi.Rest.RestRouter do
     |> send_resp(status, Jason.encode!(data))
   end
 
-  @spec build_data_map(conn()) :: ChannelRequest.t()
-  defp build_data_map(conn) do
+  @spec build_request_data(conn()) :: ChannelRequest.t()
+  defp build_request_data(conn) do
     {:ok, all_headers} = Header.all_headers(conn)
 
     ChannelRequest.new(

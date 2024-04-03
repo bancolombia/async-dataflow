@@ -7,9 +7,16 @@ defmodule BridgeCore.CloudEvent.Mutator do
   alias BridgeCore.CloudEvent
 
   @type cloud_event() :: CloudEvent.t()
+  @type config() :: Map.t()
 
   @doc """
-  Transform a CloudEvent
+  Function that defines if the mutator should be applied to the cloud event
   """
-  @callback mutate(cloud_event()) :: {:ok, cloud_event()} | {:error, any()}
+  @callback applies?(cloud_event(), config()) :: boolean() | {:error, any()}
+
+  @doc """
+  Apply the mutator logic to the CloudEvent, an :ok result means the CloudEvent was mutated, else a :noop result means
+  the CloudEvent was not mutated due an error invoking the related endpoint.
+  """
+  @callback mutate(cloud_event(), config()) :: {:ok | :noop, cloud_event()} | {:error, any()}
 end

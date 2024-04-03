@@ -131,6 +131,14 @@ defmodule AdfSenderConnector do
     DynamicSupervisor.start_child(__MODULE__, Router.child_spec([name: channel_ref] ++ new_options))
   end
 
+  @doc """
+  Stops a routing process.
+  """
+  @spec stop_router_process(channel_ref()) :: :ok | {:error, any()}
+  def stop_router_process(channel_ref) do
+    Logger.debug("Stopping routing process: #{inspect(channel_ref)}")
+    DynamicSupervisor.stop(__MODULE__, channel_ref)
+  end
 
   @spec route_message(channel_ref(), event_name(), message() | message_data()) :: {:ok, map()} | {:error, any()}
   @doc """

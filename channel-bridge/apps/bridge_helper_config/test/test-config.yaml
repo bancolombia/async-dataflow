@@ -4,7 +4,9 @@ bridge:
     - $.subject
   request_channel_identifier:
     - "$.req_headers['sub']"
-  cloud_event_mutator: Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator
+  cloud_event_mutator:
+    mutator_module: Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator
+
   channel_authenticator: Elixir.BridgeRestapiAuth.PassthroughProvider
   event_bus:
     rabbitmq:

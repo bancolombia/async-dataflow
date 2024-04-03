@@ -1,5 +1,3 @@
-Code.compiler_options(ignore_module_conflict: true)
-
 defmodule BridgeCore.CloudEvent.ExtractorTest do
   use ExUnit.Case
 
@@ -11,7 +9,10 @@ defmodule BridgeCore.CloudEvent.ExtractorTest do
   setup do
     cloud_event = "{
       \"data\": {
-        \"hello\": \"world\"
+        \"hello\": \"world\",
+        \"list\": [{
+          \"somekey\": \"somevalue\"
+        }]
       },
       \"dataContentType\": \"application/json\",
       \"id\": \"1\",
@@ -67,7 +68,9 @@ defmodule BridgeCore.CloudEvent.ExtractorTest do
 
   test "Should extract random data from cloud event", %{demo_evt: demo_evt} do
     {:ok, cloud_event} = CloudEvent.from(demo_evt)
-
+    assert Extractor.extract(cloud_event, "$.id") == {:ok, "1"}
+    assert Extractor.extract(cloud_event, "$.type") == {:ok, "type1"}
+    assert Extractor.extract(cloud_event, "$.unexistent") == {:error, :keynotfound}
     assert Extractor.extract(cloud_event, "$.data.hello") == {:ok, "world"}
   end
 
