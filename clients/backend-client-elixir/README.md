@@ -10,7 +10,7 @@ by adding `adf_sender_connector` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:adf_sender_connector, "~> 0.1.0"}
+    {:adf_sender_connector, "~> 0.3.0"}
   ]
 end
 ```

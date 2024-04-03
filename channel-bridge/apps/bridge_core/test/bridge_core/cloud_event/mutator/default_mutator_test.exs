@@ -8,15 +8,6 @@ defmodule BridgeCore.CloudEvent.Mutator.DefaultMutatorTest do
 
   @moduletag :capture_log
 
-  setup_all do
-    #   {:ok, _} = Application.ensure_all_started(:plug_crypto)
-    :ok
-  end
-
-  setup do
-    :ok
-  end
-
   test "Should not perform mutations to cloud_event" do
     cloud_event = "{
       \"data\": {\"hello\": \"World\"},
@@ -32,8 +23,28 @@ defmodule BridgeCore.CloudEvent.Mutator.DefaultMutatorTest do
 
     {:ok, parsed_cloud_event} = CloudEvent.from(cloud_event)
 
-    {:ok, unmutated_cloud_event} = DefaultMutator.mutate(parsed_cloud_event)
+    {:ok, non_mutated_cloud_event} = DefaultMutator.mutate(parsed_cloud_event)
 
-    assert unmutated_cloud_event == parsed_cloud_event
+    assert non_mutated_cloud_event == parsed_cloud_event
   end
+
+  test "Should check apply rule" do
+    cloud_event = "{
+      \"data\": {\"hello\": \"World\"},
+      \"dataContentType\": \"application/json\",
+      \"id\": \"1\",
+      \"invoker\": \"invoker1\",
+      \"source\": \"source1\",
+      \"specVersion\": \"0.1\",
+      \"subject\": \"foo\",
+      \"time\": \"xxx\",
+      \"type\": \"type1\"
+    }"
+
+    {:ok, parsed_cloud_event} = CloudEvent.from(cloud_event)
+
+    assert true == DefaultMutator.applies?(parsed_cloud_event, %{})
+
+  end
+
 end

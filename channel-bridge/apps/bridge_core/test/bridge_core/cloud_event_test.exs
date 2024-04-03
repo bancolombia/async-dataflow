@@ -2,12 +2,31 @@ Code.compiler_options(ignore_module_conflict: true)
 
 defmodule BridgeCore.CloudEventTest do
   use ExUnit.Case
+  import Mock
 
   alias BridgeCore.CloudEvent
+  alias BridgeCore.CloudEvent.Mutator.DefaultMutator
 
   @moduletag :capture_log
 
-  setup do
+  @default_mutator_setup %{
+    "mutator_module" => BridgeCore.CloudEvent.Mutator.DefaultMutator,
+    "config" => nil
+  }
+
+  setup_with_mocks([
+    {DefaultMutator, [],
+      [
+        applies?: fn a, _b ->
+          case a.id do
+            "1" -> true
+            "2" -> false
+            "3" -> {:error, "dummy"}
+          end
+        end,
+        mutate: fn a, _b -> {:ok, a} end
+      ]}
+  ]) do
     demo_event = %{
       data: %{
         "request" => %{
@@ -123,7 +142,7 @@ defmodule BridgeCore.CloudEventTest do
     assert err.reason != nil
   end
 
-  test "Should validate cloudevent", %{demo_evt_json: demo_evt_json} do
+  test "Should validate cloud event", %{demo_evt_json: demo_evt_json} do
     {:ok, msg} = CloudEvent.from(demo_evt_json)
     assert msg != nil
     assert "invoker1" == msg.invoker
@@ -138,4 +157,23 @@ defmodule BridgeCore.CloudEventTest do
     {:ok, msg} = CloudEvent.from(demo_evt_json)
     assert {:ok, "some-micro"} == CloudEvent.extract(msg, "$.data.request.headers.target")
   end
+
+  test "should perform mutation", %{demo_evt_json: demo_evt_json} do
+    {:ok, msg} = CloudEvent.from(demo_evt_json)
+    assert {:ok, msg} == CloudEvent.mutate(msg, @default_mutator_setup)
+  end
+
+  test "should not perform mutation", %{demo_evt_json: demo_evt_json} do
+    {:ok, msg} = CloudEvent.from(demo_evt_json)
+    new_msg = %{msg | id: "2"}
+    assert {:ok, new_msg} == CloudEvent.mutate(new_msg, @default_mutator_setup)
+  end
+
+  test "should fail performing mutation", %{demo_evt_json: demo_evt_json} do
+    {:ok, msg} = CloudEvent.from(demo_evt_json)
+    new_msg = %{msg | id: "3"}
+    assert {:error, "dummy"} == CloudEvent.mutate(new_msg, @default_mutator_setup)
+  end
+
+
 end

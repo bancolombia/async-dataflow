@@ -28,12 +28,12 @@ defmodule BridgeApi.Rest.RestHelper do
     with {:ok, channel} <- build_channel_info_from_request(request_data),
          {:ok, {new_channel, _mutator}} <- BridgeCore.start_session(channel) do
 
-      [{ref, key} | _tail] = new_channel.procs
+      [ref | _tail] = new_channel.procs
 
       ok_response(%{
         "alias" => new_channel.channel_alias,
-        "channel_ref" => ref,
-        "channel_secret" => key
+        "channel_ref" => ref.channel_ref,
+        "channel_secret" => ref.channel_secret
       })
 
     else
@@ -112,11 +112,6 @@ defmodule BridgeApi.Rest.RestHelper do
     #{%{"errors" => [ErrorResponse.new("", "", "ADF00101", "channel disposed", "")]}, 400}
     {%{"result" => "ok"}, 200}
   end
-
-  # defp handle_error_response({:error, :alreadyopen}) do
-  #   {%{"errors" => [ErrorResponse.new("", "", "ADF00100", "channel already registered", "")]},
-  #    400}
-  # end
 
   defp handle_error_response({:error, :channel_sender_econnrefused}) do
     {%{"errors" => [ErrorResponse.new("", "", "ADF00105", "ADF Sender error", "")]}, 502}
