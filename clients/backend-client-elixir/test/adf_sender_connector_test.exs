@@ -40,15 +40,6 @@ defmodule AdfSenderConnectorTest do
     assert {:error, :channel_sender_econnrefused} == AdfSenderConnector.channel_registration("a1", "b1", options)
   end
 
-  # test "fail to create a process due to invalid options" do
-  #   options = [name: :xxx, alpha: true]
-
-  #   assert_raise NimbleOptions.ValidationError, fn ->
-  #     AdfSenderConnector.channel_registration("a2", "b2", options)
-  #   end
-
-  # end
-
   test "deliver a message via channel" do
 
     ### first exchange credentials
@@ -122,6 +113,32 @@ defmodule AdfSenderConnectorTest do
       message = Message.new("dummy.channel.ref3", %{"hello" => "world"}, "evt1")
       assert {:error, :channel_sender_unknown_error} == AdfSenderConnector.route_message("dummy.channel.ref3", "evt1", message)
     end
+
+  end
+
+  test "should stop routing process" do
+
+    options = [sender_url: @sender_url, http_opts: []]
+
+    ### first exchange credentials
+    create_response = %HTTPoison.Response{
+      status_code: 200,
+      body: "{ \"channel_ref\": \"dummy.channel.ref4\", \"channel_secret\": \"yyy4\"}"
+    }
+
+    with_mocks([
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
+    ]) do
+      assert {:ok, %{"channel_ref" => "dummy.channel.ref4", "channel_secret" => "yyy4"}}
+             == AdfSenderConnector.channel_registration("a4", "b4", options)
+    end
+
+    ### then create a process to map that name
+    {:ok, pid} = AdfSenderConnector.start_router_process("dummy.channel.ref4")
+
+    ### and then stop the router process
+    assert :ok == AdfSenderConnector.stop_router_process("dummy.channel.ref4")
+
 
   end
 

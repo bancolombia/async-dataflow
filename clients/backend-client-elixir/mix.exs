@@ -4,7 +4,7 @@ defmodule AdfSenderConnector.MixProject do
   def project do
     [
       app: :adf_sender_connector,
-      version: "0.2.2",
+      version: "0.3.0",
       elixir: "~> 1.13",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -53,7 +53,8 @@ defmodule AdfSenderConnector.MixProject do
       {:sobelow, "~> 0.8", only: :dev},
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_unit_sonarqube, "~> 0.1", only: :test},
-      {:benchee, "~> 1.1", only: [:dev, :benchee]}
+      {:benchee, "~> 1.1", only: [:dev, :benchee]},
+      {:ssl_verify_fun, "~> 1.1.6", manager: :rebar3, override: true}
     ]
   end
 
