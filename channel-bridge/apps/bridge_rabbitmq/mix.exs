@@ -36,7 +36,7 @@ defmodule BridgeRabbitmq.MixProject do
       {:sweet_xml, "~> 0.6"},
       {:vapor, "~> 0.10.0"},
       # testing dependencies
-      {:mock, "~> 0.3.0", only: :test},
+      {:mock, "~> 0.3.8", only: :test},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:credo_sonarqube, "~> 0.1.3", only: [:dev, :test]},
       {:sobelow, "~> 0.8", only: :dev},

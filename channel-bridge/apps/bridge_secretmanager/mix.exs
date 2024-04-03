@@ -31,7 +31,7 @@ defmodule BridgeSecretManager.MixProject do
       {:ex_aws_sts, "~> 2.2"},
       {:ex_aws_secretsmanager, "~> 2.0"},
       # test only dependencies
-      {:mock, "~> 0.3.0", only: :test}
+      {:mock, "~> 0.3.8", only: :test}
     ]
   end
 end
