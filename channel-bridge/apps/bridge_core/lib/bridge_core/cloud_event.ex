@@ -30,6 +30,7 @@ defmodule BridgeCore.CloudEvent do
           data: data()
         }
 
+  @derive Jason.Encoder
   defstruct specVersion: nil,
             type: nil,
             source: nil,
@@ -113,4 +114,40 @@ defmodule BridgeCore.CloudEvent do
   defdelegate extract(cloud_event, path), to: Extractor
 
   defdelegate extract_channel_alias(cloud_event), to: Extractor
+
+  @spec mutate(t(), atom()) :: {:ok, t()} | {:error, any}
+  def mutate(cloud_event, mutator_setup) do
+
+    mutator = mutator_setup["mutator_module"]
+    mutator_config = mutator_setup["config"]
+
+    with true <- mutator.applies?(cloud_event, mutator_config) do
+      Logger.debug("Applying mutator #{inspect(mutator)} to cloud event...")
+
+      cloud_event
+      |> mutator.mutate(mutator_config)
+      |> (fn result ->
+        case result do
+          {:ok, _mutated} ->
+            Logger.debug("Cloud event mutated.")
+            result
+
+          {:noop, ce} ->
+            Logger.debug("Cloud event not mutated!")
+            {:ok, ce}
+
+          {:error, reason} = err ->
+            Logger.error("Message mutation error. #{inspect(reason)}")
+            err
+        end
+          end).()
+    else
+      false ->
+        Logger.debug("Mutator not applied to cloud event due to 'Mutator.applies?/2' returned = false")
+        {:ok, cloud_event}
+      {:error, reason} = err ->
+        Logger.error("Message mutation decision logic error. #{inspect(reason)}")
+        err
+    end
+  end
 end

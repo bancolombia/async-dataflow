@@ -15,7 +15,13 @@ defmodule BridgeCore.CloudEvent.Mutator.DefaultMutator do
 
   @doc false
   @impl true
-  def mutate(cloud_event) do
+  def applies?(_cloud_event, _config \\ nil) do
+    true
+  end
+
+  @doc false
+  @impl true
+  def mutate(cloud_event, _config \\ nil) do
     # No changes are made to the input cloud_event. You can implement mutation functionality here.
     {:ok, cloud_event}
   end

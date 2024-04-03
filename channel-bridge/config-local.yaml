@@ -4,7 +4,19 @@ bridge:
     - $.subject
   request_channel_identifier:
     - "$.req_headers['sub']"
-  cloud_event_mutator: Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator
+  cloud_event_mutator:
+    mutator_module: Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator
+#    mutator_module: Elixir.BridgeCore.CloudEvent.Mutator.WebhookMutator
+#    config:
+#      webhook_url: "http://localhost:3000/content/x"
+#      webhook_method: "POST"
+#      webhook_headers:
+#        - "Accept: application/json"
+#      applies_when:
+#        - key: "$.invoker"
+#          comparator: "contains"
+#          value: "acme"
+
   channel_authenticator: Elixir.BridgeRestapiAuth.PassthroughProvider
   event_bus:
     rabbitmq:
@@ -25,15 +37,15 @@ bridge:
 
       ##
       ## Optionally and for local dev environments  Rabbitmq host and credentials can be configured directly 
-      ## here:
-      # username: 
-      # password: 
-      # hostname: localhost
-      # port: 5672
-      # virtualhost: /
-      # ssl: false
+      ## here:
+#      username:
+#      password:
+#      hostname: localhost
+#      port: 5672
+#      virtualhost: /
+#      ssl: false
 
-      ## producer and processor concurrency
+      ## producer and processor concurrency
       producer_concurrency: 1
       producer_prefetch: 2
       processor_concurrency: 2
@@ -41,7 +53,7 @@ bridge:
       
     # sqs:
     #   queue: sample-queue
-    #   ## producer and processor concurrency
+    #   ##producer and processor concurrency
     #   producer_concurrency: 1
     #   producer_prefetch: 2
     #   processor_concurrency: 2
@@ -57,6 +69,9 @@ bridge:
     #   kubernetes_selector: "cluster=beam"
     #   namespace: "bridgenm"
     #   polling_interval: 5000
+#  apps:
+#    - name: demo1
+#      timeout: 5000
 
 sender:
   url: http://localhost:8081
