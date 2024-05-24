@@ -1,5 +1,6 @@
 defmodule BridgeSecretManager do
   use GenServer
+  @behaviour BridgeCore.SecretProvider
 
   @moduledoc """
   Documentation for `BridgeSecretManager`.

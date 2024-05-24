@@ -7,7 +7,8 @@ defmodule BridgeHelperConfig.ApplicationConfig do
   # configuration elements to be loaed as atoms
   @atom_keys [
     [:bridge, "channel_authenticator"],
-    [:bridge, "cloud_event_mutator", "mutator_module"]
+    [:bridge, "cloud_event_mutator", "mutator_module"],
+    [:bridge, "secrets", "provider"]
   ]
 
   def load(file_path \\ nil) do
@@ -64,8 +65,8 @@ defmodule BridgeHelperConfig.ApplicationConfig do
 
       case res do
         {:error, _} ->
-          Logger.warning("invalid configuration for key #{k}, not a valid atom detected. Errors may occur during runtime")
-          nil
+          Logger.warning("invalid configuration detected with key #{inspect(k)}. Errors may occur during runtime. #{inspect(res)}")
+          {nil, nil}
         {:module, m}  ->
           {k, m}
       end
@@ -73,7 +74,6 @@ defmodule BridgeHelperConfig.ApplicationConfig do
     |> Enum.filter(fn({k,v}) ->
       case v do
         nil ->
-          Logger.warning("invalid configuration for key #{k}, value is nil. Errors may occur during runtime")
           false
         _ -> true
       end
