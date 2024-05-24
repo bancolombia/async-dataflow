@@ -16,9 +16,8 @@ defmodule BridgeCore.Sender.Connector do
   end
 
   @spec stop_router_process(String.t, Keyword.t) :: :ok | {:error, any()}
-  def stop_router_process(channel_ref, options \\ []) do
-    # TODO to be implemented
-    :ok
+  def stop_router_process(channel_ref, _options \\ []) do
+    AdfSenderConnector.stop_router_process(channel_ref)
   end
 
   @spec route_message(String.t, String.t, Message.t) ::  {:ok, map()} | {:error, any()}
