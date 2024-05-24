@@ -1,8 +1,8 @@
-defmodule BridgeRestapiAuth.ParseOnlyProviderTest do
+defmodule BridgeRestapiAuth.JwtParseOnlyProviderTest do
   use ExUnit.Case
   import Mock
 
-  alias BridgeRestapiAuth.ParseOnlyProvider
+  alias BridgeRestapiAuth.JwtParseOnlyProvider
 
   @moduletag :capture_log
 

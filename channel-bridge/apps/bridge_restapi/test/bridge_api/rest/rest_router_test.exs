@@ -99,7 +99,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
     cfg = %{
       bridge: %{
-        "channel_authenticator" => "Elixir.BridgeRestapiAuth.ParseOnlyProvider",
+        "channel_authenticator" => "Elixir.BridgeRestapiAuth.JwtParseOnlyProvider",
       }
     }
     Application.put_env(:channel_bridge, :config, cfg)
@@ -140,7 +140,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
   test "Should obtain OK response from liveness probe" do
     with_mocks([
-      {BridgeRestapiAuth.ParseOnlyProvider, [],
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
         [validate_credentials: fn _token -> {:ok, %{}} end]}
     ]) do
       conn = conn(:get, "/liveness")
@@ -154,7 +154,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
   test "Should obtain OK response from readiness probe" do
     with_mocks([
-      {BridgeRestapiAuth.ParseOnlyProvider, [],
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
         [validate_credentials: fn _token -> {:ok, %{}} end]}
     ]) do
       conn = conn(:get, "/readiness")
@@ -168,7 +168,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
   test "Should handle unknown path" do
     with_mocks([
-      {BridgeRestapiAuth.ParseOnlyProvider, [],
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
         [validate_credentials: fn _token -> {:ok, %{}} end]}
     ]) do
       conn = conn(:get, "/hello")

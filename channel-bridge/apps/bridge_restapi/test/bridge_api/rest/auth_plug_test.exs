@@ -23,7 +23,7 @@ defmodule BridgeApi.Rest.AuthPlugTest do
 
     cfg = %{
       bridge: %{
-        "channel_authenticator" => "Elixir.BridgeRestapiAuth.ParseOnlyProvider",
+        "channel_authenticator" => "Elixir.BridgeRestapiAuth.JwtParseOnlyProvider",
       }
     }
     Application.put_env(:channel_bridge, :config, cfg)
@@ -34,7 +34,7 @@ defmodule BridgeApi.Rest.AuthPlugTest do
       |> put_req_header("authorization", "Bearer ey.a.c")
 
     with_mocks([
-      {BridgeRestapiAuth.ParseOnlyProvider, [],
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
        [
          validate_credentials: fn _token ->
            {:ok,
@@ -68,7 +68,7 @@ defmodule BridgeApi.Rest.AuthPlugTest do
 
     cfg = %{
       bridge: %{
-        "channel_authenticator" => "Elixir.BridgeRestapiAuth.ParseOnlyProvider",
+        "channel_authenticator" => "Elixir.BridgeRestapiAuth.JwtParseOnlyProvider",
       }
     }
     Application.put_env(:channel_bridge, :config, cfg)
@@ -78,7 +78,7 @@ defmodule BridgeApi.Rest.AuthPlugTest do
       |> put_req_header("content-type", "application/json")
 
     with_mocks([
-      {BridgeRestapiAuth.ParseOnlyProvider, [],
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
         [
           validate_credentials: fn _token ->
             {:error, :nocreds}

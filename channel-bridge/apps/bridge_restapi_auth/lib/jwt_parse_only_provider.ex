@@ -1,4 +1,4 @@
-defmodule BridgeRestapiAuth.ParseOnlyProvider do
+defmodule BridgeRestapiAuth.JwtParseOnlyProvider do
   @behaviour BridgeRestapiAuth.Provider
 
   @moduledoc """
