@@ -21,7 +21,7 @@ defmodule AdfSenderConnector.MixProject do
       ],
       aliases: aliases(),
       releases: [
-        adf_sender_connector: [
+        adf_sender_connector: [ 
           include_executables_for: [:unix],
           applications: [
             runtime_tools: :permanent
@@ -54,7 +54,6 @@ defmodule AdfSenderConnector.MixProject do
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_unit_sonarqube, "~> 0.1", only: :test},
       {:benchee, "~> 1.1", only: [:dev, :benchee]},
-      {:ssl_verify_fun, "~> 1.1.6", manager: :rebar3, override: true}
     ]
   end
 
