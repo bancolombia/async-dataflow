@@ -4,7 +4,7 @@ defmodule AdfSenderConnectorTest do
   import Mock
   alias AdfSenderConnector.Message
 
-  @sender_url "http://localhost:8888"
+  @sender_url "http://localhost:8889"
   setup_all do
 
     children = [
@@ -32,12 +32,19 @@ defmodule AdfSenderConnectorTest do
       assert {:ok, %{"channel_ref" => "dummy.channel.ref0", "channel_secret" => "yyy0"}} =
         AdfSenderConnector.channel_registration("a0", "b0", options)
     end
-
   end
 
   test "should fail to register a channel" do
-    options = [http_opts: []]
-    assert {:error, :channel_sender_econnrefused} == AdfSenderConnector.channel_registration("a1", "b1", options)
+    options = [sender_url: @sender_url, http_opts: []]
+
+    create_response = {:error, %{reason: :econnrefused}}
+
+    with_mocks([
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> create_response end]}
+    ]) do
+      {:error, :channel_sender_econnrefused} == AdfSenderConnector.channel_registration("a1", "b1", options)
+    end
+
   end
 
   test "deliver a message via channel" do
@@ -116,7 +123,7 @@ defmodule AdfSenderConnectorTest do
 
   end
 
-  test "should stop routing process" do
+  test "should route via cast" do
 
     options = [sender_url: @sender_url, http_opts: []]
 
@@ -130,14 +137,53 @@ defmodule AdfSenderConnectorTest do
       {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
     ]) do
       assert {:ok, %{"channel_ref" => "dummy.channel.ref4", "channel_secret" => "yyy4"}}
-             == AdfSenderConnector.channel_registration("a4", "b4", options)
+        == AdfSenderConnector.channel_registration("a4", "b4", options)
     end
 
     ### then create a process to map that name
-    {:ok, pid} = AdfSenderConnector.start_router_process("dummy.channel.ref4")
+    AdfSenderConnector.start_router_process("dummy.channel.ref4")
+
+    ### and then try to route a message
+    deliver_response = %HTTPoison.Response{
+      status_code: 200,
+      body: "{ \"result\": \"Ok\" }"
+    }
+
+    with_mocks([
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, deliver_response} end]}
+    ]) do
+
+      assert :ok == AdfSenderConnector.route_message("dummy.channel.ref4", "evt1", %{}, [cast: true])
+
+      message = Message.new("dummy.channel.ref4", %{"hello" => "world"}, "evt1")
+
+      assert :ok == AdfSenderConnector.route_message("dummy.channel.ref4", "evt1", message, [cast: true])
+    end
+
+  end
+
+  test "should stop routing process" do
+
+    options = [sender_url: @sender_url, http_opts: []]
+
+    ### first exchange credentials
+    create_response = %HTTPoison.Response{
+      status_code: 200,
+      body: "{ \"channel_ref\": \"dummy.channel.ref5\", \"channel_secret\": \"yyy5\"}"
+    }
+
+    with_mocks([
+      {HTTPoison, [], [post: fn _url, _params, _headers, _opts -> {:ok, create_response} end]}
+    ]) do
+      assert {:ok, %{"channel_ref" => "dummy.channel.ref5", "channel_secret" => "yyy5"}}
+             == AdfSenderConnector.channel_registration("a5", "b5", options)
+    end
+
+    ### then create a process to map that name
+    {:ok, _pid} = AdfSenderConnector.start_router_process("dummy.channel.ref5")
 
     ### and then stop the router process
-    assert :ok == AdfSenderConnector.stop_router_process("dummy.channel.ref4")
+    assert :ok == AdfSenderConnector.stop_router_process("dummy.channel.ref5")
 
 
   end
