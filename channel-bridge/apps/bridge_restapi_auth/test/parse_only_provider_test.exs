@@ -14,7 +14,7 @@ defmodule BridgeRestapiAuth.JwtParseOnlyProviderTest do
       "session-tracker" => "xxxx"
     }
 
-    assert ParseOnlyProvider.validate_credentials(headers) ==
+    assert JwtParseOnlyProvider.validate_credentials(headers) ==
       {:ok, %{"iat" => 1516239022, "name" => "John Doe", "sub" => "1234567890"}}
 
   end
@@ -27,14 +27,14 @@ defmodule BridgeRestapiAuth.JwtParseOnlyProviderTest do
       "session-tracker" => "xxxx"
     }
 
-    assert ParseOnlyProvider.validate_credentials(headers) == {:error, :nocreds}
+    assert JwtParseOnlyProvider.validate_credentials(headers) == {:error, :nocreds}
   end
 
   test "should handle empty map headers" do
 
     headers = %{}
 
-    assert ParseOnlyProvider.validate_credentials(headers) == {:error, :nocreds}
+    assert JwtParseOnlyProvider.validate_credentials(headers) == {:error, :nocreds}
   end
 
   test "should handle decoding error" do
@@ -54,7 +54,7 @@ defmodule BridgeRestapiAuth.JwtParseOnlyProviderTest do
         "session-tracker" => "xxxx"
       }
 
-      assert {:ok, nil} = ParseOnlyProvider.validate_credentials(headers)
+      assert {:ok, nil} = JwtParseOnlyProvider.validate_credentials(headers)
 
     end
   end

@@ -13,4 +13,5 @@ defmodule BridgeRestapiAuth.PassthroughProvider do
   def validate_credentials(_all_headers) do
     {:ok, %{}}
   end
+
 end

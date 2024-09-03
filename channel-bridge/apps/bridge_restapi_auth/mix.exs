@@ -26,7 +26,8 @@ defmodule BridgeRestapiAuth.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
-      {:jose, "~> 1.11.1"},
+      {:joken, "~> 2.6"},
+      {:joken_jwks, "~> 1.6.0"},
       {:mock, "~> 0.3.8", only: :test}
     ]
   end

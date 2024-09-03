@@ -26,35 +26,19 @@ defmodule BridgeCore.CloudEvent.Extractor do
         [@default_channel_identifier]
       )
 
-    case Enum.empty?(keys_for_channel) do
-      true ->
-        {:error,
-          "Could not calculate channel alias. No data configured in :cloud_event_channel_identifier"}
-
-      false ->
-        build_from(cloud_event, keys_for_channel)
-        |> (fn s ->
-              case String.contains?(s, "undefined") do
-                true ->
-                  {:error,
-                    "Could not calculate channel alias. Ref data not found in cloud event: #{keys_for_channel}"}
-
-                false ->
-                  {:ok, s}
-              end
-            end).()
-    end
+    extract(cloud_event, keys_for_channel)
   end
 
-  @doc """
-  searches and extracts json data from this cloud_event payload
-  """
+  # @doc """
+  # searches and extracts json data from this cloud_event payload
+  # """
   @spec extract(cloud_event(), path()) :: {:ok, any()} | {:error, :keynotfound}
   def extract(cloud_event, path) do
     result = build_from(cloud_event, path)
 
     case result do
-      "undefined" ->
+      "" ->
+        Logger.error("Could not calculate channel alias. Ref data not found in cloud event: #{path}")
         {:error, :keynotfound}
 
       _ ->
@@ -72,14 +56,9 @@ defmodule BridgeCore.CloudEvent.Extractor do
 
   defp extract_from(data, keys) do
     Enum.map(keys, fn key ->
-      part = JsonSearch.extract(data, key)
-
-      if part == nil do
-        "undefined"
-      else
-        part
-      end
+      JsonSearch.extract(data, key)
     end)
+    |> Enum.filter(& &1 != nil)
     |> Enum.reduce("", fn x, acc ->
       acc <> x <> "-"
     end)

@@ -1,9 +1,10 @@
 defmodule BridgeRabbitmq.SubscriberTest do
   use ExUnit.Case, async: false
 
-  # doctest BridgeRabbitmq.Subscriber
-
   alias BridgeRabbitmq.Subscriber
+  alias alias BridgeCore.CloudEvent.RoutingError
+
+  import Mock
 
   @moduletag :capture_log
 
@@ -69,7 +70,30 @@ defmodule BridgeRabbitmq.SubscriberTest do
 
   end
 
-  test "should process bindings", %{init_args: init_args}  do
+  test "should handle fail invoking processing function", %{init_args: init_args}  do
+
+    with_mocks([
+      {BridgeRabbitmq.MessageProcessor, [], [handle_message: fn _input_json_message ->
+        raise RoutingError, message: "dummy error"
+      end]}
+    ]) do
+
+      {:ok, pid} = Subscriber.start_link([init_args.conn_config])
+
+      assert is_pid(pid)
+
+      ref = Broadway.test_message(Subscriber, init_args.json)
+
+      assert_receive {:ack, ^ref, [%{data: _test_event}], [] }, 300
+
+      assert :ok == Subscriber.stop()
+
+    end
+
+
+  end
+
+  test "should process bindings"  do
 
     conn_config = %{
       "producer_module" => "Elixir.Broadway.DummyProducer",
@@ -90,7 +114,7 @@ defmodule BridgeRabbitmq.SubscriberTest do
 
   end
 
-  test "should process bindings II", %{init_args: init_args}  do
+  test "should process bindings II"  do
 
     conn_config = %{
       "producer_module" => nil,
@@ -110,23 +134,5 @@ defmodule BridgeRabbitmq.SubscriberTest do
     assert :ok == Subscriber.stop()
 
   end
-
-  # test "should process received messages, custom fn", %{init_args: init_args}  do
-
-  #   config = Map.put(init_args.conn_config, "handle_message_fn", fn(_msg) ->
-  #     :ok
-  #   end)
-
-  #   {:ok, pid} = Subscriber.start_link([config])
-
-  #   assert is_pid(pid)
-  #   ref = Broadway.test_message(Subscriber, init_args.json)
-  #   :timer.sleep(100)
-
-  #   assert_receive {:ack, ^ref, [%{data: _test_event}], _}, 300
-
-  #   Process.exit(pid, :normal)
-  #   :timer.sleep(300)
-  # end
 
 end

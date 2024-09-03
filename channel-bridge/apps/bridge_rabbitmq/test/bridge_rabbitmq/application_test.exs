@@ -2,10 +2,6 @@ defmodule BridgeRabbitmq.ApplicationTest do
   use ExUnit.Case, async: true
   # use Plug.Test
 
-  alias BridgeCore.CloudEvent
-  alias BridgeCore.CloudEvent.RoutingError
-  alias BridgeRabbitmq.MessageProcessor
-
   import Mock
 
   test "Should not start app twice" do

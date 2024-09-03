@@ -8,7 +8,7 @@ defmodule ChannelBridge.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       releases: [
-        async_dataflow_bridge: [
+        adf_bridge: [
           applications: [
             bridge_helper_config: :permanent,
             bridge_core: :permanent,

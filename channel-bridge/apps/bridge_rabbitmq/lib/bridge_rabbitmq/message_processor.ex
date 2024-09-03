@@ -15,31 +15,21 @@ defmodule BridgeRabbitmq.MessageProcessor do
   """
   def handle_message(input_json_message) do
 
-    # ----------------------------------------------------------------
-    # The delivery task is done under a supervisor in order to provide
-    # retry functionality
-    Task.Supervisor.start_child(
-      BridgeRabbitmq.TaskSupervisor,
-      fn ->
 
-        send_result = input_json_message
-        |> convert_to_cloud_event
-        |> find_process_and_deliver
+    send_result = input_json_message
+    |> convert_to_cloud_event
+    |> find_process_and_deliver
 
-        case send_result do
-          :ok ->
-            Logger.debug("Success: Message routing requested.")
-            :ok
+    case send_result do
+      :ok ->
+        Logger.debug("Success: Message routing requested.")
+        :ok
 
-          {:error, err, _cloud_event} ->
-            # Logger.error("Error: Message routing failed!, reason: #{inspect(err)}")
-            raise RoutingError, message: err
-            # :error
-        end
-      end,
-      restart: :transient
-    )
-    # End of delivery task---------------------------------------------
+      {:error, err, _cloud_event} ->
+        # Logger.error("Error: Message routing failed!, reason: #{inspect(err)}")
+        raise RoutingError, message: err
+        # :error
+    end
 
   end
 

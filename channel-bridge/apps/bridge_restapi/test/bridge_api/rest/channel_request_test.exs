@@ -107,7 +107,7 @@ defmodule BridgeApi.Rest.ChannelRequestTest do
     ]) do
 
       ch_req = ChannelRequest.new(%{}, %{}, %{}, %{})
-      assert ChannelRequest.extract_user_info(ch_req) == {:ok, %BridgeCore.User{id: "default_app", name: nil}}
+      assert ChannelRequest.extract_user_info(ch_req) == {:ok, %BridgeCore.User{id: "default_user", name: nil}}
 
     end
   end

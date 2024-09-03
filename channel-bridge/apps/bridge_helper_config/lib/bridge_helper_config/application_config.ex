@@ -6,7 +6,7 @@ defmodule BridgeHelperConfig.ApplicationConfig do
 
   # configuration elements to be loaed as atoms
   @atom_keys [
-    [:bridge, "channel_authenticator"],
+    [:bridge, "channel_authenticator", "auth_module"],
     [:bridge, "cloud_event_mutator", "mutator_module"],
     [:bridge, "secrets", "provider"]
   ]
@@ -36,9 +36,9 @@ defmodule BridgeHelperConfig.ApplicationConfig do
     try do
       Vapor.load!(providers)
       |> print_success
-      |> load_system_env
       |> load_atoms
       |> set_logging_config
+      |> load_system_env
     rescue
       e in Vapor.FileNotFoundError ->
         Logger.error("Error loading configuration: #{inspect(e)}")
@@ -71,7 +71,7 @@ defmodule BridgeHelperConfig.ApplicationConfig do
           {k, m}
       end
     end)
-    |> Enum.filter(fn({k,v}) ->
+    |> Enum.filter(fn({_k,v}) ->
       case v do
         nil ->
           false

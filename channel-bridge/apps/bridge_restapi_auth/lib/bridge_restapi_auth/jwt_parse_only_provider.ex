@@ -52,8 +52,8 @@ defmodule BridgeRestapiAuth.JwtParseOnlyProvider do
 
   defp read_token(jwt) do
     try do
-      claims = JOSE.JWT.peek_payload(jwt) |> Map.get(:fields)
-      head = JOSE.JWS.peek_protected(jwt) |> Jason.decode!()
+      {:ok, claims} = Joken.peek_claims(jwt)
+      {:ok, head} = Joken.peek_header(jwt)
 
       %{
         bearer_token: jwt,

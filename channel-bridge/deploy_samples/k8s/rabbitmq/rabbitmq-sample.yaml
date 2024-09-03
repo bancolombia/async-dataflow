@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rabbitmq
+  labels:
+    istio-injection: enabled
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    component: rabbitmq
+  name: rabbitmq
+  namespace: rabbitmq
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      component: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: taskQueue
+        component: rabbitmq
+    spec:
+      containers:
+      - image: rabbitmq:3-management-alpine
+        name: rabbitmq
+        ports:
+          - name: http
+            protocol: TCP
+            containerPort: 15672
+          - name: amqp
+            protocol: TCP
+            containerPort: 5672
+          - name: epmd
+            containerPort: 4369
+        resources:
+          limits:
+            cpu: 200m
+        imagePullPolicy: Always
+      #volumes:
+      #  - name: config-volume
+      #    configMap:
+      #      name: rabbitmq-config
+      #      items:
+      #      - key: rabbitmq.conf
+      #        path: rabbitmq.conf
+      #      - key: enabled_plugins
+      #        path: enabled_plugins
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-management
+  labels:
+    component: rabbitmq
+  namespace: rabbitmq
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8888
+      targetPort: 15672
+      name: http
+  selector:
+    component: rabbitmq
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-service
+  labels:
+    component: rabbitmq
+  namespace: rabbitmq
+spec:
+  type: LoadBalancer
+  ports:
+  - name: amqp
+    protocol: TCP
+    port: 5672
+  selector:
+    app: taskQueue
+    component: rabbitmq
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: rabbitmq-gw
+  namespace: rabbitmq
+spec:
+  selector:
+    istio: ingressgateway 
+  servers:
+    - port:
+        name: http-port
+        number: 80
+        protocol: HTTP
+      hosts:
+        - rabbitmq.example.com
+    - port:
+        name: amqp-port
+        number: 5762
+        protocol: TCP
+      hosts:
+        - rabbitmq.example.com        
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: rabbitmq-vs
+  namespace: rabbitmq
+spec:
+  hosts:
+    - rabbitmq.example.com
+  gateways:
+    - rabbitmq-gw
+  http:
+    # expose the admin interface outside the cluster
+    - match:
+        - uri:
+            prefix: /
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: rabbitmq-management
+            port:
+              number: 8888        
+  tcp:
+    # expose amqp port outside the cluster
+    - match:
+        - port: 5672
+      route:
+        - destination:
+            host: rabbitmq-service
+            port:
+              number: 5672

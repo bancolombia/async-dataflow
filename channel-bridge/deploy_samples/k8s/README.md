@@ -18,3 +18,14 @@ b. [libcluster-kubernetes-dns](./libcluster-kubernetes-dns/README.md): Similar t
 
 c. [libcluster-kubernetes-dnssrv](./libcluster-kubernetes-dnssrv/README.md): Similar to (A) but using the 
  `Cluster.Strategy.Kubernetes.DNSSRV` strategy. 
+
+
+
+## Who to deploy channel bridge demo
+
+1. Deploy a channel sender instance
+2. Deploy rabbit mq. See demo deployment [rabbitmq/rabbitmq_sample.yaml](../rabbitmq/rabbitmq_sample.yaml)
+3. Select one of the above strategies and apply all namespace, configmap, app and gateway manifests.
+
+   Note: update host names of channel-sender and rabbit in `configmap.yaml` accordingly.
+

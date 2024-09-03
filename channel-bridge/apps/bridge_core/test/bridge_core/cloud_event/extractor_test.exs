@@ -60,10 +60,7 @@ defmodule BridgeCore.CloudEvent.ExtractorTest do
       cloud_event
       |> Extractor.extract_channel_alias()
 
-    assert String.starts_with?(
-             reason,
-             "Could not calculate channel alias. Ref data not found in cloud event"
-           )
+    assert :keynotfound == reason
   end
 
   test "Should extract random data from cloud event", %{demo_evt: demo_evt} do

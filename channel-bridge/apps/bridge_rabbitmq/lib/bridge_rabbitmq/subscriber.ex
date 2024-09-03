@@ -7,6 +7,7 @@ defmodule BridgeRabbitmq.Subscriber do
   require Logger
 
   alias BridgeRabbitmq.MessageProcessor
+  alias BridgeCore.CloudEvent.RoutingError
 
   def start_link(opts) do
     config = List.first(opts)
@@ -57,8 +58,13 @@ defmodule BridgeRabbitmq.Subscriber do
 
   @impl true
   def handle_message(_, message, _context) do
-    message.data
-    |> MessageProcessor.handle_message
+    try do
+      message.data
+      |> MessageProcessor.handle_message
+    rescue
+      e in RoutingError ->
+        Logger.error("Error processing message: #{inspect(e)}")
+    end
 
     message
   end

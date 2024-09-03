@@ -8,9 +8,9 @@ defmodule BridgeApi.Rest.AuthPlug do
   @type token() :: String.t()
   @type conn() :: Plug.Conn.t()
 
-  defmodule NoCredentialsError do
+  defmodule AuthenticationError do
     @moduledoc """
-    Error raised when no credentials are sent in request
+    Error raised for authentication/autorization errors are detected
     """
 
     defexception message: ""
@@ -26,19 +26,27 @@ defmodule BridgeApi.Rest.AuthPlug do
   """
   def call(conn, _opts) do
 
-    auth_provider = case get_in(Application.get_env(:channel_bridge, :config), [:bridge, "channel_authenticator"]) do
-      nil -> BridgeRestapiAuth.PassthroughProvider
-      v -> String.to_existing_atom(v)
-    end
-
     with {:ok, all_headers} <- Header.all_headers(conn),
-          {:ok, claims} <- auth_provider.validate_credentials(all_headers) do
+          {:ok, claims} <- auth_provider().validate_credentials(all_headers) do
       # auth was successful and claims are stored
       store_claims_private(claims, conn)
     else
       {:error, :nocreds} ->
         Logger.error("Credentials required for authentication")
-        raise NoCredentialsError, message: "Credentials required for authentication"
+        raise AuthenticationError, message: "Credentials required for authentication"
+      {:error, :forbidden} ->
+        Logger.error("Credentials error")
+        raise AuthenticationError, message: "Invalid Credentials"
+      {:error, :unauthorized} ->
+        Logger.error("Not authorized")
+        raise AuthenticationError, message: "Not authorized"
+    end
+  end
+
+  defp auth_provider do
+    case get_in(Application.get_env(:channel_bridge, :config), [:bridge, "channel_authenticator", "auth_module"]) do
+      nil -> BridgeRestapiAuth.PassthroughProvider
+      v -> v
     end
   end
 

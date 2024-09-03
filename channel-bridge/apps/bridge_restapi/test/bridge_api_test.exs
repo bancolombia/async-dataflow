@@ -1,8 +1,6 @@
 defmodule BridgeApiTest do
   use ExUnit.Case, async: true
 
-  import Mock
-
   test "Should not start app twice" do
 
     config = %{

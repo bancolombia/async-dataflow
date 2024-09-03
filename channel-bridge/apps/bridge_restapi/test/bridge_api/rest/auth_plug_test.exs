@@ -4,11 +4,20 @@ defmodule BridgeApi.Rest.AuthPlugTest do
   import Mock
 
   alias BridgeApi.Rest.AuthPlug
-  alias BridgeApi.Rest.AuthPlug.NoCredentialsError
+  alias BridgeApi.Rest.AuthPlug.AuthenticationError
 
   @moduletag :capture_log
 
-  setup do
+  setup_all do
+    cfg = %{
+      bridge: %{
+        "channel_authenticator" => %{
+          "auth_module" => Elixir.BridgeRestapiAuth.JwtParseOnlyProvider
+        }
+      }
+    }
+    Application.put_env(:channel_bridge, :config, cfg)
+
     on_exit(fn ->
       Application.delete_env(:channel_bridge, :config)
     end)
@@ -21,13 +30,6 @@ defmodule BridgeApi.Rest.AuthPlugTest do
       body
       |> Jason.encode!()
 
-    cfg = %{
-      bridge: %{
-        "channel_authenticator" => "Elixir.BridgeRestapiAuth.JwtParseOnlyProvider",
-      }
-    }
-    Application.put_env(:channel_bridge, :config, cfg)
-
     conn =
       conn(:post, "/ext/channel", body)
       |> put_req_header("content-type", "application/json")
@@ -36,7 +38,7 @@ defmodule BridgeApi.Rest.AuthPlugTest do
     with_mocks([
       {BridgeRestapiAuth.JwtParseOnlyProvider, [],
        [
-         validate_credentials: fn _token ->
+         validate_credentials: fn _headers ->
            {:ok,
             %{
               "application-id" => "abc321",
@@ -59,19 +61,11 @@ defmodule BridgeApi.Rest.AuthPlugTest do
 
   test "Should handle fail auth in request - no creds" do
 
-
     body = %{}
 
     body =
       body
       |> Jason.encode!()
-
-    cfg = %{
-      bridge: %{
-        "channel_authenticator" => "Elixir.BridgeRestapiAuth.JwtParseOnlyProvider",
-      }
-    }
-    Application.put_env(:channel_bridge, :config, cfg)
 
     conn =
       conn(:post, "/ext/channel", body)
@@ -80,13 +74,69 @@ defmodule BridgeApi.Rest.AuthPlugTest do
     with_mocks([
       {BridgeRestapiAuth.JwtParseOnlyProvider, [],
         [
-          validate_credentials: fn _token ->
+          validate_credentials: fn _headers ->
             {:error, :nocreds}
           end
         ]}
     ]) do
 
-      assert_raise NoCredentialsError, fn ->
+      assert_raise AuthenticationError, fn ->
+        AuthPlug.call(conn, nil)
+      end
+
+    end
+  end
+
+  test "Should handle fail auth in request - invalid credentials" do
+
+    body = %{}
+
+    body =
+      body
+      |> Jason.encode!()
+
+    conn =
+      conn(:post, "/ext/channel", body)
+      |> put_req_header("content-type", "application/json")
+
+    with_mocks([
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
+        [
+          validate_credentials: fn _headers ->
+            {:error, :forbidden}
+          end
+        ]}
+    ]) do
+
+      assert_raise AuthenticationError, fn ->
+        AuthPlug.call(conn, nil)
+      end
+
+    end
+  end
+
+  test "Should handle fail authz in request" do
+
+    body = %{}
+
+    body =
+      body
+      |> Jason.encode!()
+
+    conn =
+      conn(:post, "/ext/channel", body)
+      |> put_req_header("content-type", "application/json")
+
+    with_mocks([
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
+        [
+          validate_credentials: fn _headers ->
+            {:error, :nocreds}
+          end
+        ]}
+    ]) do
+
+      assert_raise AuthenticationError, fn ->
         AuthPlug.call(conn, nil)
       end
 
