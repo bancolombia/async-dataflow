@@ -140,17 +140,25 @@ defmodule AdfSenderConnector do
     DynamicSupervisor.stop(__MODULE__, channel_ref)
   end
 
-  @spec route_message(channel_ref(), event_name(), message() | message_data()) :: {:ok, map()} | {:error, any()}
+  @spec route_message(channel_ref(), event_name(), message() | message_data(), any()) :: {:ok, map()} | {:error, any()}
   @doc """
   Request a message delivery by creating a protocol message with the data provided
   """
-  def route_message(channel_ref, event_name, message) do
+  def route_message(channel_ref, event_name, message, options \\ []) do
     case Registry.lookup(Registry.ADFSenderConnector, channel_ref) do
       [{pid, _}] ->
-        if %Message{} == message do
-          Router.route_message(pid, message)
+        if is_struct(message, AdfSenderConnector.Message) do
+          if options[:cast] do
+            Router.cast_route_message(pid, message)
+          else
+            Router.route_message(pid, message)
+          end
         else
-          Router.route_message(pid, event_name, message)
+          if options[:cast] do
+            Router.cast_route_message(pid, event_name, message)
+          else
+            Router.route_message(pid, event_name, message)
+          end
         end
       [] ->
         Logger.warning(":unknown_channel_reference #{inspect(channel_ref)}")
