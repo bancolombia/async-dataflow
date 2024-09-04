@@ -18,6 +18,16 @@ defmodule ChannelBridge.MixProject do
             bridge_restapi_auth: :permanent
           ]
         ],
+      ],
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test,
+        "coveralls.xml": :test,
+        "coveralls.github": :test,
+        "coveralls.lcov": :test
       ]
     ]
   end
@@ -28,6 +38,8 @@ defmodule ChannelBridge.MixProject do
   #
   # Run "mix help deps" for examples and options.
   defp deps do
-    []
+    [
+      {:excoveralls, "~> 0.18", [only: [:dev, :test]]}
+    ]
   end
 end

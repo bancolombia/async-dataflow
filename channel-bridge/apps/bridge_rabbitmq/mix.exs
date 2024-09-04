@@ -11,7 +11,8 @@ defmodule BridgeRabbitmq.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      test_coverage: [tool: ExCoveralls]
     ]
   end
 
@@ -40,7 +41,6 @@ defmodule BridgeRabbitmq.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:credo_sonarqube, "~> 0.1.3", only: [:dev, :test]},
       {:sobelow, "~> 0.8", only: :dev},
-      {:excoveralls, "~> 0.10", only: :test},
       {:ex_unit_sonarqube, "~> 0.1", only: :test}
     ]
   end
