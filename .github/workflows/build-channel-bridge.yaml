@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: channel-bridge
+        working-directory: ./channel-bridge
 
     steps:
       - name: Generate a token of Github APP
@@ -60,7 +60,7 @@ jobs:
         uses: erlef/setup-beam@v1.17.1
         with:
           version-type: strict
-          version-file: ".tool-versions"
+          version-file: "./channel-bridge/.tool-versions"
       - name: Restore dependencies cache
         uses: actions/cache@v4
         with:
