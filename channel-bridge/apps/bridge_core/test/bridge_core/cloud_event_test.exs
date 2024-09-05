@@ -94,7 +94,7 @@ defmodule BridgeCore.CloudEventTest do
   end
 
   test "Should build new CloudEvent" do
-    msg = CloudEvent.new("spv1", "t2", "src3", "sub4", "A4", "A5", "A6", "A7", %{A8: "HELLO"})
+    msg = CloudEvent.new("spv1", "t2", "src3", "sub4", "A4", "A5", "A6", %{A8: "HELLO"})
     assert msg != nil
     assert "spv1" == msg.specVersion
   end
@@ -174,6 +174,5 @@ defmodule BridgeCore.CloudEventTest do
     new_msg = %{msg | id: "3"}
     assert {:error, "dummy"} == CloudEvent.mutate(new_msg, @default_mutator_setup)
   end
-
 
 end

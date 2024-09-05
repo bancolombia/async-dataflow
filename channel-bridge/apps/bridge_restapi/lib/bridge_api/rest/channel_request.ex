@@ -4,10 +4,10 @@ defmodule BridgeApi.Rest.ChannelRequest do
   @moduledoc """
   A new channel request data
   """
-  alias BridgeCore.Utils.JsonSearch
   alias BridgeCore.AppClient
   alias BridgeCore.User
-  alias BridgeCore.CloudEvent.Extractor
+
+  alias BridgeCore.Utils.JsonSearch
 
   require Logger
 
@@ -60,66 +60,79 @@ defmodule BridgeApi.Rest.ChannelRequest do
   @spec extract_application(t()) :: {:ok, AppClient.t()} | {:error, any()}
   def extract_application(request_data) do
     app_key = BridgeHelperConfig.get([:bridge, "request_app_identifier"], @default_app_ref)
-    |> (fn x ->
-      case String.starts_with?(x, "$.") do
-        true -> {:lookup, x}
-        false -> {:fixed, x}
-      end
-    end).()
 
-    app =
-      case apply_strategy(app_key, request_data) do
+    {:ok,
+      case extract(app_key, request_data) do
         {:ok, app_id} ->
           AppClient.new(app_id, "")
 
-        {:error, err} ->
-          Logger.warning(
-            "missing application info in request, #{inspect(app_key)} = #{err}. Data: #{inspect(request_data)}"
-          )
-
+        {:error, _err} ->
           AppClient.new(@default_app_ref, "")
       end
-
-    {:ok, app}
+    }
   end
 
   @spec extract_user_info(t()) :: {:ok, User.t()} | {:error, any()}
   def extract_user_info(request_data) do
     user_key = BridgeHelperConfig.get([:bridge, "request_user_identifier"], @default_user_ref)
-    |> (fn x ->
-      case String.starts_with?(x, "$.") do
-        true -> {:lookup, x}
-        false -> {:fixed, x}
-      end
-    end).()
 
-    user =
-      case apply_strategy(user_key, request_data) do
+    {:ok,
+      case extract(user_key, request_data) do
         {:ok, user_id} ->
           User.new(user_id)
 
-        {:error, err} ->
-          Logger.warning(
-            "missing user info in request, #{inspect(user_key)} = #{err}. Data: #{inspect(request_data)}"
-          )
-
-          User.new(@default_app_ref)
+        {:error, _err} ->
+          User.new(@default_user_ref)
       end
+    }
+  end
 
-    {:ok, user}
+  defp extract(key, data) do
+    parsed_key = parse_strategy(key)
+    case apply_strategy(parsed_key, data) do
+      "" ->
+        Logger.warning(
+          "missing key info in request, #{inspect(key)}. Data: #{inspect(data)}"
+        )
+        {:error, :keynotfound}
+      r ->
+        {:ok, r}
+    end
+  end
 
+  defp parse_strategy(key) when is_list(key) do
+    key
+    |> Enum.map(fn k ->
+      case String.starts_with?(k, "$.") do
+        true -> {:lookup, k}
+        false -> {:fixed, k}
+      end
+    end)
+  end
+
+  defp parse_strategy(key) when is_binary(key) do
+    case String.starts_with?(key, "$.") do
+      true -> [{:lookup, key}]
+      false -> [{:fixed, key}]
+    end
   end
 
   defp apply_strategy(config, data) do
-    case config do
-      {:fixed, fixed_value} ->
-        # uses a fixed string value as application reference
-        {:ok, fixed_value}
-
-      {:lookup, key_to_search} ->
-        # searches for a key in user data map
-        Extractor.extract(data, key_to_search)
-    end
+    prep_data = JsonSearch.prepare(data)
+    Enum.map(config, fn {type, ref} ->
+      case type do
+        :fixed ->
+          ref
+        :lookup ->
+          prep_data
+          |> JsonSearch.extract(ref)
+      end
+    end)
+    |> Enum.filter(&(&1 != nil))
+    |> Enum.reduce("", fn x, acc ->
+      acc <> x <> "-"
+    end)
+    |> String.trim_trailing("-")
   end
 
 end

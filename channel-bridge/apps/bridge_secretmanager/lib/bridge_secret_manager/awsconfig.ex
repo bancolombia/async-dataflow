@@ -1,4 +1,7 @@
 defmodule BridgeSecretManager.AwsConfig do
+  @moduledoc """
+  Configures the AWS SDK with the provided configuration.
+  """
   require Logger
 
   def setup_aws_config(config) do

@@ -4,8 +4,10 @@ defmodule BridgeApi.Rest.RestHelper do
   """
 
   alias AMQP.Application.Channel
-  alias BridgeApi.Rest.ChannelRequest
+
   alias BridgeCore.Channel
+
+  alias BridgeApi.Rest.ChannelRequest
   alias BridgeApi.Rest.ErrorResponse
 
   require Logger

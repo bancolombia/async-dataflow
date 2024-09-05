@@ -4,8 +4,11 @@ defmodule BridgeCore.Boundary.ChannelManagerTest do
   require Logger
 
   alias BridgeCore.Boundary.ChannelManager
-  alias BridgeCore.{Channel, AppClient, User, CloudEvent}
+
+  alias BridgeCore.{AppClient, Channel, CloudEvent, User}
+
   alias BridgeCore.CloudEvent.Mutator.DefaultMutator
+
   alias BridgeCore.Sender.Connector
 
   @app_ref AppClient.new("01", "app-01")
@@ -19,7 +22,7 @@ defmodule BridgeCore.Boundary.ChannelManagerTest do
     {Connector, [],
       [
         channel_registration: fn _application_ref, _user_ref ->
-         {:ok, %{ "channel_ref" => "ref", "channel_secret" => "secret"} }
+         {:ok, %{"channel_ref" => "ref", "channel_secret" => "secret"}}
         end,
         start_router_process: fn _channel_ref, _options -> :ok end,
         stop_router_process: fn _channel_ref, _options -> :ok end,
@@ -152,19 +155,17 @@ defmodule BridgeCore.Boundary.ChannelManagerTest do
 
     {:ok, pid} = ChannelManager.start_link({channel, @default_mutator_setup})
 
-    {:ok, message} = CloudEvent.from("{
-      \"data\": {
-        \"msg\": \"Hello World\"
-      },
-      \"dataContentType\": \"application/json\",
-      \"id\": \"1\",
-      \"invoker\": \"invoker1\",
-      \"source\": \"source1\",
-      \"specVersion\": \"0.1\",
-      \"subject\": \"my-alias\",
-      \"time\": \"xxx\",
-      \"type\": \"type1\"
-    }")
+    {:ok, message} = CloudEvent.from(~S({
+      "data": { "msg": "Hello World" },
+      "dataContentType": "application/json",
+      "id": "1",
+      "invoker": "invoker1",
+      "source": "source1",
+      "specVersion": "0.1",
+      "subject": "my-alias",
+      "time": "xxx",
+      "type": "type1"
+    }))
 
     response = ChannelManager.deliver_message(pid, message)
     assert :ok = response
@@ -200,19 +201,19 @@ defmodule BridgeCore.Boundary.ChannelManagerTest do
 
     {:ok, pid} = ChannelManager.start_link({channel, @default_mutator_setup})
 
-    {:ok, message} = CloudEvent.from("{
-      \"data\": {
-        \"msg\": \"Hello World\"
+    {:ok, message} = CloudEvent.from(~S({
+      "data": {
+        "msg": "Hello World"
       },
-      \"dataContentType\": \"application/json\",
-      \"id\": \"1\",
-      \"invoker\": \"invoker1\",
-      \"source\": \"source1\",
-      \"specVersion\": \"0.1\",
-      \"subject\": \"my-alias\",
-      \"time\": \"xxx\",
-      \"type\": \"some.event.to.fail.mutation\"
-    }")
+      "dataContentType": "application/json",
+      "id": "1",
+      "invoker": "invoker1",
+      "source": "source1",
+      "specVersion": "0.1",
+      "subject": "my-alias",
+      "time": "xxx",
+      "type": "some.event.to.fail.mutation"
+    }))
 
     response = ChannelManager.deliver_message(pid, message)
     assert :ok = response
@@ -229,19 +230,19 @@ defmodule BridgeCore.Boundary.ChannelManagerTest do
 
     {:ok, pid} = ChannelManager.start_link({channel, @default_mutator_setup})
 
-    {:ok, message} = CloudEvent.from("{
-      \"data\": {
-        \"msg\": \"Hello World\"
+    {:ok, message} = CloudEvent.from(~S({
+      "data": {
+        "msg": "Hello World"
       },
-      \"dataContentType\": \"application/json\",
-      \"id\": \"1\",
-      \"invoker\": \"invoker1\",
-      \"source\": \"source1\",
-      \"specVersion\": \"0.1\",
-      \"subject\": \"my-alias\",
-      \"time\": \"xxx\",
-      \"type\": \"some.event.to.fail.send1\"
-    }")
+      "dataContentType": "application/json",
+      "id": "1",
+      "invoker": "invoker1",
+      "source": "source1",
+      "specVersion": "0.1",
+      "subject": "my-alias",
+      "time": "xxx",
+      "type": "some.event.to.fail.send1"
+    }))
 
     response = ChannelManager.deliver_message(pid, message)
     assert :ok = response
@@ -265,24 +266,24 @@ defmodule BridgeCore.Boundary.ChannelManagerTest do
     {:ok, pid} = ChannelManager.start_link({channel, @default_mutator_setup})
 
     # then tries to deliver msg
-    {:ok, message} = CloudEvent.from("{
-      \"data\": {
-        \"msg\": \"Hello World\"
+    {:ok, message} = CloudEvent.from(~S({
+      "data": {
+        "msg": "Hello World"
       },
-      \"dataContentType\": \"application/json\",
-      \"id\": \"1\",
-      \"invoker\": \"invoker1\",
-      \"source\": \"source1\",
-      \"specVersion\": \"0.1\",
-      \"subject\": \"my-alias\",
-      \"time\": \"xxx\",
-      \"type\": \"some.event\"
-    }")
+      "dataContentType": "application/json",
+      "id": "1",
+      "invoker": "invoker1",
+      "source": "source1",
+      "specVersion": "0.1",
+      "subject": "my-alias",
+      "time": "xxx",
+      "type": "some.event"
+    }))
 
     assert :ok == ChannelManager.deliver_message(pid, message)
 
     :timer.sleep(10)
-    assert_not_called BridgeCore.Sender.Connector.route_message(:_, :_, :_)
+    assert_not_called Connector.route_message(:_, :_, :_)
 
     Process.exit(pid, :normal)
   end
@@ -298,24 +299,24 @@ defmodule BridgeCore.Boundary.ChannelManagerTest do
     ChannelManager.close_channel(pid)
 
     # then tries to deliver msg
-    {:ok, message} = CloudEvent.from("{
-      \"data\": {
-        \"msg\": \"Hello World\"
+    {:ok, message} = CloudEvent.from(~S({
+      "data": {
+        "msg": "Hello World"
       },
-      \"dataContentType\": \"application/json\",
-      \"id\": \"1\",
-      \"invoker\": \"invoker1\",
-      \"source\": \"source1\",
-      \"specVersion\": \"0.1\",
-      \"subject\": \"my-alias\",
-      \"time\": \"xxx\",
-      \"type\": \"some.event\"
-    }")
+      "dataContentType": "application/json",
+      "id": "1",
+      "invoker": "invoker1",
+      "source": "source1",
+      "specVersion": "0.1",
+      "subject": "my-alias",
+      "time": "xxx",
+      "type": "some.event"
+      }))
 
     assert :ok == ChannelManager.deliver_message(pid, message)
 
     :timer.sleep(10)
-    assert_not_called BridgeCore.Sender.Connector.route_message(:_, :_, :_)
+    assert_not_called Connector.route_message(:_, :_, :_)
 
     Process.exit(pid, :normal)
   end
@@ -327,31 +328,31 @@ defmodule BridgeCore.Boundary.ChannelManagerTest do
 
     {:ok, pid} = ChannelManager.start_link({channel, @default_mutator_setup})
 
-    {:ok, message} = CloudEvent.from("{
-      \"data\": {
-        \"msg\": \"Hello World\"
+    {:ok, message} = CloudEvent.from(~S({
+      "data": {
+        "msg": "Hello World"
       },
-      \"dataContentType\": \"application/json\",
-      \"id\": \"1\",
-      \"invoker\": \"invoker1\",
-      \"source\": \"source1\",
-      \"specVersion\": \"0.1\",
-      \"subject\": \"my-alias\",
-      \"time\": \"xxx\",
-      \"type\": \"some.event\"
-    }")
+      "dataContentType": "application/json",
+      "id": "1",
+      "invoker": "invoker1",
+      "source": "source1",
+      "specVersion": "0.1",
+      "subject": "my-alias",
+      "time": "xxx",
+      "type": "some.event"
+      }))
 
     # delivers a message
     assert :ok == ChannelManager.deliver_message(pid, message)
 
     :timer.sleep(5)
-    assert_called BridgeCore.Sender.Connector.route_message(:_, :_)
+    assert_called Connector.route_message(:_, :_)
 
     # then closes the channel
     ChannelManager.close_channel(pid)
 
     :timer.sleep(5)
-    assert_called BridgeCore.Sender.Connector.stop_router_process(:_, :_)
+    assert_called Connector.stop_router_process(:_, :_)
 
     Process.exit(pid, :normal)
   end

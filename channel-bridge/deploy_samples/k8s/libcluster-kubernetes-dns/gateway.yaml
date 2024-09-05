@@ -25,6 +25,8 @@ metadata:
 spec:
   hosts:
     - adfbridge.example.com
+  gateways:
+    - adfbridge-gw
   http:
     - match:
         - uri:

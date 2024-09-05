@@ -6,13 +6,15 @@ defmodule BridgeCore.Boundary.ChannelManager do
   require Logger
   import  Bitwise
 
-  alias BridgeCore.Sender.Connector;
-  alias BridgeCore.{CloudEvent, Channel}
+  alias BridgeCore.Sender.Connector
+
+  alias BridgeCore.Channel
+  alias BridgeCore.CloudEvent
 
   @type channel_ref() :: String.t()
   @type channel_secret() :: String.t()
 
-  @spec get_channel_info(:gen_statem.server_ref()) :: :ok | {:error, reason :: term}
+  @spec get_channel_info(:gen_statem.server_ref()) :: {:ok, any()} | {:error, reason :: term}
   def get_channel_info(server) do
     GenStateMachine.call(server, :channel_info)
   end
@@ -46,11 +48,17 @@ defmodule BridgeCore.Boundary.ChannelManager do
   def init({channel, _mutator} = args) do
     Process.flag(:trap_exit, true)
 
-    Enum.map(channel.procs, fn ref ->
+    procs = Enum.map(channel.procs, fn ref ->
       Connector.start_router_process(ref.channel_ref, [])
     end)
+    |> Enum.reduce(0, fn result, acc ->
+      case result do
+        {:ok, _} -> acc + 1
+        _ -> acc
+      end
+    end)
 
-    Logger.debug("new channel manager : #{inspect(args)} ")
+    Logger.debug("started channel manager with: #{inspect(args)}, for [#{inspect(procs)}] adf channel sender reference(s).")
 
     {:ok, :open, args}
   end
@@ -160,25 +168,27 @@ defmodule BridgeCore.Boundary.ChannelManager do
         err
 
       {:ok, messages} ->
-        messages
-        |> Stream.map(fn msg ->
-
-          send_result = Connector.route_message(msg.channel_ref, msg)
-
-          case send_result do
-            {:ok, _} ->
-              Logger.debug("Message routed to #{inspect(msg.channel_ref)}")
-              {msg.channel_ref, :ok}
-
-            {:error, reason} ->
-              Logger.error("Message not routed to #{msg.channel_ref}, reason: #{inspect(reason)}")
-              {msg.channel_ref, :error, reason}
-          end
-        end)
-
-        |> Enum.to_list()
-
+        route(messages)
     end
+  end
+
+  defp route(messages) do
+    messages
+    |> Stream.map(fn msg ->
+
+      send_result = Connector.route_message(msg.channel_ref, msg)
+
+      case send_result do
+        {:ok, _} ->
+          Logger.debug("Message routed to #{inspect(msg.channel_ref)}")
+          {msg.channel_ref, :ok}
+
+        {:error, reason} ->
+          Logger.error("Message not routed to #{msg.channel_ref}, reason: #{inspect(reason)}")
+          {msg.channel_ref, :error, reason}
+      end
+    end)
+    |> Enum.to_list()
   end
 
   ################################################################################
@@ -189,9 +199,16 @@ defmodule BridgeCore.Boundary.ChannelManager do
   def closed(:enter, _old_state, {channel, _} = _data) do
 
     # close related routing processes
-    Enum.map(channel.procs, fn ref ->
+    procs = Enum.map(channel.procs, fn ref ->
       Connector.stop_router_process(ref.channel_ref, [])
     end)
+    |> Enum.reduce(0, fn result, acc ->
+      case result do
+        :ok -> acc + 1
+        _ -> acc
+      end
+    end)
+    Logger.debug("ChannelManager, closed #{inspect(procs)} routing procs.")
 
     {:ok, new_channel} = Channel.close(channel)
 

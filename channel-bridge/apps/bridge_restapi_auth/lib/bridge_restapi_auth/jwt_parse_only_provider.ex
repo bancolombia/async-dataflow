@@ -1,4 +1,4 @@
-defmodule BridgeRestapiAuth.ParseOnlyProvider do
+defmodule BridgeRestapiAuth.JwtParseOnlyProvider do
   @behaviour BridgeRestapiAuth.Provider
 
   @moduledoc """
@@ -51,25 +51,22 @@ defmodule BridgeRestapiAuth.ParseOnlyProvider do
   end
 
   defp read_token(jwt) do
-    try do
-      claims = JOSE.JWT.peek_payload(jwt) |> Map.get(:fields)
-      head = JOSE.JWS.peek_protected(jwt) |> Jason.decode!()
+    {:ok, claims} = Joken.peek_claims(jwt)
+    {:ok, head} = Joken.peek_header(jwt)
 
+    %{
+      bearer_token: jwt,
+      claims: claims,
+      head: head
+    }
+  rescue
+    e ->
+      Logger.error(Exception.format(:error, e, __STACKTRACE__))
       %{
         bearer_token: jwt,
-        claims: claims,
-        head: head
+        claims: nil,
+        head: nil
       }
-    rescue
-      e ->
-        Logger.error(Exception.format(:error, e, __STACKTRACE__))
-        %{
-          bearer_token: jwt,
-          claims: nil,
-          head: nil
-        }
-    end
   end
-
 
 end

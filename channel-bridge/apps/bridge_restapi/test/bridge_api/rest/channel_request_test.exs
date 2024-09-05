@@ -38,7 +38,8 @@ defmodule BridgeApi.Rest.ChannelRequestTest do
 
       sample_headers = %{"appid" => "value1"}
       ch_req = ChannelRequest.new(sample_headers, %{}, %{}, %{})
-      assert ChannelRequest.extract_application(ch_req) == {:ok, %BridgeCore.AppClient{channel_timeout: 420, id: "value1", name: ""}}
+      assert ChannelRequest.extract_application(ch_req)
+       == {:ok, %BridgeCore.AppClient{channel_timeout: 420, id: "value1", name: ""}}
 
     end
   end
@@ -55,7 +56,8 @@ defmodule BridgeApi.Rest.ChannelRequestTest do
     ]) do
 
       ch_req = ChannelRequest.new(%{}, %{}, %{}, %{})
-      assert ChannelRequest.extract_application(ch_req) == {:ok, %BridgeCore.AppClient{channel_timeout: 420, id: "default_app", name: ""}}
+      assert ChannelRequest.extract_application(ch_req)
+        == {:ok, %BridgeCore.AppClient{channel_timeout: 420, id: "default_app", name: ""}}
 
     end
   end
@@ -72,7 +74,8 @@ defmodule BridgeApi.Rest.ChannelRequestTest do
     ]) do
 
       ch_req = ChannelRequest.new(%{}, %{}, %{}, %{})
-      assert ChannelRequest.extract_application(ch_req) == {:ok, %BridgeCore.AppClient{channel_timeout: 420, id: "fooapp", name: ""}}
+      assert ChannelRequest.extract_application(ch_req) ==
+        {:ok, %BridgeCore.AppClient{channel_timeout: 420, id: "fooapp", name: ""}}
 
     end
   end
@@ -107,7 +110,7 @@ defmodule BridgeApi.Rest.ChannelRequestTest do
     ]) do
 
       ch_req = ChannelRequest.new(%{}, %{}, %{}, %{})
-      assert ChannelRequest.extract_user_info(ch_req) == {:ok, %BridgeCore.User{id: "default_app", name: nil}}
+      assert ChannelRequest.extract_user_info(ch_req) == {:ok, %BridgeCore.User{id: "default_user", name: nil}}
 
     end
   end

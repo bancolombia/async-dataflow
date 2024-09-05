@@ -2,10 +2,6 @@ defmodule BridgeRabbitmq.ApplicationTest do
   use ExUnit.Case, async: true
   # use Plug.Test
 
-  alias BridgeCore.CloudEvent
-  alias BridgeCore.CloudEvent.RoutingError
-  alias BridgeRabbitmq.MessageProcessor
-
   import Mock
 
   test "Should not start app twice" do
@@ -39,7 +35,7 @@ defmodule BridgeRabbitmq.ApplicationTest do
 
     assert {
       BridgeRabbitmq.Subscriber,
-      [ %{
+      [%{
           "bindings" => [
             %{"name" => "domainEvents", "routing_key" => ["business.#"]}
           ],
@@ -82,13 +78,13 @@ defmodule BridgeRabbitmq.ApplicationTest do
 
     with_mocks([
       {BridgeSecretManager, [], [get_secret: fn _, _ ->
-          {:ok, %{ "username" => "foo", "password" => nil, "hostname" => "somehost", "port" => 4567, "virtualhost" => "/", "ssl" => false } }
+          {:ok, %{"username" => "foo", "password" => nil, "hostname" => "somehost", "port" => 4567, "virtualhost" => "/", "ssl" => false}}
       end]}
     ]) do
 
       assert {
         BridgeRabbitmq.Subscriber,
-        [ %{
+        [%{
             "bindings" => [
               %{"name" => "domainEvents", "routing_key" => ["business.#"]}
             ],

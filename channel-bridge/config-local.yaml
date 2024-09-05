@@ -4,6 +4,10 @@ bridge:
     - $.subject
   request_channel_identifier:
     - "$.req_headers['sub']"
+  request_app_identifier: 
+    - "$.req_headers['app']"
+  request_user_identifier: 
+    - "$.req_headers['user']"
   cloud_event_mutator:
     mutator_module: Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator
 #    mutator_module: Elixir.BridgeCore.CloudEvent.Mutator.WebhookMutator
@@ -17,7 +21,17 @@ bridge:
 #          comparator: "contains"
 #          value: "acme"
 
-  channel_authenticator: Elixir.BridgeRestapiAuth.PassthroughProvider
+  channel_authenticator:
+    auth_module: Elixir.BridgeRestapiAuth.PassthroughProvider
+    # config:
+    #   jwks: "https://login.microsoftonline.com/common/discovery/v2.0/keys"
+    #   allowed_audiences:
+    #     - aud1
+    #     - aud2
+    #   allowed_issuers:
+    #     - iss1
+    #     - iss2
+
   event_bus:
     rabbitmq:
       bindings:
@@ -47,17 +61,10 @@ bridge:
 
       ## producer and processor concurrency
       producer_concurrency: 1
-      producer_prefetch: 2
-      processor_concurrency: 2
-      processor_max_demand: 1
-      
-    # sqs:
-    #   queue: sample-queue
-    #   ##producer and processor concurrency
-    #   producer_concurrency: 1
-    #   producer_prefetch: 2
-    #   processor_concurrency: 2
-    #   processor_max_demand: 1
+      producer_prefetch: 100
+      processor_concurrency: 50
+      processor_max_demand: 10
+
   topology:
     strategy: Elixir.Cluster.Strategy.Gossip
     # strategy: Elixir.Cluster.Strategy.Kubernetes
@@ -69,9 +76,15 @@ bridge:
     #   kubernetes_selector: "cluster=beam"
     #   namespace: "bridgenm"
     #   polling_interval: 5000
+
 #  apps:
 #    - name: demo1
 #      timeout: 5000
+
+  secrets:
+    # Default. implemented in app apps/bridge_secretsmanager.
+    # You can implement your own, please refer to `BridgeCore.SecretProvider` behaviour.
+    provider: Elixir.BridgeSecretManager
 
 sender:
   url: http://localhost:8081

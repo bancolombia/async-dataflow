@@ -7,16 +7,24 @@ data:
   env.sh: |-
     #!/bin/sh
     export RELEASE_DISTRIBUTION=name
-    export RELEASE_NODE=channel_bridge_ex@${POD_IP}
+    export RELEASE_NODE=adf_bridge@${POD_IP}
   config.yaml: |-
     bridge:
       port: 8080
       cloud_event_channel_identifier:
         - $.subject
-      request_channel_identifier:
-        - "$.req_headers['sub']"
-      cloud_event_mutator: Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator
-      channel_authenticator: Elixir.BridgeRestapiAuth.PassthroughProvider
+      request_channel_identifier: "$.req_headers['sub']"
+      request_app_identifier:
+        - "$.req_headers['app']"
+      request_user_identifier:
+        - "$.req_headers['user']"
+
+      cloud_event_mutator:
+        mutator_module: Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator
+
+      channel_authenticator:
+        auth_module: Elixir.BridgeRestapiAuth.PassthroughProvider
+
       event_bus:
         rabbitmq:
           bindings:
@@ -37,34 +45,31 @@ data:
           ##
           ## Optionally and for local dev environments  Rabbitmq host and credentials can be configured directly 
           ## here:
-          username: <your user>
-          password: <your pw>
+          username: 
+          password: 
           hostname: localhost
           port: 5672
           virtualhost: /
           ssl: false
 
-          ## producer and processor concurrency
+          ## producer and processor concurrency
           producer_concurrency: 1
-          producer_prefetch: 2
-          processor_concurrency: 2
-          processor_max_demand: 1
-          
-        # sqs:
-        #   queue: sample-queue
-        #   ## producer and processor concurrency
-        #   producer_concurrency: 1
-        #   producer_prefetch: 2
-        #   processor_concurrency: 2
-        #   processor_max_demand: 1
-
+          producer_prefetch: 100
+          processor_concurrency: 50
+          processor_max_demand: 10
+       
       topology:
-        strategy: Cluster.Strategy.Kubernetes.DNS
-        config:
+        strategy: Elixir.Cluster.Strategy.Kubernetes.DNS
+        config: 
           service: "adfbridge-headless"
-          application_name: "channel_bridge_ex"
+          application_name: "adf_bridge"
           namespace: "bridgenm"
           polling_interval: 5000
+
+      secrets:
+        # Default. implemented in app apps/bridge_secretsmanager.
+        # You can implement your own, please refer to `BridgeCore.SecretProvider` behaviour.
+        provider: Elixir.BridgeSecretManager
 
     sender:
       url: http://adfsender.sendernm.svc.cluster.local:8081

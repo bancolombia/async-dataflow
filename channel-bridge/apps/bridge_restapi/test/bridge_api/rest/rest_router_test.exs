@@ -3,9 +3,10 @@ defmodule BridgeApi.Rest.RestRouterTest do
   use Plug.Test
 
   alias BridgeApi.Rest.ErrorResponse
-  alias BridgeApi.Rest.RestRouter
   alias BridgeApi.Rest.RestHelper
-  alias BridgeApi.Rest.AuthPlug.NoCredentialsError
+  alias BridgeApi.Rest.RestRouter
+
+  alias BridgeApi.Rest.AuthPlug.AuthenticationError
 
   @moduletag :capture_log
 
@@ -31,7 +32,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
   @opts RestRouter.init([])
 
-  test "Should create channel on request", %{init_args: init_args} do
+  test "Should create channel on request" do
     body = %{}
 
     with_mocks([
@@ -60,7 +61,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
     end
   end
 
-  test "Should not create channel - no data for channel alias", %{init_args: init_args} do
+  test "Should not create channel - no data for channel alias" do
     body = %{}
 
     with_mocks([
@@ -95,11 +96,11 @@ defmodule BridgeApi.Rest.RestRouterTest do
       conn(:post, "/ext/channel", body)
       |> put_req_header("content-type", "application/json")
       |> put_req_header("sub", "foo")
-      # note no authorization header
+      # note there is no authorization header present
 
     cfg = %{
       bridge: %{
-        "channel_authenticator" => "Elixir.BridgeRestapiAuth.ParseOnlyProvider",
+        "channel_authenticator" => %{"auth_module" => Elixir.BridgeRestapiAuth.JwtParseOnlyProvider},
       }
     }
     Application.put_env(:channel_bridge, :config, cfg)
@@ -110,13 +111,13 @@ defmodule BridgeApi.Rest.RestRouterTest do
           {%{"result" => "ok"}, 200}
         end]}
     ]) do
-      assert_raise NoCredentialsError, fn ->
+      assert_raise AuthenticationError, fn ->
         RestRouter.call(conn, @opts)
       end
     end
   end
 
-  test "Should delete channel", %{init_args: init_args} do
+  test "Should delete channel" do
     with_mocks([
       {RestHelper, [],
         [
@@ -140,7 +141,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
   test "Should obtain OK response from liveness probe" do
     with_mocks([
-      {BridgeRestapiAuth.ParseOnlyProvider, [],
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
         [validate_credentials: fn _token -> {:ok, %{}} end]}
     ]) do
       conn = conn(:get, "/liveness")
@@ -154,7 +155,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
   test "Should obtain OK response from readiness probe" do
     with_mocks([
-      {BridgeRestapiAuth.ParseOnlyProvider, [],
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
         [validate_credentials: fn _token -> {:ok, %{}} end]}
     ]) do
       conn = conn(:get, "/readiness")
@@ -168,7 +169,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
   test "Should handle unknown path" do
     with_mocks([
-      {BridgeRestapiAuth.ParseOnlyProvider, [],
+      {BridgeRestapiAuth.JwtParseOnlyProvider, [],
         [validate_credentials: fn _token -> {:ok, %{}} end]}
     ]) do
       conn = conn(:get, "/hello")

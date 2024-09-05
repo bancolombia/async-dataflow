@@ -45,8 +45,8 @@ defmodule BridgeCore.CloudEvent do
   Creates a simple event.
   """
   @spec new(specVersion(), type(), source(), subject(), id(), time(),
-    invoker(), dataContentType(), iodata()) :: t()
-  def new(specVersion, type, source, subject, id, time, invoker, dataContentType, data) do
+    invoker(), iodata()) :: t()
+  def new(specVersion, type, source, subject, id, time, invoker, data) do
     %__MODULE__{
       specVersion: specVersion,
       type: type,
@@ -55,7 +55,7 @@ defmodule BridgeCore.CloudEvent do
       id: id,
       time: time,
       invoker: invoker,
-      dataContentType: dataContentType,
+      dataContentType: "application/json",
       data: data
     }
   end
@@ -121,32 +121,36 @@ defmodule BridgeCore.CloudEvent do
     mutator = mutator_setup["mutator_module"]
     mutator_config = mutator_setup["config"]
 
-    with true <- mutator.applies?(cloud_event, mutator_config) do
-      Logger.debug("Applying mutator #{inspect(mutator)} to cloud event...")
+    case mutator.applies?(cloud_event, mutator_config) do
+      true ->
+        Logger.debug("Applying mutator #{inspect(mutator)} to cloud event...")
 
-      cloud_event
-      |> mutator.mutate(mutator_config)
-      |> (fn result ->
-        case result do
-          {:ok, _mutated} ->
-            Logger.debug("Cloud event mutated.")
-            result
+        cloud_event
+        |> mutator.mutate(mutator_config)
+        |> define_response
 
-          {:noop, ce} ->
-            Logger.debug("Cloud event not mutated!")
-            {:ok, ce}
-
-          {:error, reason} = err ->
-            Logger.error("Message mutation error. #{inspect(reason)}")
-            err
-        end
-          end).()
-    else
       false ->
         Logger.debug("Mutator not applied to cloud event due to 'Mutator.applies?/2' returned = false")
         {:ok, cloud_event}
+
       {:error, reason} = err ->
         Logger.error("Message mutation decision logic error. #{inspect(reason)}")
+        err
+    end
+  end
+
+  defp define_response(result) do
+    case result do
+      {:ok, _mutated} ->
+        Logger.debug("Cloud event mutated.")
+        result
+
+      {:noop, ce} ->
+        Logger.debug("Cloud event not mutated!")
+        {:ok, ce}
+
+      {:error, reason} = err ->
+        Logger.error("Message mutation error. #{inspect(reason)}")
         err
     end
   end

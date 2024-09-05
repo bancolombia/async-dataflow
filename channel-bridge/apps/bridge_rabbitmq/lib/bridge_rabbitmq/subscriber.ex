@@ -6,6 +6,8 @@ defmodule BridgeRabbitmq.Subscriber do
 
   require Logger
 
+  alias BridgeCore.CloudEvent.RoutingError
+
   alias BridgeRabbitmq.MessageProcessor
 
   def start_link(opts) do
@@ -45,20 +47,24 @@ defmodule BridgeRabbitmq.Subscriber do
     )
   end
 
-  def stop() do
+  def stop do
     Logger.debug("Stopping RabbitMQ Producer Module")
     Broadway.stop(__MODULE__, :normal)
   end
 
   defp declare_rabbitmq_topology(amqp_channel) do
-    # TODO parametrize exchange name
     AMQP.Exchange.declare(amqp_channel, "domainEvents", :topic, durable: true)
   end
 
   @impl true
   def handle_message(_, message, _context) do
-    message.data
-    |> MessageProcessor.handle_message
+    try do
+      message.data
+      |> MessageProcessor.handle_message
+    rescue
+      e in RoutingError ->
+        Logger.error("Error processing message: #{inspect(e)}")
+    end
 
     message
   end

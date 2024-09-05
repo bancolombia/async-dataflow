@@ -7,6 +7,7 @@ defmodule BridgeCore.Boundary.ChannelSupervisor do
   require Logger
 
   alias BridgeCore.Channel
+
   alias BridgeCore.Boundary.ChannelManager
 
   @type channel_t :: Channel.t()
@@ -24,7 +25,7 @@ defmodule BridgeCore.Boundary.ChannelSupervisor do
     |> Horde.DynamicSupervisor.init()
   end
 
-  defp members() do
+  defp members do
     Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
   end
 

@@ -3,14 +3,16 @@ defmodule BridgeApi.Rest.RestRouter do
   Endpoints for channel management (creation, update)
   """
   alias BridgeApi.Rest.AuthPlug
-  alias BridgeApi.Rest.RestHelper
-  alias BridgeApi.Rest.PrometheusExporter
-  alias BridgeApi.Rest.Header
   alias BridgeApi.Rest.ChannelRequest
+  alias BridgeApi.Rest.Header
   alias BridgeApi.Rest.Health.Probe, as: HealthProbe
+  alias BridgeApi.Rest.PrometheusExporter
+  alias BridgeApi.Rest.RestHelper
+  alias Plug.Conn.Status
 
-  use Plug.Router
   use Plug.ErrorHandler
+  use Plug.Router
+
   require Logger
 
   @type conn :: %Plug.Conn{}
@@ -77,7 +79,7 @@ defmodule BridgeApi.Rest.RestRouter do
   defp call_probe(conn, fun) do
     case fun.() do
       :ok ->
-        send_resp(conn, Plug.Conn.Status.code(:ok), "OK")
+        send_resp(conn, Status.code(:ok), "OK")
       _ ->
         send_resp(conn, 503, "Service Unavailable")
     end

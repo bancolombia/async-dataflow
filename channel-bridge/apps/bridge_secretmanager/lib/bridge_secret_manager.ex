@@ -1,5 +1,6 @@
 defmodule BridgeSecretManager do
   use GenServer
+  @behaviour BridgeCore.SecretProvider
 
   @moduledoc """
   Documentation for `BridgeSecretManager`.
@@ -38,29 +39,22 @@ defmodule BridgeSecretManager do
     SecretsManager.get_secret_value(secret_name)
     |> ExAws.request
     |> process_response(opts)
-    |> (fn(result) ->
-      case result do
-        {:ok, _} ->
-          :ets.insert(:secret_manager_adapter, {secret_name, result})
-          result
-        _ ->
-          result
-      end
-    end).()
+    |> ets_insert(secret_name)
+  end
+
+  defp ets_insert(result, secret_name) do
+    case result do
+      {:ok, _} ->
+        :ets.insert(:secret_manager_adapter, {secret_name, result})
+        result
+      _ ->
+        result
+    end
   end
 
   defp process_response({:ok, response}, opts) do
     get_in(response, ["SecretString"])
-    |> (fn(secret) ->
-      case get_in(normalize_opts(opts), [:output]) do
-        nil ->
-          {:ok, secret}
-        "json" ->
-          {:ok, Jason.decode!(secret)}
-        _ ->
-          {:ok, secret}
-      end
-    end).()
+    |> normalize(opts)
   end
 
   defp process_response({:error, reason}, _opts) do
@@ -71,5 +65,16 @@ defmodule BridgeSecretManager do
   defp normalize_opts(opts) do
     opts
     |> Enum.into(%{})
+  end
+
+  defp normalize(secret_string, opts) do
+    case get_in(normalize_opts(opts), [:output]) do
+      nil ->
+        {:ok, secret_string}
+      "json" ->
+        {:ok, Jason.decode!(secret_string)}
+      _ ->
+        {:ok, secret_string}
+    end
   end
 end

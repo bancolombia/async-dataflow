@@ -7,7 +7,17 @@ bridge:
   cloud_event_mutator:
     mutator_module: Elixir.BridgeCore.CloudEvent.Mutator.DefaultMutator
 
-  channel_authenticator: Elixir.BridgeRestapiAuth.PassthroughProvider
+  channel_authenticator:
+    auth_module: Elixir.BridgeRestapiAuth.PassthroughProvider
+    config:
+      jwks: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_123456/.well-known/jwks.json"
+      allowed_audiences:
+        - aud1
+        - aud2
+      allowed_issuers:
+        - iss1
+        - iss2
+
   event_bus:
     rabbitmq:
       bindings:
@@ -56,6 +66,11 @@ bridge:
     #   processor_concurrency: 2
     #   processor_max_demand: 1
 
+  secrets:
+    # Default. implemented in app apps/bridge_secretsmanager.
+    # You can implement your own, please refer to `BridgeCore.SecretProvider` behaviour.
+    provider: Elixir.BridgeSecretManager
+    
 sender:
   url: http://localhost:8081
 

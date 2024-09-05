@@ -4,8 +4,10 @@ defmodule BridgeCore.Boundary.ChannelSupervisorTest do
   import Mock
 
   alias BridgeCore.Channel
-  alias BridgeCore.Boundary.ChannelSupervisor
+
   alias BridgeCore.Boundary.ChannelManager
+  alias BridgeCore.Boundary.ChannelSupervisor
+
   alias Horde.DynamicSupervisor
 
   test "Should start supervisor" do

@@ -1,7 +1,6 @@
 defmodule AwsConfigTest do
   alias BridgeSecretManager.AwsConfig
   use ExUnit.Case, async: false
-  import Mock
 
   test "Should obtain configure env" do
     cfg = %{

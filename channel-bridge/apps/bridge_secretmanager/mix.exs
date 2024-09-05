@@ -11,7 +11,8 @@ defmodule BridgeSecretManager.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      test_coverage: [tool: ExCoveralls]
     ]
   end
 
@@ -31,7 +32,7 @@ defmodule BridgeSecretManager.MixProject do
       {:ex_aws_sts, "~> 2.2"},
       {:ex_aws_secretsmanager, "~> 2.0"},
       # test only dependencies
-      {:mock, "~> 0.3.8", only: :test}
+      {:mock, "~> 0.3.8", only: :test},
     ]
   end
 end

@@ -11,7 +11,8 @@ defmodule BridgeRestapiAuth.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      test_coverage: [tool: ExCoveralls]
     ]
   end
 
@@ -26,8 +27,9 @@ defmodule BridgeRestapiAuth.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
-      {:jose, "~> 1.11.1"},
-      {:mock, "~> 0.3.8", only: :test}
+      {:joken, "~> 2.6"},
+      {:joken_jwks, "~> 1.6.0"},
+      {:mock, "~> 0.3.8", only: :test},
     ]
   end
 end

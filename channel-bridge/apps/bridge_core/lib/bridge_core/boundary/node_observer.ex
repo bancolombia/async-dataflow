@@ -1,4 +1,7 @@
 defmodule BridgeCore.Boundary.NodeObserver do
+  @moduledoc """
+  Observes the nodes in the cluster and updates the members of the cluster.
+  """
     use GenServer
 
     alias BridgeCore.Boundary.{ChannelRegistry, ChannelSupervisor}

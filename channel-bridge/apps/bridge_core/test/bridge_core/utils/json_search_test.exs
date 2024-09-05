@@ -49,10 +49,10 @@ defmodule BridgeCore.Utils.JsonSearchTest do
   end
 
   test "test prepare" do
-    res = JsonSearch.prepare(CloudEvent.new("a", "b", "c", "d", "e", "f", "g", "h", "i"))
+    res = JsonSearch.prepare(CloudEvent.new("a", "b", "c", "d", "e", "f", "g", "h"))
     assert %{
-      "data" => "i",
-      "dataContentType" => "h",
+      "data" => "h",
+      "dataContentType" => "application/json",
       "id" => "e",
       "invoker" => "g",
       "source" => "c",

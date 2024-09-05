@@ -4,10 +4,12 @@ defmodule BridgeRestapiAuth.Provider do
   """
 
   @type all_headers :: map()
+  @type credentials() :: map()
   @type reason() :: any()
 
   @doc """
   Validates user credentials
   """
-  @callback validate_credentials(all_headers()) :: {:unauthorized, reason()} | {:ok, map()}
+  @callback validate_credentials(all_headers()) :: {:error, reason()} | {:ok, credentials()}
+
 end

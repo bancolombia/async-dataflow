@@ -3,7 +3,6 @@ defmodule BridgeRabbitmq.MessageProcessorTest do
   # use Plug.Test
 
   alias BridgeCore.CloudEvent
-  alias BridgeCore.CloudEvent.RoutingError
   alias BridgeRabbitmq.MessageProcessor
 
   import Mock
@@ -54,8 +53,7 @@ defmodule BridgeRabbitmq.MessageProcessorTest do
       {BridgeCore, [], [route_message: fn _alias, _cloud_event -> :ok end]}
     ]) do
 
-      {:ok, pid } = MessageProcessor.handle_message(init_args.json)
-      assert is_pid(pid)
+      assert :ok == MessageProcessor.handle_message(init_args.json)
 
       :timer.sleep(100)
 
@@ -68,8 +66,9 @@ defmodule BridgeRabbitmq.MessageProcessorTest do
       {BridgeCore, [], [route_message: fn _alias, _cloud_event -> :ok end]}
     ]) do
 
-      {:ok, pid } = MessageProcessor.handle_message("{}")
-      assert is_pid(pid)
+      assert_raise BridgeCore.CloudEvent.RoutingError, fn ->
+        MessageProcessor.handle_message("{}")
+      end
 
       :timer.sleep(100)
 
@@ -82,8 +81,9 @@ defmodule BridgeRabbitmq.MessageProcessorTest do
       {BridgeCore, [], [route_message: fn _alias, _cloud_event -> :ok end]}
     ]) do
 
-      {:ok, pid } = MessageProcessor.handle_message("xxxxx")
-      assert is_pid(pid)
+      assert_raise BridgeCore.CloudEvent.RoutingError, fn ->
+        MessageProcessor.handle_message("xxxxx")
+      end
 
       :timer.sleep(100)
 
@@ -99,8 +99,9 @@ defmodule BridgeRabbitmq.MessageProcessorTest do
       ]}
     ]) do
 
-      {:ok, pid } = MessageProcessor.handle_message(init_args.json)
-      assert is_pid(pid)
+      assert_raise BridgeCore.CloudEvent.RoutingError, fn ->
+        MessageProcessor.handle_message(init_args.json)
+      end
 
       :timer.sleep(100)
 
