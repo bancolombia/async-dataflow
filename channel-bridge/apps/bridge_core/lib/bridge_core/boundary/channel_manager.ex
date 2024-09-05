@@ -46,11 +46,17 @@ defmodule BridgeCore.Boundary.ChannelManager do
   def init({channel, _mutator} = args) do
     Process.flag(:trap_exit, true)
 
-    Enum.map(channel.procs, fn ref ->
+    procs = Enum.map(channel.procs, fn ref ->
       Connector.start_router_process(ref.channel_ref, [])
     end)
+    |> Enum.reduce(0, fn result, acc ->
+      case result do
+        {:ok, _} -> acc + 1
+        _ -> acc
+      end
+    end)
 
-    Logger.debug("new channel manager : #{inspect(args)} ")
+    Logger.debug("started channel manager with: #{inspect(args)}, for [#{inspect(procs)}] adf channel sender reference(s).")
 
     {:ok, :open, args}
   end
@@ -189,9 +195,16 @@ defmodule BridgeCore.Boundary.ChannelManager do
   def closed(:enter, _old_state, {channel, _} = _data) do
 
     # close related routing processes
-    Enum.map(channel.procs, fn ref ->
+    procs = Enum.map(channel.procs, fn ref ->
       Connector.stop_router_process(ref.channel_ref, [])
     end)
+    |> Enum.reduce(0, fn result, acc ->
+      case result do
+        :ok -> acc + 1
+        _ -> acc
+      end
+    end)
+    Logger.debug("ChannelManager, closed #{inspect(procs)} routing procs.")
 
     {:ok, new_channel} = Channel.close(channel)
 

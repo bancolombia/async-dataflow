@@ -46,7 +46,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: './channel-bridge/.nvmrc'
       - name: Set up Semantic Release
         if: github.ref == 'refs/heads/main'
         run: npm -g install @semantic-release/git semantic-release@23.0.0
@@ -94,7 +94,7 @@ jobs:
         if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
         uses: zgosalvez/github-actions-report-lcov@v3
         with:
-          coverage-files: cover/lcov.info
+          coverage-files: ./channel-bridge/cover/lcov.info
           minimum-coverage: 70
           artifact-name: code-coverage-report
           github-token: ${{ secrets.GITHUB_TOKEN }}
