@@ -6,13 +6,15 @@ defmodule BridgeCore.Boundary.ChannelManager do
   require Logger
   import  Bitwise
 
-  alias BridgeCore.Sender.Connector;
-  alias BridgeCore.{CloudEvent, Channel}
+  alias BridgeCore.Sender.Connector
+
+  alias BridgeCore.Channel
+  alias BridgeCore.CloudEvent
 
   @type channel_ref() :: String.t()
   @type channel_secret() :: String.t()
 
-  @spec get_channel_info(:gen_statem.server_ref()) :: :ok | {:error, reason :: term}
+  @spec get_channel_info(:gen_statem.server_ref()) :: {:ok, any()} | {:error, reason :: term}
   def get_channel_info(server) do
     GenStateMachine.call(server, :channel_info)
   end
@@ -166,25 +168,27 @@ defmodule BridgeCore.Boundary.ChannelManager do
         err
 
       {:ok, messages} ->
-        messages
-        |> Stream.map(fn msg ->
-
-          send_result = Connector.route_message(msg.channel_ref, msg)
-
-          case send_result do
-            {:ok, _} ->
-              Logger.debug("Message routed to #{inspect(msg.channel_ref)}")
-              {msg.channel_ref, :ok}
-
-            {:error, reason} ->
-              Logger.error("Message not routed to #{msg.channel_ref}, reason: #{inspect(reason)}")
-              {msg.channel_ref, :error, reason}
-          end
-        end)
-
-        |> Enum.to_list()
-
+        route(messages)
     end
+  end
+
+  defp route(messages) do
+    messages
+    |> Stream.map(fn msg ->
+
+      send_result = Connector.route_message(msg.channel_ref, msg)
+
+      case send_result do
+        {:ok, _} ->
+          Logger.debug("Message routed to #{inspect(msg.channel_ref)}")
+          {msg.channel_ref, :ok}
+
+        {:error, reason} ->
+          Logger.error("Message not routed to #{msg.channel_ref}, reason: #{inspect(reason)}")
+          {msg.channel_ref, :error, reason}
+      end
+    end)
+    |> Enum.to_list()
   end
 
   ################################################################################

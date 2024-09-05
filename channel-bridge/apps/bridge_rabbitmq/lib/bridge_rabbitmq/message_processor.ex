@@ -15,7 +15,6 @@ defmodule BridgeRabbitmq.MessageProcessor do
   """
   def handle_message(input_json_message) do
 
-
     send_result = input_json_message
     |> convert_to_cloud_event
     |> find_process_and_deliver

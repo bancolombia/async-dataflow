@@ -4,9 +4,10 @@ defmodule BridgeApi.Rest.ChannelRequest do
   @moduledoc """
   A new channel request data
   """
-  alias BridgeCore.Utils.JsonSearch
   alias BridgeCore.AppClient
   alias BridgeCore.User
+
+  alias BridgeCore.Utils.JsonSearch
 
   require Logger
 

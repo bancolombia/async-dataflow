@@ -31,7 +31,7 @@ defmodule BridgeCore.Boundary.ChannelRegistry do
   # @compile {:inline, via_tuple: 1}
   def via_tuple(channel_ref), do: {:via, Registry, {__MODULE__, channel_ref}}
 
-  defp members() do
+  defp members do
     Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
   end
 

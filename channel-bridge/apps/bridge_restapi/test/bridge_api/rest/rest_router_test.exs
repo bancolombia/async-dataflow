@@ -3,8 +3,9 @@ defmodule BridgeApi.Rest.RestRouterTest do
   use Plug.Test
 
   alias BridgeApi.Rest.ErrorResponse
-  alias BridgeApi.Rest.RestRouter
   alias BridgeApi.Rest.RestHelper
+  alias BridgeApi.Rest.RestRouter
+
   alias BridgeApi.Rest.AuthPlug.AuthenticationError
 
   @moduletag :capture_log
@@ -99,7 +100,7 @@ defmodule BridgeApi.Rest.RestRouterTest do
 
     cfg = %{
       bridge: %{
-        "channel_authenticator" => %{ "auth_module" => Elixir.BridgeRestapiAuth.JwtParseOnlyProvider},
+        "channel_authenticator" => %{"auth_module" => Elixir.BridgeRestapiAuth.JwtParseOnlyProvider},
       }
     }
     Application.put_env(:channel_bridge, :config, cfg)

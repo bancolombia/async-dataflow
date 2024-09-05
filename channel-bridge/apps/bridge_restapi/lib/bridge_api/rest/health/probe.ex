@@ -1,4 +1,6 @@
 defmodule BridgeApi.Rest.Health.Probe do
+  @moduledoc false
+
   @callback readiness() :: :ok | :error
   @callback liveness() :: :ok | :error
 

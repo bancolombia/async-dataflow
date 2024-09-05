@@ -1,4 +1,7 @@
 defmodule BridgeRabbitmq.Application do
+  @moduledoc """
+  Main application entry point.
+  """
   use Application
   require Logger
 
@@ -58,20 +61,11 @@ defmodule BridgeRabbitmq.Application do
       nil -> nil
       v -> URI.encode_www_form(v)
     end
-    virtual_host = case get_in(data, ["virtualhost"]) do
-      nil -> ""
-      "/" -> ""
-      value -> "/#{value}"
-    end
+    virtual_host = process_vhost(data)
+
     host = get_in(data, ["hostname"])
 
-    ssl = case get_in(data, ["ssl"]) do
-      nil -> false
-      true -> true
-      false -> false
-      "true" -> true
-      "false" -> false
-    end
+    ssl = process_ssl_string(data)
 
     schema = case ssl do
       false -> "amqp"
@@ -86,10 +80,27 @@ defmodule BridgeRabbitmq.Application do
     "#{schema}://#{username}:#{password}@#{host}#{virtual_host}#{ssl_props}"
   end
 
+  defp process_vhost(data) do
+    case get_in(data, ["virtualhost"]) do
+      nil -> ""
+      "/" -> ""
+      value -> "/#{value}"
+    end
+  end
+
+  defp process_ssl_string(data) do
+    case get_in(data, ["ssl"]) do
+      nil -> false
+      true -> true
+      false -> false
+      "true" -> true
+      "false" -> false
+    end
+  end
+
   defp print_secret(secret_value) do
     masked_secret = Map.replace!(secret_value, "password", "******")
     Logger.debug("Rabbitmq Secret value: #{inspect(masked_secret)}")
   end
-
 
 end

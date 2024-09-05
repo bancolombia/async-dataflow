@@ -2,7 +2,8 @@ defmodule BridgeRabbitmq.SubscriberTest do
   use ExUnit.Case, async: false
 
   alias BridgeRabbitmq.Subscriber
-  alias alias BridgeCore.CloudEvent.RoutingError
+
+  alias BridgeCore.CloudEvent.RoutingError
 
   import Mock
 
@@ -89,7 +90,6 @@ defmodule BridgeRabbitmq.SubscriberTest do
       assert :ok == Subscriber.stop()
 
     end
-
 
   end
 

@@ -29,7 +29,7 @@ defmodule BridgeCore.Sender.Connector do
   @spec route_message(String.t, Message.t) ::  {:ok, map()} | {:error, any()}
   def route_message(channel_ref, protocol_msg) do
     Logger.debug("Routing message to channel: #{channel_ref}")
-    AdfSenderConnector.route_message(channel_ref, nil, protocol_msg)
+    AdfSenderConnector.route_message(channel_ref, "", protocol_msg)
   end
 
 end

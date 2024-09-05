@@ -15,7 +15,7 @@ defmodule BridgeRestapiAuth.JwtParseOnlyProviderTest do
     }
 
     assert JwtParseOnlyProvider.validate_credentials(headers) ==
-      {:ok, %{"iat" => 1516239022, "name" => "John Doe", "sub" => "1234567890"}}
+      {:ok, %{"iat" => 1_516_239_022, "name" => "John Doe", "sub" => "1234567890"}}
 
   end
 

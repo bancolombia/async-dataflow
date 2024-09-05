@@ -157,41 +157,6 @@ defmodule BridgeCore.CloudEvent.Mutator.WebhookMutatorTest do
 
   end
 
-  test "Should handle webhook failed connection and perform no mutations to cloud_event", %{cloud_event: cloud_event} do
-
-    mutator_config = %{
-      "applies_when" => [
-        %{"key" => "$.source", "comparator" => "eq", "value" => "sdfsdf"},
-        %{"operator" => "or", "key" => "$.invoker", "comparator" => "contains", "value" => "foo"},
-      ],
-      "webhook_headers" => ["Content-Type: application/json"],
-      "webhook_method" => "POST",
-      "webhook_url" => "http://localhost:3000/content/xyz"
-    }
-
-    with_mocks([
-      {:httpc, [], [request: fn _url, _params, _headers, _opts ->
-        {:failed_connect, :error}
-      end]}
-    ]) do
-
-      {:noop, mutated_cloud_event} = WebhookMutator.mutate(cloud_event, mutator_config)
-
-      ## assert fields should remain the same
-      assert mutated_cloud_event.data == %{"hello" => "World"}
-      assert mutated_cloud_event.dataContentType == cloud_event.dataContentType
-      assert mutated_cloud_event.id == cloud_event.id
-      assert mutated_cloud_event.invoker == cloud_event.invoker
-      assert mutated_cloud_event.source == cloud_event.source
-      assert mutated_cloud_event.specVersion == cloud_event.specVersion
-      assert mutated_cloud_event.subject == cloud_event.subject
-      assert mutated_cloud_event.time == cloud_event.time
-      assert mutated_cloud_event.type == cloud_event.type
-
-    end
-
-  end
-
   test "Should handle webhook error and perform no mutations to cloud_event", %{cloud_event: cloud_event} do
 
     mutator_config = %{

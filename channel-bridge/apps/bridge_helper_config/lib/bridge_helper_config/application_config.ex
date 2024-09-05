@@ -71,14 +71,14 @@ defmodule BridgeHelperConfig.ApplicationConfig do
           {k, m}
       end
     end)
-    |> Enum.filter(fn({_k,v}) ->
+    |> Enum.filter(fn({_k, v}) ->
       case v do
         nil ->
           false
         _ -> true
       end
     end)
-    |> Enum.reduce(config, fn({k,v}, acc) ->
+    |> Enum.reduce(config, fn({k, v}, acc) ->
       put_in(acc, k, v)
     end)
   end

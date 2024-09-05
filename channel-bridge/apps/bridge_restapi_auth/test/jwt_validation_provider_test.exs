@@ -45,7 +45,7 @@ defmodule BridgeRestapiAuth.JwtValidationProviderTest do
      {BridgeRestapiAuth.Oauth.Token, [],
        [
         verify_and_validate: fn _token ->
-           {:ok, %{"iat" => 1516239022, "iss" => "some.issuer",
+           {:ok, %{"iat" => 1_516_239_022, "iss" => "some.issuer",
             "aud" => "aud1", "name" => "John Doe", "sub" => "1234567890"}
            }
          end
@@ -69,7 +69,7 @@ defmodule BridgeRestapiAuth.JwtValidationProviderTest do
      {BridgeRestapiAuth.Oauth.Token, [],
        [
         verify_and_validate: fn _token ->
-           {:error, [message: "Invalid token", claim: "exp", claim_val: 1716774434]}
+           {:error, [message: "Invalid token", claim: "exp", claim_val: 1_716_774_434]}
          end
        ]}
     ]) do
@@ -93,7 +93,5 @@ defmodule BridgeRestapiAuth.JwtValidationProviderTest do
    headers = %{}
    assert JwtValidationProvider.validate_credentials(headers) == {:error, :nocreds}
  end
-
-
 
 end

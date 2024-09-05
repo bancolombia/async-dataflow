@@ -2,10 +2,12 @@ defmodule BridgeCore.ChannelTest do
   use ExUnit.Case, async: false
 
   import Mock
-  alias BridgeCore.Channel
+
   alias BridgeCore.AppClient
-  alias BridgeCore.User
+  alias BridgeCore.Channel
   alias BridgeCore.CloudEvent
+  alias BridgeCore.User
+
   alias BridgeCore.Sender.Connector
 
   @moduletag :capture_log
@@ -168,7 +170,6 @@ defmodule BridgeCore.ChannelTest do
     {:ok, new_channel} = Channel.close(channel)
     assert :noop == Channel.check_state_inactivity(new_channel)
 
-
   end
 
   test "Should test prepare message" do
@@ -177,7 +178,7 @@ defmodule BridgeCore.ChannelTest do
       Channel.new("my-channel", AppClient.new("app01", "app nam", 60), User.new("user1"))
       |> Channel.update_credentials("some_ref", "some_secret")
 
-    cloud_event = CloudEvent.new("1", "1", "1", "1", "1", "1", "1", "1", "1")
+    cloud_event = CloudEvent.new("1", "1", "1", "1", "1", "1", "1", "1")
 
     {:ok, messages} = Channel.prepare_messages(channel, cloud_event)
 
@@ -191,7 +192,7 @@ defmodule BridgeCore.ChannelTest do
     channel =
       Channel.new("my-channel", AppClient.new("app01", "app nam", 60), User.new("user1"))
 
-    cloud_event = CloudEvent.new("1", "1", "1", "1", "1", "1", "1", "1", "1")
+    cloud_event = CloudEvent.new("1", "1", "1", "1", "1", "1", "1", "1")
 
     assert {:error, :empty_refs} == Channel.prepare_messages(channel, cloud_event)
   end

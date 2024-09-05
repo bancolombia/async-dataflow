@@ -1,4 +1,7 @@
 defmodule BridgeHelperConfig.ConfigManager do
+  @moduledoc """
+  Configuration manager for the application.
+  """
   use GenServer
 
   alias BridgeHelperConfig.ApplicationConfig
@@ -19,7 +22,6 @@ defmodule BridgeHelperConfig.ConfigManager do
     GenServer.call(__MODULE__, {:load, file})
   end
 
-
   @impl true
   def init(file_path_arg) do
     {:ok, ApplicationConfig.load(file_path_arg)}
@@ -27,12 +29,10 @@ defmodule BridgeHelperConfig.ConfigManager do
 
   @impl true
   def handle_call({:lookup, key}, _from, data) do
-    try do
-      {:reply, get_in(data, key), data}
-    rescue
-      _ ->
-        {:reply, nil, data}
-    end
+    {:reply, get_in(data, key), data}
+  rescue
+    _ ->
+      {:reply, nil, data}
   end
 
   @impl true

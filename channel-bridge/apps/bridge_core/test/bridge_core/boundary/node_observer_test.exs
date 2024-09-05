@@ -1,7 +1,7 @@
 defmodule BridgeCore.Boundary.NodeObserverTest do
   use ExUnit.Case
 
-  alias BridgeCore.Boundary.{NodeObserver, ChannelRegistry, ChannelSupervisor}
+  alias BridgeCore.Boundary.{ChannelRegistry, ChannelSupervisor, NodeObserver}
 
   setup do
     {:ok, rpid} = ChannelRegistry.start_link(nil)

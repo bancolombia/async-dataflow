@@ -3,8 +3,10 @@ defmodule BridgeCoreTest do
 
   @moduletag :capture_log
   import Mock
-  alias BridgeCore.{Channel, AppClient, User, CloudEvent}
-  alias BridgeCore.Boundary.{ChannelSupervisor, ChannelRegistry, ChannelManager}
+  alias BridgeCore.{AppClient, Channel, CloudEvent, User}
+
+  alias BridgeCore.Boundary.{ChannelManager, ChannelRegistry, ChannelSupervisor}
+
   alias BridgeCore.Sender.Connector
 
   test "should start session" do
@@ -34,7 +36,7 @@ defmodule BridgeCoreTest do
   test "should re-start session" do
 
     with_mocks([
-      {ChannelRegistry, [], [lookup_channel_addr: [in_series(["a"], [:noproc, :c.pid(0,255,0)])] ]},
+      {ChannelRegistry, [], [lookup_channel_addr: [in_series(["a"], [:noproc, :c.pid(0, 255, 0)])] ]},
       {Connector, [], [channel_registration: fn _, _ ->
         {:ok, %{"channel_ref" => "dummy.channel.ref0", "channel_secret" => "yyy0"}}
       end]},
@@ -87,7 +89,7 @@ defmodule BridgeCoreTest do
 
   test "should route message" do
     with_mocks([
-      {ChannelRegistry, [], [lookup_channel_addr: [in_series(["x"], [:noproc, :c.pid(0,255,0)])] ]},
+      {ChannelRegistry, [], [lookup_channel_addr: [in_series(["x"], [:noproc, :c.pid(0, 255, 0)])] ]},
       {Connector, [], [channel_registration: fn _, _ ->
         {:ok, %{"channel_ref" => "dummy.channel.ref1", "channel_secret" => "yyy1"}}
       end]},
@@ -107,7 +109,7 @@ defmodule BridgeCoreTest do
 
       assert :ready == new_channel.status
 
-      assert :ok == BridgeCore.route_message("x", CloudEvent.new("a", "b", "c", "d", "e", "f", "g", "h", "i"))
+      assert :ok == BridgeCore.route_message("x", CloudEvent.new("a", "b", "c", "d", "e", "f", "g", "h"))
     end
   end
 
@@ -116,7 +118,7 @@ defmodule BridgeCoreTest do
       {ChannelRegistry, [], [lookup_channel_addr: fn _x -> :noproc end] },
     ]) do
 
-      route_result = BridgeCore.route_message("y", CloudEvent.new("a", "b", "c", "d", "e", "f", "g", "h", "i"))
+      route_result = BridgeCore.route_message("y", CloudEvent.new("a", "b", "c", "d", "e", "f", "g", "h"))
       assert {:error, :noproc} == route_result
     end
   end

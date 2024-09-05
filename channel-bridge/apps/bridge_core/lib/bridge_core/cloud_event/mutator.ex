@@ -7,7 +7,7 @@ defmodule BridgeCore.CloudEvent.Mutator do
   alias BridgeCore.CloudEvent
 
   @type cloud_event() :: CloudEvent.t()
-  @type config() :: Map.t()
+  @type config() :: map()
 
   @doc """
   Function that defines if the mutator should be applied to the cloud event

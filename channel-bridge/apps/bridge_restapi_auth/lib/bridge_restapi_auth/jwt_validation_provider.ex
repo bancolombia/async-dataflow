@@ -6,6 +6,7 @@ defmodule BridgeRestapiAuth.JwtValidationProvider do
   as defined if BridgeRestapiAuth.Oauth.Config module.
   """
 
+  alias BridgeRestapiAuth.Oauth.Token
   require Logger
 
   @type all_headers() :: map()
@@ -40,7 +41,7 @@ defmodule BridgeRestapiAuth.JwtValidationProvider do
   end
 
   defp validate_signature({:ok, jwt}) do
-    case BridgeRestapiAuth.Oauth.Token.verify_and_validate(jwt) do
+    case Token.verify_and_validate(jwt) do
       {:ok, _credentials} = v ->
         v
 

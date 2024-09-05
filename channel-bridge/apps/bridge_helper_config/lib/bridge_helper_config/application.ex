@@ -10,13 +10,12 @@ defmodule BridgeHelperConfig.Application do
   @impl true
   def start(_type, args) do
 
-    config_file_path = Application.get_env(:bridge_core, :config_file)
-    |> (fn
+    config_file_path = case Application.get_env(:bridge_core, :config_file) do
       nil ->
         Logger.warning("No configuration file specified, looking for default file: #{@default_file}")
         @default_file
       value -> value
-    end).()
+    end
 
     new_args = args ++ [file_path: config_file_path]
 

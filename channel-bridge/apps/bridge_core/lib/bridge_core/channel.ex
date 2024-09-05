@@ -3,7 +3,8 @@ defmodule BridgeCore.Channel do
   Abstraction for an async-dataflow-channel-sender's channel
   """
 
-  alias BridgeCore.{User, AppClient, CloudEvent}
+  alias BridgeCore.{AppClient, CloudEvent, User}
+
   alias AdfSenderConnector.Message
 
   require Logger
@@ -99,7 +100,7 @@ defmodule BridgeCore.Channel do
   @doc """
   Obtains the ADF Channel Sender client Message struct to be routed.
   """
-  @spec prepare_messages(t(), CloudEvent.t()) :: {:ok, list()} | {:error, term}
+  @spec prepare_messages(t(), CloudEvent.t()) :: {:ok, any()} | {:error, term()}
   def prepare_messages(channel, cloud_event) do
 
     with {:ok, ch_procs} <- get_procs(channel),
@@ -115,7 +116,7 @@ defmodule BridgeCore.Channel do
       }
 
     else
-      {:error, :empty_refs} = err->
+      {:error, :empty_refs} = err ->
         Logger.error("channel_ref is empty or unknown. #{inspect(cloud_event)}")
         err
 

@@ -6,12 +6,14 @@ defmodule BridgeCore do
 
   require Logger
 
-  alias BridgeCore.CloudEvent
   alias BridgeCore.Channel
-  alias BridgeCore.Boundary.ChannelSupervisor
+  alias BridgeCore.CloudEvent
+
   alias BridgeCore.Boundary.ChannelManager
   alias BridgeCore.Boundary.ChannelRegistry
+  alias BridgeCore.Boundary.ChannelSupervisor
   alias BridgeCore.Boundary.NodeObserver
+
   alias BridgeCore.Sender.Connector
 
   @default_mutator %{
@@ -56,7 +58,6 @@ defmodule BridgeCore do
   """
   @spec start_session(Channel.t(), list()) :: {:ok, {Channel.t(), any()}} | {:error, any()}
   def start_session(channel, _options \\ []) do
-    # TODO use an option to force register new session
     case lookup_channel_pid(channel.channel_alias) do
       {:error, :noproc} ->
         channel_registration = obtain_credentials(channel)
@@ -120,14 +121,13 @@ defmodule BridgeCore do
 
   defp obtain_credentials(channel) do
     Task.Supervisor.async(BridgeCore.TaskSupervisor, fn ->
-      with {:ok, creds} <- Connector.channel_registration(channel.application_ref.id, channel.user_ref.id)
-      do
-        {:ok, Channel.update_credentials(channel, creds["channel_ref"], creds["channel_secret"]) }
-      else
+      case Connector.channel_registration(channel.application_ref.id, channel.user_ref.id) do
+        {:ok, creds} ->
+          {:ok, Channel.update_credentials(channel, creds["channel_ref"], creds["channel_secret"]) }
         {:error, _reason} = err ->
-          err
-      end
-    end)
+            err
+        end
+      end)
     |> Task.await()
   end
 
@@ -148,12 +148,12 @@ defmodule BridgeCore do
     topology
   end
 
-  defp parse_libcluster_topology() do
+  defp parse_libcluster_topology do
     topology = BridgeHelperConfig.get([:bridge, "topology"], nil)
     case topology do
       nil ->
         Logger.warning("No libcluster topology defined!!! -> Using Default [Gossip]")
-        [ strategy: Cluster.Strategy.Gossip ]
+        [strategy: Cluster.Strategy.Gossip]
       _ ->
         [
           strategy: String.to_existing_atom(topology["strategy"]),

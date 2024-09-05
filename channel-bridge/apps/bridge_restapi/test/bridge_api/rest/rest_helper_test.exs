@@ -2,7 +2,7 @@ defmodule BridgeApi.Rest.RestHelperTest do
   use ExUnit.Case, async: false
   use Plug.Test
 
-  alias BridgeApi.Rest.{RestHelper, ChannelRequest}
+  alias BridgeApi.Rest.{ChannelRequest, RestHelper}
   alias BridgeCore.Channel
 
   @moduletag :capture_log

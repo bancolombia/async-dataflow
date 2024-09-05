@@ -15,17 +15,15 @@ defmodule BridgeCore.CloudEvent.Parser.DefaultParser do
   # @impl true
   @spec parse(Parser.encoded_json()) :: {:ok, Parser.json()} | {:error, any()}
   def parse(encoded_json) do
-    try do
-      decoded =
-        Jason.decode!(encoded_json)
-        |> trim_cloud_event
+    decoded =
+      Jason.decode!(encoded_json)
+      |> trim_cloud_event
 
-      {:ok, decoded}
-    rescue
-      x in Jason.DecodeError ->
-        Logger.error("Received message is NOT a valid JSON: #{inspect(encoded_json)}")
-        {:error, x}
-    end
+    {:ok, decoded}
+  rescue
+    x in Jason.DecodeError ->
+      Logger.error("Received message is NOT a valid JSON: #{inspect(encoded_json)}")
+      {:error, x}
   end
 
   @impl true
@@ -50,18 +48,16 @@ defmodule BridgeCore.CloudEvent.Parser.DefaultParser do
     end
   end
 
-  defp get_schema() do
-    try do
-      :persistent_term.get({DefaultParser, "schema"})
-    rescue
-      ArgumentError ->
-        new_schema = create_schema()
-        :persistent_term.put({DefaultParser, "schema"}, new_schema)
-        new_schema
-    end
+  defp get_schema do
+    :persistent_term.get({DefaultParser, "schema"})
+  rescue
+    ArgumentError ->
+      new_schema = create_schema()
+      :persistent_term.put({DefaultParser, "schema"}, new_schema)
+      new_schema
   end
 
-  defp create_schema() do
+  defp create_schema do
     %{
       "$schema" => "http://json-schema.org/draft-04/schema#",
       "properties" => %{

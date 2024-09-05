@@ -1,6 +1,5 @@
 defmodule BridgeApi.Rest.BaseRouter do
-  @moduledoc """
-  """
+  @moduledoc false
 
   use Plug.Router
   use Plug.ErrorHandler

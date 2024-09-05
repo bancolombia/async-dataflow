@@ -1,4 +1,7 @@
 defmodule BridgeRestapiAuth.Oauth.Token do
+  @moduledoc """
+  Token configuration for the OAuth2.0 token.
+  """
   use Joken.Config, default_signer: nil
 
   add_hook(JokenJwks, strategy: BridgeRestapiAuth.Oauth.Strategy)

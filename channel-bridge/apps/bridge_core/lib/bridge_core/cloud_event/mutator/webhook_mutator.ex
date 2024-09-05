@@ -31,7 +31,7 @@ defmodule BridgeCore.CloudEvent.Mutator.WebhookMutator do
   @type t() :: CloudEvent.t()
 
   @webhook_content_type ['application/json']
-  @webhook_options [ {:timeout, 3_000}, {:connect_timeout, 3_000} ]
+  @webhook_options [{:timeout, 3_000}, {:connect_timeout, 3_000}]
 
   @doc false
   @impl true
@@ -43,9 +43,11 @@ defmodule BridgeCore.CloudEvent.Mutator.WebhookMutator do
       bool_op = rule["operator"] || "or"
       part = get_part(cloud_event, key, comparator)
       cond do
-        is_comparator?(comparator) ->
+        comparator?(comparator) ->
           {bool_op, compare(comparator, value, part)}
-        is_regex?(comparator) ->
+        contains?(comparator) ->
+            {bool_op, contained(comparator, value, part)}
+        regex?(comparator) ->
           {bool_op, Regex.match?(~r/#{value}/, part)}
       end
     end)
@@ -63,11 +65,15 @@ defmodule BridgeCore.CloudEvent.Mutator.WebhookMutator do
     |> JsonSearch.extract(key)
   end
 
-  defp is_comparator?(operator) do
-    operator in ["eq", "ne", "gt", "lt", "ge", "le", "contains", "not_contains"]
+  defp comparator?(operator) do
+    operator in ["eq", "ne", "gt", "lt", "ge", "le"]
   end
 
-  defp is_regex?(operator) do
+  defp contains?(operator) do
+    operator in ["contains", "not_contains"]
+  end
+
+  defp regex?(operator) do
     operator in ["regex"]
   end
 
@@ -79,6 +85,12 @@ defmodule BridgeCore.CloudEvent.Mutator.WebhookMutator do
       "lt" -> part < value
       "ge" -> part >= value
       "le" -> part <= value
+      _ -> false
+    end
+  end
+
+  defp contained(operator, value, part) do
+    case operator do
       "contains" -> String.contains?(part, value)
       "not_contains" -> !String.contains?(part, value)
       _ -> false
@@ -113,25 +125,19 @@ defmodule BridgeCore.CloudEvent.Mutator.WebhookMutator do
     {:noop, reason}
   end
 
-  defp process_response({:ok, { {_, status, _}, _, response_body} }, cloud_event) do
-    if (status < 200 or status >= 300) do
+  defp process_response({:ok, {{_, status, _}, _, response_body}}, cloud_event) do
+    if status < 200 or status >= 300 do
       Logger.error("Webhook result unsuccessful: #{inspect(status)}, body: #{inspect(response_body)}")
       {:noop, cloud_event}
     else
-      CloudEvent.from(to_string(response_body))
-      |> (fn
-            {:error, reason, _} ->
-              Logger.error("Error parsing webhook response: #{inspect(reason)}")
-              {:noop, cloud_event}
-            {:ok, new_ce} ->
-              {:ok, %{cloud_event | data: new_ce.data}}
-          end).()
+      case CloudEvent.from(to_string(response_body)) do
+        {:error, reason, _} ->
+          Logger.error("Error parsing webhook response: #{inspect(reason)}")
+          {:noop, cloud_event}
+        {:ok, new_ce} ->
+          {:ok, %{cloud_event | data: new_ce.data}}
+      end
     end
-  end
-
-  defp process_response({:failed_connect, reason}, cloud_event) do
-    Logger.error("Failed to connect to webhook: #{inspect(reason)}")
-    {:noop, cloud_event}
   end
 
   defp process_response({:error, reason}, cloud_event) do
