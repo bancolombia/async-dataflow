@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { AsyncClient } from '@bancolombia/chanjs-client';
 import { Subject } from 'rxjs';
-import { environment } from 'src/environments/environment';
 import { Message } from '../models/message.inteface';
+import { environment } from '../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -11,14 +11,14 @@ import { Message } from '../models/message.inteface';
 export class AsyncClientService {
   private getEventFromAsyncDataflow = new Subject<Message>();
   public eventRecived$ = this.getEventFromAsyncDataflow.asObservable();
-  private client;
+  private client?: AsyncClient;
   constructor(private http: HttpClient) {}
 
-  public getCredentials(user_ref) {
+  public getCredentials(user_ref: string) {
     if (this.hasChannelCreated()) {
       this.initChannel(
-        sessionStorage.getItem('channel_ref'),
-        sessionStorage.getItem('channel_secret')
+        sessionStorage.getItem('channel_ref')??'',
+        sessionStorage.getItem('channel_secret')??''
       );
     } else {
       const url = `${environment.api_business}/credentials`;
@@ -43,7 +43,7 @@ export class AsyncClientService {
     this.initChannel(res.channelRef, res.channelSecret);
   }
 
-  private initChannel(channel_ref, channel_secret) {
+  private initChannel(channel_ref: string, channel_secret:string) {
     this.client = new AsyncClient({
       socket_url: `ws://${environment.socket_url_async}/ext/socket`,
       channel_ref,
@@ -55,7 +55,7 @@ export class AsyncClientService {
     this.listenEvents(this.client);
   }
 
-  private listenEvents(client) {
+  private listenEvents(client: AsyncClient) {
     client.listenEvent('businessEvent', (message) => {
       this.getEventFromAsyncDataflow.next(message);
     });
@@ -64,6 +64,6 @@ export class AsyncClientService {
   public closeChannel() {
     sessionStorage.removeItem('channel_ref');
     sessionStorage.removeItem('channel_secret');
-    this.client.disconnect();
+    this.client?.disconnect();
   }
 }

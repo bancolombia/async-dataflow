@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { environment } from 'src/environments/environment';
+import { environment } from '../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -8,10 +8,10 @@ import { environment } from 'src/environments/environment';
 export class BusinessService {
   constructor(private http: HttpClient) {}
 
-  public callBusinessUseCase(delay) {
+  public callBusinessUseCase(delay: number) {
     const url = `${environment.api_business}/business`;
     let httpParams = new HttpParams()
-      .set('channel_ref', sessionStorage.getItem('channel_ref'))
+      .set('channel_ref', sessionStorage.getItem('channel_ref')??'')
       .set('delay', delay);
     return this.http.get(url, {
       params: httpParams,
