@@ -1,6 +1,5 @@
 package co.com.bancolombia.api;
 
-import co.com.bancolombia.usecase.business.BusinessUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -9,6 +8,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+import co.com.bancolombia.usecase.business.BusinessUseCase;
 
 @Component
 @RequiredArgsConstructor
