@@ -1,0 +1,34 @@
+## rol required to allow query of existing pods in namespace
+## in order to form the erlang cluster.
+## This is required by libcluster strategy Cluster.Strategy.Kubernetes.
+## To see other strategies supported by libcluster, see library documentation.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
+  name: read-pods-role
+  namespace: streamsnm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  creationTimestamp: null
+  name: role-binding
+  namespace: streamsnm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: read-pods-role
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: streamsnm

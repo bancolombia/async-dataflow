@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adfstreams-config
+  namespace: streamsnm
+data:
+  env.sh: |-
+    #!/bin/sh
+    export RELEASE_DISTRIBUTION=name
+    export RELEASE_NODE=adf_streams@${POD_NAME}.${POD_NAME_DNS}
+  config.yaml: |-
+    streams:
+      port: 8080
+      cloud_event_channel_identifier:
+        - $.subject
+      request_channel_identifier:
+        - "$.req_headers['sub']"
+      cloud_event_mutator:
+        mutator_module: Elixir.StreamsCore.CloudEvent.Mutator.DefaultMutator
+
+      channel_authenticator:
+        auth_module: Elixir.StreamsRestapiAuth.PassthroughProvider
+
+      event_bus:
+        rabbitmq:
+          bindings:
+            - name: domainEvents
+              routing_key:
+                - business.#
+          queue: adf_streams_ex_queue
+          
+          ##
+          ## Rabbitmq host and credentials can be configured with an AWS Secret, indicating the secret name.
+          ## The secret must be a valid Json containing the following keys: "virtualhost", "hostname", "username",
+          ## "password", "port". For example:
+          ##
+          ## { "username": <user name>, "password": <pw>, "hostname": <host>, "port": <port>, "virtualhost": <vhost>, "ssl": <true/false>}
+          ##
+          # secret: rabbitmq-secret
+
+          ##
+          ## Optionally and for local dev environments  Rabbitmq host and credentials can be configured directly 
+          ## here:
+          username: 
+          password: 
+          hostname: rabbitmq-service.rabbitmq.svc.cluster.local
+          port: 5671
+          virtualhost: /
+          ssl: false
+
+          ## producer and processor concurrency
+          producer_concurrency: 1
+          producer_prefetch: 2
+          processor_concurrency: 2
+          processor_max_demand: 1
+
+      topology:
+        strategy: Elixir.Cluster.Strategy.Kubernetes
+        config: 
+          mode: :hostname
+          kubernetes_ip_lookup_mode: :pods
+          kubernetes_service_name: "adfstreams-headless"
+          kubernetes_node_basename: "adf_streams"
+          kubernetes_selector: "cluster=beam"
+          namespace: "streamsnm"
+          polling_interval: 5000
+
+      secrets:
+        # Default. implemented in app apps/streams_secretsmanager.
+        # You can implement your own, please refer to `StreamsCore.SecretProvider` behaviour.
+        provider: Elixir.StreamsSecretManager
+
+    sender:
+      url: http://adfsender.sendernm.svc.cluster.local:8081
+
+    aws:
+      region: us-east-1
+      ## creds for local dev::
+      creds:
+        access_key_id:
+          - SYSTEM:AWS_ACCESS_KEY_ID
+          # - instance_role
+        secret_access_key:
+          - SYSTEM:AWS_SECRET_ACCESS_KEY
+          # - instance_role
+      ## secretsmanager local endpoint configuration for local dev:
+      # secretsmanager:
+      #   scheme: http://
+      #   host: localhost
+      #   region: us-east-1
+      #   port: 4566
+      debug_requests: true
+
+    logger:
+      level: debug
