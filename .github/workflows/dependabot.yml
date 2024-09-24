@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+  - package-ecosystem: pub
+    directory: clients/client-dart
+    schedule:
+      interval: daily
+  - package-ecosystem: npm
+    directory: clients/client-js
+    schedule:
+      interval: daily
+  - package-ecosystem: Hex
+    directory: clients/backend-client-elixir
+    schedule:
+      interval: daily
+  - package-ecosystem: Hex
+    directory: channel-sender
+    schedule:
+      interval: daily
+  - package-ecosystem: Hex
+    directory: channel-streams
+    schedule:
+      interval: daily
