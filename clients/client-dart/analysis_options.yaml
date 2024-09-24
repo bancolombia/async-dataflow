@@ -1,58 +1,4 @@
 include: package:flutter_lints/flutter.yaml
-
-linter:
-  rules:
-    avoid_print: true
-    avoid_unnecessary_containers: true
-    avoid_web_libraries_in_flutter: true
-    no_logic_in_create_state: false
-    prefer_const_constructors: true
-    prefer_const_constructors_in_immutables: true
-    prefer_const_declarations: true
-    prefer_const_literals_to_create_immutables: true
-    sized_box_for_whitespace: true
-    use_full_hex_values_for_flutter_colors: true
-    always_declare_return_types: true
-    cancel_subscriptions: true
-    close_sinks: true
-    comment_references: false
-    one_member_abstracts: false
-    only_throw_errors: true
-    package_api_docs: true
-    prefer_single_quotes: true
-    sort_child_properties_last: true
-    camel_case_types: true
-    library_names: true
-    file_names: true
-    library_prefixes: true
-    non_constant_identifier_names: true
-    constant_identifier_names: false
-    directives_ordering: true
-    curly_braces_in_flow_control_structures: true
-    slash_for_doc_comments: false
-    prefer_interpolation_to_compose_strings: true
-    prefer_collection_literals: true
-    avoid_function_literals_in_foreach_calls: false
-    avoid_init_to_null: true
-    prefer_initializing_formals: true
-    type_init_formals: true
-    empty_constructor_bodies: true
-    empty_statements: true
-    unnecessary_new: true
-    unnecessary_this: true
-    unnecessary_const: true
-    unnecessary_overrides: true
-    unnecessary_parenthesis: true
-    unnecessary_getters_setters: true
-    avoid_setters_without_getters: true
-    avoid_return_types_on_setters: true
-    parameter_assignments: true
-    prefer_function_declarations_over_variables: false
-    unawaited_futures: true
-    prefer_relative_imports: true
-    annotate_overrides: false
-    overridden_fields: false
-
 analyzer:
   errors:
     missing_required_param: error
@@ -64,57 +10,8 @@ analyzer:
     todo: warning
   plugins:
     - dart_code_linter
-
+    
 dart_code_linter:
-  metrics:
-    cyclomatic-complexity: 20
-    maximum-nesting-level: 5
-    maintainability-index: 50
-    number-of-methods: 10
-    number-of-parameters: 4
-    source-lines-of-code: 250
-  metrics-exclude:
-    - test/**
-  rules:
-    - avoid-non-null-assertion
-    - avoid-dynamic
-    - avoid-returning-widgets
-    - avoid-nested-conditional-expressions
-    - avoid-unnecessary-type-casts
-    - avoid-unnecessary-conditionals
-    - avoid-unused-parameters
-    - missing-test-assertion
-    - newline-before-return
-    - no-boolean-literal-compare
-    - no-empty-block
-    - no-equal-then-else
-    - no-magic-number
-    - prefer-trailing-comma
-    - prefer-conditional-expressions
-    - prefer-immediate-return
-    - prefer-moving-to-variable
-    - format-comment:
-        only-doc-comments: true
-    - member-ordering:
-        order:
-          - constructors
-          - public-fields
-          - private-fields
-          - close-method
-          - dispose-method
-        widgets-order:
-          - constructor
-          - build-method
-          - init-state-method
-          - did-change-dependencies-method
-          - did-update-widget-method
-          - dispose-method
-        #Flutter
-    - always-remove-listener
-    - avoid-unnecessary-setstate
-    - prefer-extracting-callbacks
-    - prefer-using-list-view
-
-  anti-patterns:
-    - long-method
-    - long-parameter-list
+  extends:
+    - package:dart_code_linter/presets/recommended.yaml
+  
