@@ -41,7 +41,7 @@ The Async DataFlow component aims to deliver asynchronous responses in real time
 ```
 
 
-- [Channel Bridge](https://github.com/bancolombia/async-dataflow/tree/master/channel-bridge) Distributed Elixir Cluster implementation of a async messages router.
+- [Channel Streams](https://github.com/bancolombia/async-dataflow/tree/master/channel-streams) Distributed Elixir Cluster implementation of a async messages router.
 
 ```mermaid
     C4Dynamic
@@ -53,7 +53,7 @@ The Async DataFlow component aims to deliver asynchronous responses in real time
     
     Boundary(xx, "ADF") {
         Component(sender, "Channel Sender", "", "")
-        Component(bridge, "Channel Bridge", "", "")
+        Component(streams, "Channel Streams", "", "")
     }
 
     Boundary(aa, "Client side applications") {
@@ -61,16 +61,16 @@ The Async DataFlow component aims to deliver asynchronous responses in real time
     }
 
     Rel(abl, bus, "Emit event")
-    Rel(bus, bridge, "Subscribe event")
-    Rel(bridge, sender, "route [Http]")
+    Rel(bus, streams, "Subscribe event")
+    Rel(streams, sender, "route [Http]")
     Rel(sender, cli, "Push response [websocket]")
 
     UpdateElementStyle(sender, $fontColor="black", $bgColor="orange", $borderColor="black")
-    UpdateElementStyle(bridge, $fontColor="black", $bgColor="green", $borderColor="black")
+    UpdateElementStyle(streams, $fontColor="black", $bgColor="green", $borderColor="black")
 
     UpdateRelStyle(abl, bus,  $offsetX="-40", $offsetY="-40")
-    UpdateRelStyle(bus, bridge, $offsetX="-40", $offsetY="-20")
-    UpdateRelStyle(bridge, sender, $offsetX="-33", $offsetY="-20")
+    UpdateRelStyle(bus, streams, $offsetX="-40", $offsetY="-20")
+    UpdateRelStyle(streams, sender, $offsetX="-33", $offsetY="-20")
     UpdateRelStyle(sender, cli, $offsetX="-40", $offsetY="-10")
     
     UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")

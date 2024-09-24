@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: adfstreams
+  namespace: streamsnm
+  labels:
+    app: adfstreams
+spec:
+  selector:
+    app: adfstreams
+  ports:
+    - name: rest-http
+      targetPort: 8080
+      port: 8080        
+---
+##
+## headless-service to define EPMD 4369 port, to allow pods to form Erlang cluster.
+##
+apiVersion: v1
+kind: Service
+metadata:
+  name: adfstreams-headless
+  namespace: streamsnm 
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: adfstreams
+  ports:
+    - name: epmd-tcp
+      port: 4369
+      targetPort: 4369
+      protocol: TCP     
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: adfstreams
+  namespace: streamsnm
+  labels:
+    app: adfstreams
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: adfstreams
+      cluster: beam
+  serviceName: "adfstreams-headless"
+  template:
+    metadata:
+      ## annotations required for istio-proxy to detect ports
+      annotations:
+        traffic.sidecar.istio.io/includeOutboundPorts: "4369"
+        traffic.sidecar.istio.io/includeInboundPorts: "4369, 8080"
+      labels:
+        app: adfstreams
+        cluster: beam
+    spec:
+      containers:
+        - name: adfstreams
+          image: bancolombia/async-dataflow-channel-streams:latest
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: ERLANG_COOKIE
+              value: "secret"
+            - name: RELEASE_COOKIE
+              value: "secret"              
+          ports:
+            - name: rest-http
+              protocol: TCP
+              containerPort: 8080
+            - name: epmd-tcp
+              protocol: TCP
+              containerPort: 4369
+          resources:
+            requests:
+              cpu: 250m
+              memory: 150M
+            limits:
+              cpu: 250m
+              memory: 250M
+          volumeMounts:
+          - name: config-volume
+            mountPath: /app/config/env.sh
+            subPath: env.sh
+          - name: config-volume
+            mountPath: /app/config/config.yaml
+            subPath: config.yaml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: adfstreams-config
