@@ -108,13 +108,13 @@ class AsyncClient {
   }
 
   StreamSubscription<ChannelMessage> subscribeTo(
-      String eventFilter, Function onData,
-      {Function? onError}) {
-    if (onError != null) {
-      return subscribeToMany([eventFilter], onData, onError: onError);
-    } else {
-      return subscribeToMany([eventFilter], onData);
-    }
+    String eventFilter,
+    Function(ChannelMessage) onData, {
+    Function? onError,
+  }) {
+    return onError != null
+        ? subscribeToMany([eventFilter], onData, onError: onError)
+        : subscribeToMany([eventFilter], onData);
   }
 
   StreamSubscription<ChannelMessage> subscribeToMany(
@@ -123,11 +123,11 @@ class AsyncClient {
     if (eventFilters == null || eventFilters.isEmpty) {
       throw ArgumentError('Invalid event filter(s)');
     } else {
-      eventFilters.forEach((element) {
+      for (var element in eventFilters) {
         if (element.trim().isEmpty) {
           throw ArgumentError('Invalid event filter');
         }
-      });
+      }
     }
     if (onData == null) {
       throw ArgumentError('Invalid onData function');
