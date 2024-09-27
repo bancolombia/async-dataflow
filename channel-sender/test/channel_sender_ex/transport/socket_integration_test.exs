@@ -5,7 +5,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.RulesProvider.Helper

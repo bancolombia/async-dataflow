@@ -94,7 +94,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
     if (config == %{}) do
-      Logger.warn("No valid configuration found!!!, Loading pre-defined default values : #{inspect(Application.get_all_env(:channel_sender_ex))}")
+      Logger.warning("No valid configuration found!!!, Loading pre-defined default values : #{inspect(Application.get_all_env(:channel_sender_ex))}")
     else
       Logger.info("Succesfully loaded configuration: #{inspect(inspect(Application.get_all_env(:channel_sender_ex)))}")
     end
@@ -106,7 +106,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     topology = get_in(config, [:channel_sender_ex, "topology"])
     case topology do
       nil ->
-        Logger.warn("No libcluster topology defined!!! -> Using Default [Gossip]")
+        Logger.warning("No libcluster topology defined!!! -> Using Default [Gossip]")
         [ strategy: Cluster.Strategy.Gossip ]
       _ ->
         [

@@ -37,14 +37,23 @@ defmodule ChannelSenderEx.Core.Channel do
               user_ref: ""
   end
 
+  @doc """
+  operation to notify this server that the socket is connected
+  """
   def socket_connected(server, socket_pid, timeout \\ @on_connected_channel_reply_timeout) do
     GenStateMachine.call(server, {:socket_connected, socket_pid}, timeout)
   end
 
+  @doc """
+  operation to mark a message as acknowledged
+  """
   def notify_ack(server, ref, message_id) do
     send(server, {:ack, ref, message_id})
   end
 
+  @doc """
+  operation to request a message delivery
+  """
   @type deliver_response :: :accepted_waiting | :accepted_connected
   @spec deliver_message(:gen_statem.server_ref(), ProtocolMessage.t()) :: deliver_response()
   def deliver_message(server, message) do
@@ -79,11 +88,16 @@ defmodule ChannelSenderEx.Core.Channel do
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
   def waiting(:enter, _old_state, data) do
+    # time to wait for the socket to be authenticated
     waiting_timeout = round(RulesProvider.get(:max_age) * 1000)
+    Logger.info("Channel #{data.channel} entering waiting state and expecting a socket connection and authentication. max wait time: #{waiting_timeout} ms")
     {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
   end
 
+  ## stop the process with a timeout cause if the socket is not
+  ## authenticated in the given time
   def waiting(:state_timeout, :waiting_timeout, data) do
+    Logger.warning("Channel #{data.channel} timed-out on waiting state for a socket connection and/or authentication")
     {:stop, :normal, %{data | stop_cause: :waiting_timeout}}
   end
 
@@ -94,10 +108,12 @@ defmodule ChannelSenderEx.Core.Channel do
     actions = [
       _reply = {:reply, from, :ok}
     ]
-
+    Logger.debug("Channel #{data.channel} authenticated. Leaving waiting state.")
     {:next_state, :connected, new_data, actions}
   end
 
+  ## Handle the case when a message delivery is requested in the waiting state. In this case
+  ## the message is saved in the pending_sending map.
   def waiting(
         {:call, from},
         {:deliver_message, message},
@@ -107,7 +123,7 @@ defmodule ChannelSenderEx.Core.Channel do
       _reply = {:reply, from, :accepted_waiting},
       _postpone = :postpone
     ]
-
+    Logger.debug("Channel #{data.channel} received a message while waiting for authentication")
     new_data = save_pending_waiting_message(data, message)
     {:keep_state, new_data, actions}
   end
@@ -147,8 +163,7 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state, new_data}
   end
 
-  def waiting(:info, event, data) do
-    IO.inspect({:info, event, data})
+  def waiting(:info, _event, _data) do
     :keep_state_and_data
   end
 
@@ -159,8 +174,9 @@ defmodule ChannelSenderEx.Core.Channel do
   @type call() :: {:call, GenServer.from()}
   @type state_return() :: :gen_statem.event_handler_result(Data.t())
 
-  def connected(:enter, _old_state, _data) do
+  def connected(:enter, _old_state, data) do
     refresh_timeout = calculate_refresh_token_timeout()
+    Logger.info("Channel #{data.channel} entering connected state")
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
   end
 
@@ -176,23 +192,26 @@ defmodule ChannelSenderEx.Core.Channel do
       _refresh_timeout = {:state_timeout, refresh_timeout, :refresh_token_timeout}
     ]
 
-    new_data = save_pending_message(data, output)
-    {:keep_state, new_data, actions}
+    {msg_id, _, _, _, _} = message
+    Logger.debug("Channel #{data.channel} sending message [:n_token] ref: #{msg_id}")
+    {:keep_state,
+      save_pending_message(data, output), # new data
+      actions}
   end
 
-  defp new_token_message(_data = %{application: app, channel: channel, user_ref: user}) do
-    new_token = ChannelSenderEx.Core.ChannelIDGenerator.generate_token(channel, app, user)
-    ProtocolMessage.of(UUID.uuid4(:hex), ":n_token", new_token)
-  end
-
+  ## Handle the case when a message delivery is requested.
   @spec connected(call(), {:deliver_message, ProtocolMessage.t()}, Data.t()) :: state_return()
-  def connected(
-        {:call, from},
-        {:deliver_message, message},
-        data
-      ) do
+  def connected({:call, from}, {:deliver_message, message}, data) do
+
+    {msg_id, _, _, _, _} = message
+    Logger.debug("Channel #{data.channel} sending message [user] ref: #{msg_id}")
+
+    # will send message to the socket process
     {:deliver_msg, {_, ref}, _} = output = send_message(data, message)
 
+    # Prepares the actions to be executed when method returns
+    # 1. reply to the caller
+    # 2. schedule a timer to retry the message delivery if not acknowledged in the expected time frame
     actions = [
       _reply = {:reply, from, :accepted_connected},
       _timeout = {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), 0}
@@ -200,26 +219,30 @@ defmodule ChannelSenderEx.Core.Channel do
 
     new_data =
       data
-      |> save_pending_message(output)
+      |> save_pending_message(output) # save the message in the pending_ack map within the data
       |> clear_pending_wait(message)
 
     {:keep_state, new_data, actions}
   end
 
-  def connected(:info, {:ack, message_ref, _message_id}, data) do
+  ## Handle the case when a message is acknowledged by the client.
+   def connected(:info, {:ack, message_ref, message_id}, data) do
     {_, new_data} = retrieve_pending_message(data, message_ref)
 
     actions = [
-      _cancel_timer = {{:timeout, {:redelivery, message_ref}}, :cancel}
+      _cancel_timer = {{:timeout, {:redelivery, message_ref}}, :cancel} # cancel the redelivery timer
     ]
-
+    Logger.debug("Channel #{data.channel} recv ack msg #{message_id}")
     {:keep_state, new_data, actions}
   end
 
+  ## This is basically a message re-delivery timer. It is triggered when a message is requested to be delivered.
+  ## And it will continue to be executed until the message is acknowledged by the client.
   def connected({:timeout, {:redelivery, ref}}, retries, %{socket: {socket_pid, _}} = data) do
     {message, new_data} = retrieve_pending_message(data, ref)
     output = send(socket_pid, create_output_message(message, ref))
 
+    # reschedule the timer to keep retrying to deliver the message
     actions = [
       _timeout =
         {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), retries + 1}
@@ -237,15 +260,19 @@ defmodule ChannelSenderEx.Core.Channel do
     actions = [
       _reply = {:reply, from, :ok}
     ]
-
+    Logger.debug("Channel #{data.channel} reconnected")
     {:keep_state, new_data, actions}
   end
 
+  ## Handle the case when the socket is disconnected. This method is called because the socket is monitored.
+  ## via Process.monitor(socket_pid) in the waited/connected state.
   def connected(:info, {:DOWN, ref, :process, _object, _reason}, %{socket: {_, ref}} = data) do
     new_data = %{data | socket: nil}
-
     actions = []
 
+    Logger.warning("Channel #{data.channel} detected socket disconnection, entering :waiting state")
+
+    # returns to the waiting state
     {:next_state, :waiting, new_data, actions}
   end
 
@@ -255,29 +282,41 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
+    Logger.warning("Channel #{data.channel} stopping")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
 
   def connected(:info, _m = {:DOWN, _ref, :process, _object, _reason}, _data) do
+    Logger.warning(":DOWN message received")
     :keep_state_and_data
   end
 
   @impl true
   def terminate(reason, state, data) do
-    IO.inspect({:terminating, reason, state, data})
+    level = if reason == :normal, do: :info, else: :warning
+    Logger.log(level, "Channel #{data.channel} terminating, from state #{inspect(state)} and reason #{inspect(reason)}")
     :ok
+  end
+
+  defp new_token_message(_data = %{application: app, channel: channel, user_ref: user}) do
+    new_token = ChannelSenderEx.Core.ChannelIDGenerator.generate_token(channel, app, user)
+    ProtocolMessage.of(UUID.uuid4(:hex), ":n_token", new_token)
   end
 
   @compile {:inline, send_message: 2}
   defp send_message(%{socket: {socket_pid, _}}, message) do
+    # creates message to the expected format
     output = create_output_message(message)
+    # sends to socket pid
     send(socket_pid, output)
   end
 
   @spec save_pending_message(Data.t(), output_message()) :: Data.t()
   @compile {:inline, save_pending_message: 2}
   defp save_pending_message(data = %{pending_ack: pending_ack}, {:deliver_msg, {_, ref}, message}) do
+    {msg_id, _, _, _, _} = message
+    Logger.debug("Channel #{data.channel} saving pending ack #{msg_id}")
     %{data | pending_ack: Map.put(pending_ack, ref, message)}
   end
 
@@ -291,6 +330,8 @@ defmodule ChannelSenderEx.Core.Channel do
   @spec save_pending_waiting_message(Data.t(), ProtocolMessage.t()) :: Data.t()
   @compile {:inline, save_pending_waiting_message: 2}
   defp save_pending_waiting_message(data = %{pending_sending: pending_sending}, message) do
+    {msg_id, _, _, _, _} = message
+    Logger.debug("Channel #{data.channel} saving pending msg #{msg_id}")
     %{
       data
       | pending_sending: Map.put(pending_sending, ProtocolMessage.message_id(message), message)
@@ -302,6 +343,7 @@ defmodule ChannelSenderEx.Core.Channel do
   defp clear_pending_wait(data = %{pending_sending: %{}}, _), do: data
 
   defp clear_pending_wait(data = %{pending_sending: pending}, message) do
+    Logger.debug("Channel #{data.channel} clearing pending msg #{message.message_id}")
     %{data | pending_sending: Map.delete(pending, ProtocolMessage.message_id(message))}
   end
 

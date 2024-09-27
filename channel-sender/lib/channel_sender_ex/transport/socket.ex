@@ -14,18 +14,13 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @invalid_secret_code 1008
 
+  require Logger
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
-
-  @default_protocol_encoder Application.get_env(
-                              :channel_sender_ex,
-                              :message_encoder,
-                              ChannelSenderEx.Transport.Encoders.JsonEncoder
-                            )
 
   @type channel_ref() :: String.t()
   @type application_ref() :: String.t()
@@ -56,17 +51,22 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   defp get_relevant_request_info(req) do
+    # extracts the channel key from the request query string
     case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
       {@channel_key, channel} = resp when byte_size(channel) > 10 ->
+        Logger.debug("Socket starting, parameters: #{inspect(resp)}")
         resp
       _ ->
+        Logger.error("Socket unable to start. channel_ref not found in query string request.")
         {:error, @invalid_request_code}
     end
   end
 
   defp check_channel_registered({@channel_key, channel_ref} = res) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      :noproc -> {:error, @invalid_channel_code}
+      :noproc ->
+        Logger.error("Socket unable to start. channel_ref process does not exist yet, ref: #{channel_ref}")
+        {:error, @invalid_channel_code}
       _ -> res
     end
   end
@@ -78,8 +78,11 @@ defmodule ChannelSenderEx.Transport.Socket do
   defp process_subprotocol_selection({@channel_key, channel}, req) do
     case :cowboy_req.parse_header("sec-websocket-protocol", req) do
       :undefined ->
-        {:cowboy_websocket, req, _state = {channel, :pre_auth, @default_protocol_encoder},
-         ws_opts()}
+        {:cowboy_websocket, req, _state = {channel, :pre_auth, Application.get_env(
+          :channel_sender_ex,
+          :message_encoder,
+          ChannelSenderEx.Transport.Encoders.JsonEncoder
+          )}, ws_opts()}
 
       sub_protocols ->
         {encoder, req} =
@@ -103,6 +106,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def websocket_init(state) do
+    Logger.debug("Socket init #{inspect(state)}")
     {_commands = [], state}
   end
 
@@ -151,6 +155,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @compile {:inline, notify_connected: 1}
   defp notify_connected(channel) do
+    Logger.info("Socket for channel #{channel} connected")
     socketEventBus = RulesProvider.get(:socket_event_bus)
     ch_pid = socketEventBus.notify_event({:connected, channel}, self())
     Process.monitor(ch_pid)
@@ -187,6 +192,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def websocket_info({:DOWN, ref, :process, _pid, _cause}, state = {channel_ref, :connected, _, {_, _, ref}, _}) do
+    Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
     spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
     {_commands = [], state}
   end
@@ -203,8 +209,9 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def terminate(_reason, _partial_req, _state) do
-    #    IO.inspect(%{terminate_reason: reason, req: partial_req, state: state})
+  def terminate(reason, _partial_req, state) do
+    {channel_ref, _, _, _, _} = state
+    Logger.warning("Socket for channel #{channel_ref} terminated with reason: #{inspect(reason)}")
     :ok
   end
 

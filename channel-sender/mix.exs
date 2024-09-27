@@ -4,8 +4,8 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.1.5",
-      elixir: "~> 1.12",
+      version: "0.1.6",
+      elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
@@ -36,16 +36,17 @@ defmodule ChannelSenderEx.MixProject do
       {:cowlib, "~> 2.9", override: true},
       {:plug_cowboy, "~> 2.0"},
       {:elixir_uuid, "~> 1.2"},
-      {:gen_state_machine, "~> 2.1"},
+      {:gen_state_machine, "~> 3.0"},
       {:jason, "~> 1.2"},
-      {:cors_plug, "~> 2.0"},
-      {:horde, "~> 0.8.3"},
-      {:hackney, "~> 1.2.0", only: :test},
-      {:plug_crypto, "~> 1.2"},
+      {:cors_plug, "~> 3.0"},
+      {:horde, "~> 0.8.7"},
+      {:hackney, "~> 1.20.1", only: :test},
+      {:plug_crypto, "~> 2.1"},
       {:stream_data, "~> 0.4", only: [:test]},
       {:gun, "~> 1.3", only: [:test, :benchee]},
       {:libcluster, "~> 3.3"},
-      {:vapor, "~> 0.10.0"}
+      {:vapor, "~> 0.10.0"},
+      {:mock, "~> 0.3.0", only: :test},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end

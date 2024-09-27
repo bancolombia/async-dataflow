@@ -36,7 +36,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       end
 
     conn
-    |> put_resp_header("Content-Type", "application/json")
+    |> put_resp_header("content-type", "application/json")
     |> send_resp(code, Jason.encode!(response))
   end
 
@@ -54,11 +54,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
              }
          }
        ) do
-    _result =
-      PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(message))
+
+    Task.start(fn -> PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(message)) end)
 
     conn
-    |> put_resp_header("Content-Type", "application/json")
+    |> put_resp_header("content-type", "application/json")
     |> send_resp(202, Jason.encode!(%{result: "Ok"}))
   end
 
@@ -67,7 +67,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   @compile {:inline, invalid_body: 1}
   defp invalid_body(conn = %{body_params: invalid_body}) do
     conn
-    |> put_resp_header("Content-Type", "application/json")
+    |> put_resp_header("content-type", "application/json")
     |> send_resp(400, Jason.encode!(%{error: "Invalid request #{inspect(invalid_body)}"}))
   end
 end

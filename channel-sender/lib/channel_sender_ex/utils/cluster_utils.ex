@@ -12,7 +12,7 @@ defmodule ChannelSenderEx.Utils.ClusterUtils do
 
     case String.split(node_name, "-") do
       [prefix, _name] -> discover_and_connect(host, prefix)
-      name -> Logger.warn("Node name has the incorrect format for auto discovery: #{name}")
+      name -> Logger.warning("Node name has the incorrect format for auto discovery: #{name}")
     end
   end
 
@@ -25,7 +25,7 @@ defmodule ChannelSenderEx.Utils.ClusterUtils do
           |> Enum.filter(&String.starts_with?(&1, prefix))
 
         error ->
-          Logger.warn("EPMD error in node discovery", error)
+          Logger.warning("EPMD error in node discovery", error)
           []
       end
 
