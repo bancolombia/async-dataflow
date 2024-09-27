@@ -1,50 +1,46 @@
 # Channel Sender
 
 [![Docker Hub](https://img.shields.io/docker/pulls/bancolombia/async-dataflow-channel-sender?label=Docker%20Hub)](https://hub.docker.com/repository/docker/bancolombia/async-dataflow-channel-sender)
-![imagen](https://user-images.githubusercontent.com/12372370/137362047-34f5d048-9f1a-4065-8a09-dc97318bf42e.png)
+
+- [Requirements](#requirements)
+- [Install](#install)
+- [Configuration](#configuration)
+- [Run](#run)
+- [Clients](#clients)
 
 Distributed Elixir Cluster implementation of real time with websockets and notifications channels.
 
-- [Channel Sender](#channel-sender)
-- [How to use](#how-to-use)
-  - [Install](#install)
-  - [Configuration](#configuration)
-  - [API Documentation](#configuration)
-  - [Run](#run)
-- [Clients](#clients)
+This service is part of the Async Dataflow project, which is a set of tools to facilitate the implementation 
+of real-time applications.
 
-## How to use
+Channel sender main purpose is to allow backend services to send messages via a real time channel (websocket) to your 
+front end application(s) (web or mobile). Enabling you to implement real time notifications, updates, etc.
 
-### Requirements
+```mermaid
+flowchart LR
+  subgraph  
+  A(Backend service) -- send message --> B[ADF channel sender]
+  A2(Backend service) -- send message --> B
+  A3(Backend service) -- send message --> B
+  end
+  B -- send message --> C(Front end application)
+```
 
-- Elixir >= 1.12
+See detailed [docs](docs/main.md) for more information.
+
+## Requirements
+
+- Elixir >= 1.16
 - Mix
 
-### Install
+## Install
 
 ```elixir
 mix deps.get
 mix compile
 ```
 
-### Configuration
-
-Open and edit the `config.yaml` file to set up configurations.
-| **Parameters** | Description | Default Value |
-| -------------------------------- | -------------------------------------- | ------------------ |
-| `socket_port` | Port to atend Web Sockets requests | 8082 |
-| `rest_port` | API Port to atend Rest service requests | 8081 |
-| `initial_redelivery_time` | time in milliseconds to retry when an ack is not received after send an event| 900 |
-| `socket_idle_timeout` | timeout in milliseconds to reject idle socket | 30000 |
-| `max_age` | Max time in seconds of validity for the secret **the channel sender have strategy to update the secret before this expire.** | 900 |
-
-### API Documentation
-
-`doc/swagger.yaml` A Swagger definition of the API.
-
-Run make `https://editor.swagger.io/` add the `swagger.yaml` file and you get a preview the documentation.
-
-### Run
+## Run
 
 In the shell:
 
@@ -58,12 +54,6 @@ or to run several instances locally
 $ MIX_ENV=<CONFIG-FILE-NAME> iex --erl "-name async-node1@127.0.0.1" -S mix
 
 ```
-
-### Connect nodes in erlang cluster in k8s
-
-ADF Sender incorporate `libcluster` dependency in order to facilitate the automatic configuration of erlang clusters in kubernetes.
-
-In folder [deploy_samples\k8s](./deploy_samples/k8s/README.md) we have included manifests to deploy ADF sender on kubernetes (and also if istio is present), using 3 of the strategies supported by `libcluster`.
 
 ## Clients
 
