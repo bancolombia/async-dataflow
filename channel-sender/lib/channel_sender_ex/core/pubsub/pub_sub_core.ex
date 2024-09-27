@@ -2,6 +2,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   @moduledoc """
   Handles channel delivery and discovery logic
   """
+  require Logger
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.ChannelRegistry
@@ -22,7 +23,9 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   defp do_deliver_to_channel(channel_ref, message) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       pid when is_pid(pid) -> Channel.deliver_message(pid, message)
-      :noproc -> :retry
+      :noproc ->
+        Logger.warning("Channel #{channel_ref} not found, retrying message delivery request...")
+        :retry
     end
   end
 
