@@ -4,7 +4,6 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.{ChannelRegistry, ChannelSupervisor, ProtocolMessage, Channel}
 
   @moduletag :capture_log
@@ -74,7 +73,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
     assert {:accepted_connected, _, _} = deliver_message(channel)
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
     :gun.close(conn)
     Process.sleep(100)
     assert {:accepted_waiting, _, _} = deliver_message(channel)
@@ -82,7 +81,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
   test "Should not restart channel when terminated normal (Waiting timeout)" do
     Helper.compile(:channel_sender_ex, max_age: 1)
-    {channel, secret} = ChannelAuthenticator.create_channel("App1", "User1234")
+    {channel, _secret} = ChannelAuthenticator.create_channel("App1", "User1234")
     channel_pid = ChannelRegistry.lookup_channel_addr(channel)
 
     ref = Process.monitor(channel_pid)
