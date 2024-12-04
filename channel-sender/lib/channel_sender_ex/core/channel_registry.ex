@@ -28,7 +28,7 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
     end
   end
 
-  def query() do
+  def query do
     Horde.Registry.select(__MODULE__, [
       {{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2", :"$3"}}]}
     ])
@@ -44,7 +44,7 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
 
   def via_tuple(channel_ref, registry), do: {:via, Horde.Registry, {registry, channel_ref}}
 
-  defp members() do
+  defp members do
     Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
   end
 

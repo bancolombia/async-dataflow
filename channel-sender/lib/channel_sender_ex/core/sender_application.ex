@@ -1,6 +1,5 @@
 defmodule ChannelSenderEx.Core.SenderApplication do
-  @moduledoc """
-  """
+  @moduledoc false
 
   defstruct [:name, :id, :api_key, :api_secret]
 

@@ -1,4 +1,7 @@
 defmodule ChannelSenderEx.Transport.Rest.StripHeaderHandler do
+  @moduledoc """
+  handler to strip 'server' header
+  """
   @behaviour :cowboy_stream
 
   def info(stream_id, {:response, status, headers, body}, state) do

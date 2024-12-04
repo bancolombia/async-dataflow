@@ -43,12 +43,12 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
     end
   end
 
-  defp get_secret_and_salt!() do
+  defp get_secret_and_salt! do
     case get_env(:channel_sender_ex, :secret_base) do
       data = {_secret, _salt} -> data
       other -> raise "Secret base no properly configured for application: #{other}"
     end
   end
 
-  defp max_age(), do: RulesProvider.get(:max_age)
+  defp max_age, do: RulesProvider.get(:max_age)
 end

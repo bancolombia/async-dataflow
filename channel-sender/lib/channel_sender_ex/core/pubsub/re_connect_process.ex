@@ -1,6 +1,6 @@
 defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
-
-  alias ChannelSenderEx.Core.{ChannelRegistry, Channel}
+  @moduledoc false
+  alias ChannelSenderEx.Core.{Channel, ChannelRegistry}
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
   require Logger
 
@@ -39,6 +39,5 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   catch
     _type, _err -> :noproc
   end
-
 
 end

@@ -20,7 +20,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     |> Horde.DynamicSupervisor.init()
   end
 
-  defp members() do
+  defp members do
     Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
   end
 

@@ -2,10 +2,10 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   @moduledoc """
   Endpoints for internal channel creation and channel message delivery orders
   """
-  alias ChannelSenderEx.Core.RulesProvider
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+
+  alias ChannelSenderEx.Core.{ProtocolMessage, RulesProvider}
   alias ChannelSenderEx.Core.PubSub.PubSubCore
-  alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
 
   use Plug.Router
   use Plug.ErrorHandler
@@ -108,11 +108,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   def get_cors_origin do
-    try do
       [RulesProvider.get(:rest_cors_origin)]
     rescue
       _e -> ["*"]
-    end
   end
 
 end

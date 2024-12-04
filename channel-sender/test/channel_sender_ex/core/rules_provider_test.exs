@@ -7,9 +7,8 @@ end
 defmodule ChannelSenderEx.Core.RulesProviderTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.RulesProvider.Compiler
   alias ChannelSenderEx.Core.RulesProvider
-  alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Core.RulesProvider.{Compiler, Helper}
 
   doctest ChannelSenderEx.Core.RulesProvider.Compiler
 

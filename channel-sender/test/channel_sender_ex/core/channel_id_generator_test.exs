@@ -37,7 +37,7 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
       end)
     end
 
-    Enum.map(1..process, fn _ -> Task.async(fn_gen) end) |> Enum.each(&Task.await(&1, 20000))
+    Enum.map(1..process, fn _ -> Task.async(fn_gen) end) |> Enum.each(&Task.await(&1, 20_000))
     assert num * process == :ets.info(:t, :size)
   end
 

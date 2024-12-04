@@ -7,7 +7,7 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBusTest do
   @moduletag :capture_log
 
   test "Should fail on max conns" do
-    assert_raise(RuntimeError, "No channel found", fn -> SocketEventBus.connect_channel("", :c.pid(0,250,0), 7) end)
+    assert_raise(RuntimeError, "No channel found", fn -> SocketEventBus.connect_channel("", :c.pid(0, 250, 0), 7) end)
   end
 
 end

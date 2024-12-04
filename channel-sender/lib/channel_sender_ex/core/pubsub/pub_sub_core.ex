@@ -3,9 +3,9 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   Handles channel delivery and discovery logic
   """
   require Logger
-  alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ChannelRegistry
+
+  alias ChannelSenderEx.Core.{Channel, ChannelRegistry, ProtocolMessage}
+
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
 
   @type channel_ref() :: String.t()
@@ -39,7 +39,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
     case Enum.empty?(procs) do
       false ->
         procs
-        |> Enum.map(fn {_, pid, {_,_}} -> Channel.deliver_message(pid, message) end)
+        |> Enum.map(fn {_, pid, {_, _}} -> Channel.deliver_message(pid, message) end)
       true ->
         Logger.warning("No Channels found for app '#{app_ref}', retrying message delivery request...")
         :retry

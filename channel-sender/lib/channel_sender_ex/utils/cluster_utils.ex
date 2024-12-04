@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.Utils.ClusterUtils do
   """
   require Logger
 
-  def discover_and_connect_local() do
+  def discover_and_connect_local do
     [node_name, host] =
       node()
       |> Atom.to_string()

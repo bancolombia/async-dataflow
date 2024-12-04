@@ -1,16 +1,15 @@
 defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Transport.EntryPoint
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Core.ChannelSupervisor
-  alias ChannelSenderEx.Core.ChannelRegistry
-  alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.PubSub.PubSubCore
+  alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
+  alias ChannelSenderEx.Transport.EntryPoint
 
   @moduletag :capture_log
 
@@ -49,7 +48,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
     {:ok, pid_supervisor} =
       Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
-
 
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
@@ -187,7 +185,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {conn, stream} = assert_reject(port, channel_ref, channel_secret)
   end
 
-
   test "Should reestablish Channel link when Channel gets restarted", %{
     port: port,
     channel: channel,
@@ -196,19 +193,14 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
     {message_id, data} = deliver_message(channel)
 
-
     fn  ->
-
       {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-
       :gun.close(conn)
       data
-
     end
 
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
-
 
     ch_pid = ChannelRegistry.lookup_channel_addr(channel)
     Process.exit(ch_pid, :kill)
@@ -216,7 +208,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {message_id, data} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
-
 
     :gun.close(conn)
   end
@@ -273,7 +264,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         event_name: "event.test"
       })
 
-    ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel, message)
+    PubSubCore.deliver_to_channel(channel, message)
     {message_id, data}
   end
 
@@ -320,7 +311,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         sub_protocol -> connect(port, channel, sub_protocol)
       end
 
-
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 500
     {conn, stream}
   end
@@ -364,7 +354,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   @spec decode_message({:binary, String.t()}) :: ProtocolMessage.t()
   defp decode_message({:binary, data}) do
-    IO.inspect(BinaryEncoder.decode_message(data))
+    BinaryEncoder.decode_message(data)
   end
 
 end

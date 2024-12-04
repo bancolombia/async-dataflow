@@ -2,8 +2,7 @@ defmodule ChannelSenderEx.Transport.EntryPoint do
   @moduledoc """
   Configure application web entry points
   """
-  alias ChannelSenderEx.Transport.Socket
-  alias ChannelSenderEx.Transport.CowboyStarter
+  alias ChannelSenderEx.Transport.{CowboyStarter, Socket}
 
   def start(port \\ ext_port()) do
     routes(port) |> CowboyStarter.start_listeners()
@@ -20,5 +19,5 @@ defmodule ChannelSenderEx.Transport.EntryPoint do
     ]
   end
 
-  defp ext_port(), do: Application.get_env(:channel_sender_ex, :socket_port, 8082)
+  defp ext_port, do: Application.get_env(:channel_sender_ex, :socket_port, 8082)
 end

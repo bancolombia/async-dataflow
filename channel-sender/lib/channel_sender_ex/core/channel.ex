@@ -4,6 +4,8 @@ defmodule ChannelSenderEx.Core.Channel do
   """
   use GenStateMachine, callback_mode: [:state_functions, :state_enter]
   require Logger
+
+  alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
 
@@ -238,7 +240,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   ## This is basically a message re-delivery timer. It is triggered when a message is requested to be delivered.
   ## And it will continue to be executed until the message is acknowledged by the client.
-  def connected({:timeout, {:redelivery, ref}}, retries, %{socket: {socket_pid, _}} = data) do
+  def connected({:timeout, {:redelivery, ref}}, retries, data = %{socket: {socket_pid, _}}) do
     {message, new_data} = retrieve_pending_message(data, ref)
     output = send(socket_pid, create_output_message(message, ref))
 
@@ -266,7 +268,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   ## Handle the case when the socket is disconnected. This method is called because the socket is monitored.
   ## via Process.monitor(socket_pid) in the waited/connected state.
-  def connected(:info, {:DOWN, ref, :process, _object, _reason}, %{socket: {_, ref}} = data) do
+  def connected(:info, {:DOWN, ref, :process, _object, _reason}, data = %{socket: {_, ref}}) do
     new_data = %{data | socket: nil}
     actions = []
 
@@ -300,7 +302,7 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   defp new_token_message(_data = %{application: app, channel: channel, user_ref: user}) do
-    new_token = ChannelSenderEx.Core.ChannelIDGenerator.generate_token(channel, app, user)
+    new_token = ChannelIDGenerator.generate_token(channel, app, user)
     ProtocolMessage.of(UUID.uuid4(:hex), ":n_token", new_token)
   end
 
@@ -355,7 +357,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   @spec calculate_refresh_token_timeout() :: integer()
   @compile {:inline, calculate_refresh_token_timeout: 0}
-  defp calculate_refresh_token_timeout() do
+  defp calculate_refresh_token_timeout do
     token_validity = RulesProvider.get(:max_age)
     tolerance = RulesProvider.get(:min_disconnection_tolerance)
     min_timeout = token_validity / 2
