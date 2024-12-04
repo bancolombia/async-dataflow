@@ -12,6 +12,18 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
   doctest RestController
 
+  test "Should call health endpoint" do
+
+    conn = conn(:get, "/health")
+    |> put_req_header("content-type", "application/json")
+
+    conn = RestController.call(conn, @options)
+
+    assert conn.status == 200
+
+    assert "UP" = conn.resp_body
+  end
+
   test "Should create channel on request" do
     body = Jason.encode!(%{application_ref: "some_application", user_ref: "user_ref_00117ALM"})
 
@@ -27,7 +39,23 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
       assert %{"channel_ref" => "xxxx", "channel_secret" => "yyyy"} =
                Jason.decode!(conn.resp_body)
     end
+  end
 
+  test "Should not create channel - no app"  do
+    body = Jason.encode!(%{application_ref: "some_application", user_ref: "user_ref_00117ALM"})
+
+    with_mock ChannelAuthenticator, [create_channel: fn(_, _) -> {:error, :no_app} end] do
+
+      conn = conn(:post, "/ext/channel/create", body)
+      |> put_req_header("content-type", "application/json")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 412
+
+      assert %{"error" => "No application some_application found"} =
+               Jason.decode!(conn.resp_body)
+    end
   end
 
   test "Should send message on request" do
@@ -35,6 +63,31 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
     body =
       Jason.encode!(%{
         channel_ref: "010101010101",
+        message_id: "message_id",
+        correlation_id: "correlation_id",
+        message_data: "message_data",
+        event_name: "event_name"
+      })
+
+    with_mock PubSubCore, [deliver_to_channel: fn(_, _) -> :ok end] do
+      conn = conn(:post, "/ext/channel/deliver_message", body)
+        |> put_req_header("content-type", "application/json")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 202
+
+      assert %{"result" => "Ok"} = Jason.decode!(conn.resp_body)
+
+      assert Enum.member?(conn.resp_headers, {"content-type", "application/json"})
+    end
+  end
+
+  test "Should send messages on request" do
+
+    body =
+      Jason.encode!(%{
+        app_ref: "app1",
         message_id: "message_id",
         correlation_id: "correlation_id",
         message_data: "message_data",

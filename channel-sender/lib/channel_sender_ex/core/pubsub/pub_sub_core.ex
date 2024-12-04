@@ -20,6 +20,11 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
     execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn -> raise("No channel found") end)
   end
 
+  def deliver_to_channels(app_ref, message) do
+    action_fn = fn _ -> do_deliver_to_channels(app_ref, message) end
+    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn -> raise("No channels found for requested app") end)
+  end
+
   defp do_deliver_to_channel(channel_ref, message) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       pid when is_pid(pid) -> Channel.deliver_message(pid, message)
@@ -29,5 +34,15 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
     end
   end
 
-
+  defp do_deliver_to_channels(app_ref, message) do
+    procs = ChannelRegistry.query(app_ref)
+    case Enum.empty?(procs) do
+      false ->
+        procs
+        |> Enum.map(fn {_, pid, {_,_}} -> Channel.deliver_message(pid, message) end)
+      true ->
+        Logger.warning("No Channels found for app '#{app_ref}', retrying message delivery request...")
+        :retry
+    end
+  end
 end

@@ -34,7 +34,8 @@ defmodule ChannelSenderEx.Application do
           ChannelSenderEx.Core.ChannelSupervisor,
           ChannelSenderEx.Core.NodeObserver,
           {Plug.Cowboy, scheme: :http, plug: RestController, options: [
-            port: Application.get_env(:channel_sender_ex, :rest_port)
+            port: Application.get_env(:channel_sender_ex, :rest_port),
+            stream_handlers: [:cowboy_compress_h, ChannelSenderEx.Transport.Rest.StripHeaderHandler, :cowboy_stream_h]
           ]}
         ]
       true ->

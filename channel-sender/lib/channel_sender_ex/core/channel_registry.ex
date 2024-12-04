@@ -11,8 +11,8 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
 
   def init(init_arg) do
     result = [members: members()]
-    |> Keyword.merge(init_arg)
-    |> Horde.Registry.init()
+      |> Keyword.merge(init_arg)
+      |> Horde.Registry.init()
     Logger.debug("Channel registry init #{inspect(result)}")
     result
   end
@@ -28,6 +28,17 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
     end
   end
 
+  def query() do
+    Horde.Registry.select(__MODULE__, [
+      {{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2", :"$3"}}]}
+    ])
+  end
+
+  def query(app) do
+    query()
+    |> Enum.filter(fn {_, _, {app_ref, _}} -> app == app_ref end)
+  end
+
   @compile {:inline, via_tuple: 1}
   def via_tuple(channel_ref), do: {:via, Horde.Registry, {__MODULE__, channel_ref}}
 
@@ -37,10 +48,10 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
     Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
   end
 
-#  def lookup_channel_addr(channel_ref, registry) do
-#    case @registry_module.lookup(via_tuple(channel_ref, registry)) do
-#      [{pid, _}] -> pid
-#      [] -> :noproc
-#    end
-#  end
+  #  def lookup_channel_addr(channel_ref, registry) do
+  #    case @registry_module.lookup(via_tuple(channel_ref, registry)) do
+  #      [{pid, _}] -> pid
+  #      [] -> :noproc
+  #    end
+  #  end
 end

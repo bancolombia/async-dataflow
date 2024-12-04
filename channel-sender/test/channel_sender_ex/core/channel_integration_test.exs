@@ -117,6 +117,33 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert %{"42" => msg1, "82" => msg2} = pending_msg
   end
 
+  test "Should send messages to all channels in app" do
+    channel_args1 = {"channel_ref1", "application1", "user_ref"}
+    channel_args2 = {"channel_ref2", "application1", "user_ref"}
+
+    {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup1, strategy: :one_for_one)
+    {:ok, _} = Horde.Registry.start_link(name: :reg1, keys: :unique)
+
+    {:ok, pid1} = ChannelSenderEx.Core.ChannelSupervisor.start_channel(channel_args1)
+    {:ok, pid2} = ChannelSenderEx.Core.ChannelSupervisor.start_channel(channel_args2)
+
+    {_, msg1} = build_message("42")
+    {_, msg2} = build_message("82")
+
+    ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channels("application1", msg1)
+    ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channels("application1", msg2)
+
+    Process.monitor(pid1)
+    Process.monitor(pid2)
+
+    Horde.Cluster.set_members(:sup1, [:sup1])
+
+    assert [{_, pid, {_, _}}, {_, xpid2, {_, _}}] = ChannelSenderEx.Core.ChannelRegistry.query("application1")
+
+    {_, %{pending_sending: pending_msg}} = :sys.get_state(pid)
+    assert %{"42" => msg1, "82" => msg2} = pending_msg
+  end
+
   defp deliver_message(channel, message_id \\ "42") do
     {data, message} = build_message(message_id)
     channel_response = ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel, message)

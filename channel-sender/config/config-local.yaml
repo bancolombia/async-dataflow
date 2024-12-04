@@ -1,5 +1,6 @@
 channel_sender_ex:
   rest_port: 8081
+  rest_cors_origin: "http://localhost:8081"
   socket_port: 8082
   secret_generator:
     base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
@@ -13,15 +14,16 @@ channel_sender_ex:
   accept_channel_reply_timeout: 1000
   no_start: false
   topology:
-    strategy: Elixir.Cluster.Strategy.Kubernetes
-    config: 
-      mode: :hostname
-      kubernetes_ip_lookup_mode: :pods
-      kubernetes_service_name: "adfsender-headless"
-      kubernetes_node_basename: "channel_sender_ex"
-      kubernetes_selector: "cluster=beam"
-      namespace: "sendernm"
-      polling_interval: 5000
+    strategy: Elixir.Cluster.Strategy.Gossip
+    # strategy: Elixir.Cluster.Strategy.Kubernetes
+    # config: 
+    #   mode: :hostname
+    #   kubernetes_ip_lookup_mode: :pods
+    #   kubernetes_service_name: "adfsender-headless"
+    #   kubernetes_node_basename: "channel_sender_ex"
+    #   kubernetes_selector: "cluster=beam"
+    #   namespace: "sendernm"
+    #   polling_interval: 5000
 
 logger:
   level: debug

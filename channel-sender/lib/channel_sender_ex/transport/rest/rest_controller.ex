@@ -2,21 +2,22 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   @moduledoc """
   Endpoints for internal channel creation and channel message delivery orders
   """
+  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.ProtocolMessage
 
   use Plug.Router
+  use Plug.ErrorHandler
   require Logger
 
-  plug(CORSPlug)
   plug(:match)
-
+  plug(CORSPlug, origin: &__MODULE__.get_cors_origin/0)
   plug(Plug.Parsers,
     parsers: [:urlencoded, :json],
+    pass: ["application/json"],
     json_decoder: {Jason, :decode!, [[keys: :atoms]]}
   )
-
   plug(:dispatch)
 
   get("/health", do: send_resp(conn, 200, "UP"))
@@ -36,7 +37,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       end
 
     conn
-    |> put_resp_header("content-type", "application/json")
+    |> set_default_headers()
     |> send_resp(code, Jason.encode!(response))
   end
 
@@ -58,7 +59,27 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     Task.start(fn -> PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(message)) end)
 
     conn
-    |> put_resp_header("content-type", "application/json")
+    |> set_default_headers()
+    |> send_resp(202, Jason.encode!(%{result: "Ok"}))
+  end
+
+  defp deliver_message(
+        conn = %{
+          body_params:
+            message = %{
+              app_ref: app_ref,
+              message_id: _message_id,
+              correlation_id: _correlation_id,
+              message_data: _message_data,
+              event_name: _event_name
+            }
+        }
+      ) do
+
+    Task.start(fn -> PubSubCore.deliver_to_channels(app_ref, ProtocolMessage.to_protocol_message(message)) end)
+
+    conn
+    |> set_default_headers()
     |> send_resp(202, Jason.encode!(%{result: "Ok"}))
   end
 
@@ -67,7 +88,31 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   @compile {:inline, invalid_body: 1}
   defp invalid_body(conn = %{body_params: invalid_body}) do
     conn
-    |> put_resp_header("content-type", "application/json")
+    |> set_default_headers()
     |> send_resp(400, Jason.encode!(%{error: "Invalid request #{inspect(invalid_body)}"}))
   end
+
+  defp handle_errors(conn, %{kind: _kind, reason: _reason, stack: _stack}) do
+    conn
+    |> set_default_headers
+    |> send_resp(conn.status, Jason.encode!(%{error: "Invalid request"}))
+  end
+
+  defp set_default_headers(conn) do
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> put_resp_header("cache-control", "no-store")
+    |> put_resp_header("content-security-policy", "frame-ancestors 'none'")
+    |> put_resp_header("x-content-type-options", "nosniff")
+    |> put_resp_header("x-frame-options", "DENY")
+  end
+
+  def get_cors_origin do
+    try do
+      [RulesProvider.get(:rest_cors_origin)]
+    rescue
+      _e -> ["*"]
+    end
+  end
+
 end

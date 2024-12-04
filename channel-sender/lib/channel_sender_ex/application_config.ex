@@ -83,6 +83,10 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Map.get(fetch(config, :channel_sender_ex), "rest_port", 8081)
     )
 
+    Application.put_env(:channel_sender_ex, :rest_cors_origin,
+      parse_cors_origin(config)
+    )
+
     Application.put_env(:channel_sender_ex, :initial_redelivery_time,
       Map.get(fetch(config, :channel_sender_ex), "initial_redelivery_time", 900)
     )
@@ -100,6 +104,16 @@ defmodule ChannelSenderEx.ApplicationConfig do
     end
 
     config
+  end
+
+  defp parse_cors_origin(config) do
+    case get_in(config, [:channel_sender_ex, "rest_cors_origin"]) do
+      nil ->
+        "*"
+      origin ->
+        #Regex.compile!(Macro.escape(origin))
+        origin
+    end
   end
 
   defp parse_libcluster_topology(config) do
