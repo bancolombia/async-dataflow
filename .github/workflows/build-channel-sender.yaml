@@ -1,6 +1,8 @@
 name: "build channel-sender"
 on:
   push:
+    paths:
+      - 'channel-sender/**'     
     branches:
       - main
       - feature/*

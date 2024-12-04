@@ -5,10 +5,13 @@ on:
       - main
       - feature/*
       - fix/*
+    paths:
+      - 'channel-streams/**'     
   pull_request:
     branches:
       - main
-
+    paths:
+      - 'channel-streams/**'     
 jobs:
   build:
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
