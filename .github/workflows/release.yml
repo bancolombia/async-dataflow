@@ -17,9 +17,9 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@3.7.1
+        uses: docker/setup-qemu-action@3.2.0
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@3.2.0
+        uses: docker/setup-buildx-action@3.7.1
       - name: Config Builder
         run: docker buildx create --name mbuilder && docker buildx use mbuilder
       - name: Docker Build Multiplatform
