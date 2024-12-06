@@ -17,7 +17,7 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@3.2.0
+        uses: docker/setup-qemu-action@3.7.1
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@3.2.0
       - name: Config Builder
