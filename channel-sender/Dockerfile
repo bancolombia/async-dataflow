@@ -1,7 +1,7 @@
 #===============
 # Build Stage
 #===============
-FROM elixir:1.12-alpine as build
+FROM elixir:1.16.3-alpine as build
 
 ARG BUILD_ENV=prod
 
@@ -28,7 +28,7 @@ RUN RELEASE_FILE=`ls -d _build/${BUILD_ENV}/*.gz` && \
 #===================
 # Deployment Stage
 #===================
-FROM alpine:3.17
+FROM alpine:3.20
 
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
