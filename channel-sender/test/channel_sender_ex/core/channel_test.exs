@@ -2,10 +2,13 @@ Code.compiler_options(ignore_module_conflict: true)
 
 defmodule ChannelSenderEx.Core.ChannelTest do
   use ExUnit.Case
+  import Mock
 
   alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Core.Channel.Data
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.RulesProvider.Helper
 
   @moduletag :capture_log
@@ -51,6 +54,17 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
     Process.exit(pid, :kill)
+  end
+
+  test "Should Send message handle RulesProvider exception", %{init_args: init_args, message: message} do
+    with_mock RulesProvider, [get: fn(_) -> raise("dummy") end] do
+      {:ok, pid} = start_channel_safe(init_args)
+      :ok = Channel.socket_connected(pid, self())
+      message_to_send = ProtocolMessage.to_protocol_message(message)
+      :accepted_connected = Channel.deliver_message(pid, message_to_send)
+      assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
+      Process.exit(pid, :kill)
+    end
   end
 
   test "On connect should deliver message", %{init_args: init_args, message: message} do
@@ -212,7 +226,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
       send(parent, {ref, Channel.start_link(args)})
 
       receive do
-        z -> :ok
+        _z -> :ok
       end
     end)
 

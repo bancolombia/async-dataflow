@@ -24,43 +24,51 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   post("/ext/channel/deliver_message", do: deliver_message(conn))
   match(_, do: send_resp(conn, 404, "Route not found."))
 
-  defp create_channel(
-         conn = %{body_params: %{application_ref: application_ref, user_ref: user_ref}}
-       ) do
-    {response, code} =
-      case ChannelAuthenticator.create_channel(application_ref, user_ref) do
-        {channel_ref, channel_secret} ->
-          {%{channel_ref: channel_ref, channel_secret: channel_secret}, 200}
-      end
+  defp create_channel(conn) do
+    route_create(conn.body_params, conn)
+  end
+
+  defp route_create(_message = %{
+    application_ref: application_ref,
+    user_ref: user_ref
+   }, conn
+  ) do
+    {channel_ref, channel_secret} = ChannelAuthenticator.create_channel(application_ref, user_ref)
+    response = %{channel_ref: channel_ref, channel_secret: channel_secret}
 
     conn
     |> put_resp_header("content-type", "application/json")
-    |> send_resp(code, Jason.encode!(response))
+    |> send_resp(200, Jason.encode!(response))
   end
 
-  defp create_channel(conn), do: invalid_body(conn)
+  defp route_create(_body, conn) do
+    invalid_body(conn)
+  end
 
-  defp deliver_message(
-         conn = %{
-           body_params:
-             message = %{
-               channel_ref: channel_ref,
-               message_id: _message_id,
-               correlation_id: _correlation_id,
-               message_data: _message_data,
-               event_name: _event_name
-             }
-         }
-       ) do
+  defp deliver_message(conn) do
+    route_deliver(conn.body_params, conn)
+  end
 
-    Task.start(fn -> PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(message)) end)
+  defp route_deliver(
+    message = %{
+      channel_ref: channel_ref,
+      message_id: _message_id,
+      correlation_id: _correlation_id,
+      message_data: _message_data,
+      event_name: _event_name
+     }, conn
+   ) do
+
+    Task.start(fn -> PubSubCore.deliver_to_channel(channel_ref,
+      Map.drop(message, [:channel_ref]) |> ProtocolMessage.to_protocol_message)
+    end)
 
     conn
     |> put_resp_header("content-type", "application/json")
     |> send_resp(202, Jason.encode!(%{result: "Ok"}))
   end
 
-  defp deliver_message(conn), do: invalid_body(conn)
+  defp route_deliver(_, conn), do: invalid_body(conn)
 
   @compile {:inline, invalid_body: 1}
   defp invalid_body(conn = %{body_params: invalid_body}) do

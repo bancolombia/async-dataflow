@@ -37,6 +37,19 @@ defmodule ChannelSenderEx.Core.Channel do
               pending_sending: BoundedMap.new(),
               stop_cause: nil,
               user_ref: ""
+
+    def new(channel, application, user_ref) do
+      %Data{
+        channel: channel,
+        application: application,
+        socket: nil,
+        pending_ack: BoundedMap.new(),
+        pending_sending: BoundedMap.new(),
+        stop_cause: nil,
+        user_ref: user_ref
+      }
+    end
+
   end
 
   @doc """
@@ -76,12 +89,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @impl GenStateMachine
   @doc false
   def init({channel, application, user_ref}) do
-    data = %Data{
-      channel: channel,
-      application: application,
-      user_ref: user_ref
-    }
-
+    data = Data.new(channel, application, user_ref)
     Process.flag(:trap_exit, true)
     {:ok, :waiting, data}
   end
@@ -91,7 +99,7 @@ defmodule ChannelSenderEx.Core.Channel do
   ### waiting state callbacks definitions ####
   def waiting(:enter, _old_state, data) do
     # time to wait for the socket to be authenticated
-    waiting_timeout = round(RulesProvider.get(:max_age) * 1000)
+    waiting_timeout = round(get_param(:max_age, 900) * 1000)
     Logger.debug("Channel #{data.channel} entering waiting state and expecting a socket connection and authentication. max wait time: #{waiting_timeout} ms")
     {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
   end
@@ -186,7 +194,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
     actions = [
       _redelivery_timeout =
-        {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), 0},
+        {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 500), 0},
       _refresh_timeout = {:state_timeout, refresh_timeout, :refresh_token_timeout}
     ]
 
@@ -198,7 +206,7 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   ## Handle the case when a message delivery is requested.
-  @spec connected(call(), {:deliver_message, ProtocolMessage.t()}, Data.t()) :: state_return()
+  #@spec connected(call(), {:deliver_message, ProtocolMessage.t()}, Data.t()) :: state_return()
   def connected({:call, from}, {:deliver_message, message}, data) do
 
     {msg_id, _, _, _, _} = message
@@ -212,7 +220,7 @@ defmodule ChannelSenderEx.Core.Channel do
     # 2. schedule a timer to retry the message delivery if not acknowledged in the expected time frame
     actions = [
       _reply = {:reply, from, :accepted_connected},
-      _timeout = {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), 0}
+      _timeout = {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 500), 0}
     ]
 
     new_data =
@@ -243,7 +251,7 @@ defmodule ChannelSenderEx.Core.Channel do
     # reschedule the timer to keep retrying to deliver the message
     actions = [
       _timeout =
-        {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), retries + 1}
+        {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 500), retries + 1}
     ]
 
     {:keep_state, save_pending_ack(new_data, output), actions}
@@ -251,7 +259,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   ## Handle the case when the socket is disconnected. This method is called because the socket is monitored.
   ## via Process.monitor(socket_pid) in the waited/connected state.
-  def connected(:info, {:DOWN, ref, :process, object, reason}, data) do
+  def connected(:info, {:DOWN, _ref, :process, _object, _reason}, data) do
     new_data = %{data | socket: nil}
     actions = []
 
@@ -297,7 +305,7 @@ defmodule ChannelSenderEx.Core.Channel do
     send(socket_pid, output)
   end
 
-  @spec save_pending_ack(Data.t(), output_message()) :: Data.t()
+  #@spec save_pending_ack(Data.t(), output_message()) :: Data.t()
   @compile {:inline, save_pending_ack: 2}
   defp save_pending_ack(data = %{pending_ack: pending_ack}, {:deliver_msg, {_, ref}, message}) do
     {msg_id, _, _, _, _} = message
@@ -333,7 +341,6 @@ defmodule ChannelSenderEx.Core.Channel do
     end
   end
 
-  @spec create_output_message(ProtocolMessage.t()) :: output_message()
   @compile {:inline, create_output_message: 1}
   defp create_output_message(message, ref \\ make_ref()) do
     {:deliver_msg, {self(), ref}, message}
@@ -342,12 +349,17 @@ defmodule ChannelSenderEx.Core.Channel do
   @spec calculate_refresh_token_timeout() :: integer()
   @compile {:inline, calculate_refresh_token_timeout: 0}
   defp calculate_refresh_token_timeout do
-    token_validity = RulesProvider.get(:max_age)
-    tolerance = RulesProvider.get(:min_disconnection_tolerance)
+    token_validity = get_param(:max_age, 900)
+    tolerance = get_param(:min_disconnection_tolerance, 50)
     min_timeout = token_validity / 2
     round(max(min_timeout, token_validity - tolerance) * 1000)
   end
 
+  defp get_param(param, def) do
+    RulesProvider.get(param)
+  rescue
+    _e -> def
+  end
   # 1. Build init
   # 2. Build start_link with distributed capabilities ? or configurable registry
   # 3. Draf Main states

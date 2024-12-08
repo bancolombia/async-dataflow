@@ -172,7 +172,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   defp notify_connected(channel) do
     Logger.debug("Socket for channel #{channel} connected")
 
-    socket_event_bus = RulesProvider.get(:socket_event_bus)
+    socket_event_bus = get_param(:socket_event_bus, nil)
     ch_pid = socket_event_bus.notify_event({:connected, channel}, self())
     Process.monitor(ch_pid)
   end
@@ -214,7 +214,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
  @impl :cowboy_websocket
- def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, _ref}, _}) do
+ def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, _}, _}) do
     Logger.debug("Socket info :DOWN #{inspect(state)} XXX1")
     spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
     {_commands = [], state}
@@ -237,11 +237,16 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @compile {:inline, auth_ok_frame: 1}
-  defp auth_ok_frame(encoder), do: encoder.simple_frame("AuthOk")
+  defp auth_ok_frame(encoder) do
+    encoder.simple_frame("AuthOk")
+    rescue
+      _e -> {:close, @invalid_secret_code, "Invalid token for channel"}
+  end
 
   defp ws_opts do
+    timeout = get_param(:socket_idle_timeout, 900)
     %{
-      idle_timeout: RulesProvider.get(:socket_idle_timeout),
+      idle_timeout: timeout,
       #      active_n: 5,
       #      compress: false,
       #      deflate_opts: %{},
@@ -251,5 +256,10 @@ defmodule ChannelSenderEx.Transport.Socket do
       # Usefull to save space avoiding to save all request info
       req_filter: fn %{qs: qs, peer: peer} -> {qs, peer} end
     }
+  end
+  defp get_param(param, def) do
+    RulesProvider.get(param)
+  rescue
+    _e -> def
   end
 end

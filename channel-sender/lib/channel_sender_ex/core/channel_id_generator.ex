@@ -50,5 +50,9 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
     end
   end
 
-  defp max_age, do: RulesProvider.get(:max_age)
+  defp max_age do
+    RulesProvider.get(:max_age)
+    rescue
+      _ -> 900
+  end
 end
