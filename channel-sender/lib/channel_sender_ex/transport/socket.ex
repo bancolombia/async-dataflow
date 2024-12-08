@@ -172,7 +172,6 @@ defmodule ChannelSenderEx.Transport.Socket do
 
     socketEventBus = RulesProvider.get(:socket_event_bus)
     ch_pid = socketEventBus.notify_event({:connected, channel}, self())
-    IO.inspect("Socket channel #{channel} to monitor #{inspect(ch_pid)}")
     Process.monitor(ch_pid)
   end
 

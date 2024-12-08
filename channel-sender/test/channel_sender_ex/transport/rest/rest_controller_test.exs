@@ -12,6 +12,20 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
   doctest RestController
 
+  test "Should consume health endpoint" do
+    conn = conn(:get, "/health")
+    |> put_req_header("content-type", "application/json")
+    conn = RestController.call(conn, @options)
+    assert conn.status == 200
+  end
+
+  test "Should handle unexistent route" do
+    conn = conn(:get, "/some_unexistent_route")
+    |> put_req_header("content-type", "application/json")
+    conn = RestController.call(conn, @options)
+    assert conn.status == 404
+  end
+
   test "Should create channel on request" do
     body = Jason.encode!(%{application_ref: "some_application", user_ref: "user_ref_00117ALM"})
 
@@ -27,6 +41,18 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
       assert %{"channel_ref" => "xxxx", "channel_secret" => "yyyy"} =
                Jason.decode!(conn.resp_body)
     end
+
+  end
+
+  test "Should not create channel on bad request" do
+    body = %{}
+
+    conn = conn(:post, "/ext/channel/create", body)
+    |> put_req_header("content-type", "application/json")
+
+    conn = RestController.call(conn, @options)
+
+    assert conn.status == 400
 
   end
 

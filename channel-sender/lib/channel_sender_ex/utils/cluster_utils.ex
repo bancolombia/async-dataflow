@@ -25,7 +25,7 @@ defmodule ChannelSenderEx.Utils.ClusterUtils do
           |> Enum.filter(&String.starts_with?(&1, prefix))
 
         error ->
-          Logger.warning("EPMD error in node discovery", error)
+          Logger.warning("EPMD error in node discovery #{inspect(error)}")
           []
       end
 

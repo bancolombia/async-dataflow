@@ -22,15 +22,13 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   get("/health", do: send_resp(conn, 200, "UP"))
   post("/ext/channel/create", do: create_channel(conn))
   post("/ext/channel/deliver_message", do: deliver_message(conn))
+  match(_, do: send_resp(conn, 404, "Route not found."))
 
   defp create_channel(
          conn = %{body_params: %{application_ref: application_ref, user_ref: user_ref}}
        ) do
     {response, code} =
       case ChannelAuthenticator.create_channel(application_ref, user_ref) do
-        {:error, :no_app} ->
-          {%{error: "No application #{application_ref} found"}, 412}
-
         {channel_ref, channel_secret} ->
           {%{channel_ref: channel_ref, channel_secret: channel_secret}, 200}
       end

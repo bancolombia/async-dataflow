@@ -40,9 +40,6 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
 
       {:error, :invalid} ->
         {:error, :invalid}
-
-      other ->
-        raise "Error in token verification #{inspect(other)}"
     end
   end
 

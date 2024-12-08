@@ -1,7 +1,5 @@
 defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
 
-  def execute(initial, max_delay, max_retries, action_fn, on_give_up \\ :void)
-
   def execute(initial, max_delay, max_retries, action_fn, on_give_up) do
     loop(initial, max_delay, max_retries, action_fn, normalize(on_give_up), 0)
   end
