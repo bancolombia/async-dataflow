@@ -9,8 +9,6 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   @moduletag :capture_log
 
   setup_all do
-    IO.puts("Starting Applications for Socket Test")
-
     Application.put_env(:channel_sender_ex,
       :accept_channel_reply_timeout,
       1000)
@@ -65,6 +63,17 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {:ok, port: port, channel: channel, secret: secret}
   end
 
+  test "Should just connect", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+    :gun.close(conn)
+    Process.sleep(100)
+  end
+
   test "Should change channel state to waiting when connection closes", %{
     port: port,
     channel: channel,
@@ -113,7 +122,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert_receive {:DOWN, _ref, :process, channel_pid, _} when channel_pid in [pid1, pid2]
 
     assert [{pid, _}] = Horde.Registry.lookup(ChannelRegistry.via_tuple("channel_ref", :reg1))
-    {_, %{pending_sending: pending_msg}} = :sys.get_state(pid)
+    {_, %{pending_sending: {pending_msg, _}}} = :sys.get_state(pid)
     assert %{"42" => msg1, "82" => msg2} = pending_msg
   end
 
@@ -146,7 +155,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   end
 
   defp connect(port, channel) do
-    {:ok, conn} = :gun.open('127.0.0.1', port)
+    {:ok, conn} = :gun.open(~c"127.0.0.1", port)
     {:ok, _} = :gun.await_up(conn)
     :gun.ws_upgrade(conn, "/ext/socket?channel=#{channel}")
     conn

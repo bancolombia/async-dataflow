@@ -6,13 +6,14 @@ defmodule ChannelSenderEx.Core.Channel do
   require Logger
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
+  alias ChannelSenderEx.Core.BoundedMap
 
   @on_connected_channel_reply_timeout 2000
 
   @type delivery_ref() :: {pid(), reference()}
   @type output_message() :: {delivery_ref(), ProtocolMessage.t()}
-  @type pending_ack() :: %{optional(reference()) => ProtocolMessage.t()}
-  @type pending_sending() :: %{optional(String.t()) => ProtocolMessage.t()}
+  @type pending_ack() :: BoundedMap.t()
+  @type pending_sending() :: BoundedMap.t()
 
   defmodule Data do
     @moduledoc """
@@ -24,15 +25,15 @@ defmodule ChannelSenderEx.Core.Channel do
             stop_cause: atom(),
             socket: {pid(), reference()},
             pending_ack: ChannelSenderEx.Core.Channel.pending_ack(),
-            pending_sending: ChannelSenderEx.Core.Channel.pending_ack(),
+            pending_sending: ChannelSenderEx.Core.Channel.pending_sending(),
             user_ref: String.t()
           }
 
     defstruct channel: "",
               application: "",
               socket: nil,
-              pending_ack: %{},
-              pending_sending: %{},
+              pending_ack: BoundedMap.new(),
+              pending_sending: BoundedMap.new(),
               stop_cause: nil,
               user_ref: ""
   end
@@ -90,7 +91,7 @@ defmodule ChannelSenderEx.Core.Channel do
   def waiting(:enter, _old_state, data) do
     # time to wait for the socket to be authenticated
     waiting_timeout = round(RulesProvider.get(:max_age) * 1000)
-    Logger.info("Channel #{data.channel} entering waiting state and expecting a socket connection and authentication. max wait time: #{waiting_timeout} ms")
+    Logger.debug("Channel #{data.channel} entering waiting state and expecting a socket connection and authentication. max wait time: #{waiting_timeout} ms")
     {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
   end
 
@@ -124,7 +125,7 @@ defmodule ChannelSenderEx.Core.Channel do
       _postpone = :postpone
     ]
     Logger.debug("Channel #{data.channel} received a message while waiting for authentication")
-    new_data = save_pending_waiting_message(data, message)
+    new_data = save_pending_send(data, message)
     {:keep_state, new_data, actions}
   end
 
@@ -133,10 +134,6 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   def waiting({:call, _from}, _event, _data) do
-    :keep_state_and_data
-  end
-
-  def waiting(:cast, _event, _data) do
     :keep_state_and_data
   end
 
@@ -156,8 +153,8 @@ defmodule ChannelSenderEx.Core.Channel do
       ) do
     new_data = %{
       data
-      | pending_ack: Map.merge(pending_ack, data.pending_ack),
-        pending_sending: Map.merge(pending_sending, data.pending_sending)
+      | pending_ack: BoundedMap.merge(pending_ack, data.pending_ack),
+        pending_sending: BoundedMap.merge(pending_sending, data.pending_sending)
     }
 
     {:keep_state, new_data}
@@ -176,7 +173,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   def connected(:enter, _old_state, data) do
     refresh_timeout = calculate_refresh_token_timeout()
-    Logger.info("Channel #{data.channel} entering connected state")
+    Logger.debug("Channel #{data.channel} entering connected state")
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
   end
 
@@ -195,7 +192,7 @@ defmodule ChannelSenderEx.Core.Channel do
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} sending message [:n_token] ref: #{msg_id}")
     {:keep_state,
-      save_pending_message(data, output), # new data
+      save_pending_ack(data, output), # new data
       actions}
   end
 
@@ -219,15 +216,15 @@ defmodule ChannelSenderEx.Core.Channel do
 
     new_data =
       data
-      |> save_pending_message(output) # save the message in the pending_ack map within the data
-      |> clear_pending_wait(message)
+      |> save_pending_ack(output) # save the message in the pending_ack map within the data
+      |> clear_pending_send(message) # deletes the message from the pending_sending map
 
     {:keep_state, new_data, actions}
   end
 
   ## Handle the case when a message is acknowledged by the client.
    def connected(:info, {:ack, message_ref, message_id}, data) do
-    {_, new_data} = retrieve_pending_message(data, message_ref)
+    {_, new_data} = retrieve_pending_ack(data, message_ref)
 
     actions = [
       _cancel_timer = {{:timeout, {:redelivery, message_ref}}, :cancel} # cancel the redelivery timer
@@ -239,7 +236,7 @@ defmodule ChannelSenderEx.Core.Channel do
   ## This is basically a message re-delivery timer. It is triggered when a message is requested to be delivered.
   ## And it will continue to be executed until the message is acknowledged by the client.
   def connected({:timeout, {:redelivery, ref}}, retries, %{socket: {socket_pid, _}} = data) do
-    {message, new_data} = retrieve_pending_message(data, ref)
+    {message, new_data} = retrieve_pending_ack(data, ref)
     output = send(socket_pid, create_output_message(message, ref))
 
     # reschedule the timer to keep retrying to deliver the message
@@ -248,25 +245,12 @@ defmodule ChannelSenderEx.Core.Channel do
         {{:timeout, {:redelivery, ref}}, RulesProvider.get(:initial_redelivery_time), retries + 1}
     ]
 
-    {:keep_state, save_pending_message(new_data, output), actions}
-  end
-
-  # TODO: Check this logic
-  def connected({:call, from}, {:socket_connected, socket_pid}, data = %{socket: {_, old_ref}}) do
-    Process.demonitor(old_ref)
-    socket_ref = Process.monitor(socket_pid)
-    new_data = %{data | socket: {socket_pid, socket_ref}}
-
-    actions = [
-      _reply = {:reply, from, :ok}
-    ]
-    Logger.debug("Channel #{data.channel} reconnected")
-    {:keep_state, new_data, actions}
+    {:keep_state, save_pending_ack(new_data, output), actions}
   end
 
   ## Handle the case when the socket is disconnected. This method is called because the socket is monitored.
   ## via Process.monitor(socket_pid) in the waited/connected state.
-  def connected(:info, {:DOWN, ref, :process, _object, _reason}, %{socket: {_, ref}} = data) do
+  def connected(:info, {:DOWN, ref, :process, object, reason}, data) do
     new_data = %{data | socket: nil}
     actions = []
 
@@ -275,6 +259,11 @@ defmodule ChannelSenderEx.Core.Channel do
     # returns to the waiting state
     {:next_state, :waiting, new_data, actions}
   end
+
+  # def connected(:info, _m = {:DOWN, _ref, :process, _object, _reason}, _data) do
+  #   Logger.warning(":DOWN message received")
+  #   :keep_state_and_data
+  # end
 
   # TODO: test this scenario and register a callback to receive twins_last_letter in connected state
   def connected(
@@ -285,11 +274,6 @@ defmodule ChannelSenderEx.Core.Channel do
     Logger.warning("Channel #{data.channel} stopping")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
-  end
-
-  def connected(:info, _m = {:DOWN, _ref, :process, _object, _reason}, _data) do
-    Logger.warning(":DOWN message received")
-    :keep_state_and_data
   end
 
   @impl true
@@ -312,39 +296,40 @@ defmodule ChannelSenderEx.Core.Channel do
     send(socket_pid, output)
   end
 
-  @spec save_pending_message(Data.t(), output_message()) :: Data.t()
-  @compile {:inline, save_pending_message: 2}
-  defp save_pending_message(data = %{pending_ack: pending_ack}, {:deliver_msg, {_, ref}, message}) do
+  @spec save_pending_ack(Data.t(), output_message()) :: Data.t()
+  @compile {:inline, save_pending_ack: 2}
+  defp save_pending_ack(data = %{pending_ack: pending_ack}, {:deliver_msg, {_, ref}, message}) do
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} saving pending ack #{msg_id}")
-    %{data | pending_ack: Map.put(pending_ack, ref, message)}
+    %{data | pending_ack: BoundedMap.put(pending_ack, ref, message)}
   end
 
-  @spec retrieve_pending_message(Data.t(), reference()) :: {ProtocolMessage.t(), Data.t()}
-  @compile {:inline, retrieve_pending_message: 2}
-  defp retrieve_pending_message(data = %{pending_ack: pending_ack}, ref) do
-    {message, new_pending_ack} = Map.pop(pending_ack, ref)
+  @spec retrieve_pending_ack(Data.t(), reference()) :: {ProtocolMessage.t(), Data.t()}
+  @compile {:inline, retrieve_pending_ack: 2}
+  defp retrieve_pending_ack(data = %{pending_ack: pending_ack}, ref) do
+    {message, new_pending_ack} = BoundedMap.pop(pending_ack, ref)
     {message, %{data | pending_ack: new_pending_ack}}
   end
 
-  @spec save_pending_waiting_message(Data.t(), ProtocolMessage.t()) :: Data.t()
-  @compile {:inline, save_pending_waiting_message: 2}
-  defp save_pending_waiting_message(data = %{pending_sending: pending_sending}, message) do
+  @spec save_pending_send(Data.t(), ProtocolMessage.t()) :: Data.t()
+  @compile {:inline, save_pending_send: 2}
+  defp save_pending_send(data = %{pending_sending: pending_sending}, message) do
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} saving pending msg #{msg_id}")
     %{
       data
-      | pending_sending: Map.put(pending_sending, ProtocolMessage.message_id(message), message)
+      | pending_sending: BoundedMap.put(pending_sending, msg_id, message)
     }
   end
 
-  @spec clear_pending_wait(Data.t(), ProtocolMessage.t()) :: Data.t()
-  @compile {:inline, clear_pending_wait: 2}
-  defp clear_pending_wait(data = %{pending_sending: %{}}, _), do: data
-
-  defp clear_pending_wait(data = %{pending_sending: pending}, message) do
-    Logger.debug("Channel #{data.channel} clearing pending msg #{message.message_id}")
-    %{data | pending_sending: Map.delete(pending, ProtocolMessage.message_id(message))}
+  defp clear_pending_send(data = %{pending_sending: pending}, message) do
+    case BoundedMap.size(pending) do
+      0 -> data
+      _ ->
+        {message_id, _, _, _, _} = message
+        Logger.debug("Channel #{data.channel} clearing pending msg #{message_id}")
+        %{data | pending_sending: BoundedMap.delete(pending, message_id)}
+    end
   end
 
   @spec create_output_message(ProtocolMessage.t()) :: output_message()
