@@ -12,6 +12,8 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
       "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
       "socket auth"
     })
+    Application.put_env(:channel_sender_ex, :channel_shutdown_tolerance, 100)
+    Application.put_env(:channel_sender_ex, :max_age, 100)
 
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
 

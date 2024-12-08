@@ -3,6 +3,7 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
 
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  import Mock
 
   @moduletag :capture_log
 
@@ -79,4 +80,15 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
     assert {:error, {:different_channel, channel_id, app_id, user_id}} ==
              ChannelIDGenerator.verify_token(channel_id2, token)
   end
+
+  test "Should handle no secret", %{app_id: app_id, user_id: user_id} do
+    with_mock Application, [get_env: fn(_, _) -> nil end] do
+      channel_id = ChannelIDGenerator.generate_channel_id(app_id, user_id)
+      assert_raise RuntimeError, "Secret base no properly configured for application: ", fn ->
+        ChannelIDGenerator.generate_token(channel_id, app_id, user_id)
+      end
+    end
+  end
+
+
 end
