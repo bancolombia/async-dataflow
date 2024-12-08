@@ -1,9 +1,9 @@
 defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
 
   @moduletag :capture_log
 
@@ -24,11 +24,11 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
   end
 
   test "Should create channel" do
-    assert {_,_} = ChannelAuthenticator.create_channel("App1", "User1")
+    assert {_, _} = ChannelAuthenticator.create_channel("App1", "User1")
   end
 
   test "Should verify creds" do
-    { ref , secret} = ChannelAuthenticator.create_channel("App1", "User1")
+    {ref , secret} = ChannelAuthenticator.create_channel("App1", "User1")
     assert {:ok, "App1", "User1"} == ChannelAuthenticator.authorize_channel(ref, secret)
   end
 

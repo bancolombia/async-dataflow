@@ -1,16 +1,16 @@
 defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Transport.EntryPoint
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Core.ChannelSupervisor
-  alias ChannelSenderEx.Core.ChannelRegistry
-  alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.PubSub.PubSubCore
+  alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
+  alias ChannelSenderEx.Transport.EntryPoint
 
   @moduletag :capture_log
 
@@ -49,7 +49,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
     {:ok, pid_supervisor} =
       Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
-
 
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
@@ -207,7 +206,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {conn, stream} = assert_reject(port, channel_ref, channel_secret)
   end
 
-
   test "Should reestablish Channel link when Channel gets restarted", %{
     port: port,
     channel: channel,
@@ -290,7 +288,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         event_name: "event.test"
       })
 
-    ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel, message)
+    PubSubCore.deliver_to_channel(channel, message)
     {message_id, data}
   end
 
@@ -364,7 +362,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     conn
   end
 
-
   defp connect(port, channel, sub_protocol) when is_list(sub_protocol) do
     {:ok, conn} = connect(port)
     protocols = Enum.map(sub_protocol, fn p -> {p, :gun_ws_h} end)
@@ -387,7 +384,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   @spec decode_message({:binary, String.t()}) :: ProtocolMessage.t()
   defp decode_message({:binary, data}) do
-    IO.inspect(BinaryEncoder.decode_message(data))
+    BinaryEncoder.decode_message(data)
   end
 
 end

@@ -1,5 +1,7 @@
 defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
-
+  @moduledoc """
+  Exponential backoff algorithm with jitter.
+  """
   def execute(initial, max_delay, max_retries, action_fn, on_give_up) do
     loop(initial, max_delay, max_retries, action_fn, normalize(on_give_up), 0)
   end
@@ -10,9 +12,9 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
   def loop(_, _, max_retries, _, on_give_up, max_retries), do: on_give_up.()
 
   def loop(initial, max_delay, max_retries, action_fn, on_give_up, iter) do
-    actual_delay = expBackoff(initial, max_delay, iter)
+    actual_delay = exp_back_off(initial, max_delay, iter)
     case do_action(action_fn, actual_delay) do
-      :retry -> loop(initial, max_delay, max_retries, action_fn, on_give_up, iter+1)
+      :retry -> loop(initial, max_delay, max_retries, action_fn, on_give_up, iter + 1)
       value -> value
     end
   end
@@ -27,7 +29,7 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
     end)
     case val do
       :retry ->
-        time_ms = time_us/1000
+        time_ms = time_us / 1_000
         real_time_to_sleep = actual_delay - time_ms
         if real_time_to_sleep > 0 do
           Process.sleep(round(real_time_to_sleep))
@@ -44,10 +46,9 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
     (base - rest) + (:rand.uniform * rest)
   end
 
-  def expBackoff(initial, max, iter, jitterFactor \\ 0.2) do
+  def exp_back_off(initial, max, iter, jitterFactor \\ 0.2) do
     base = initial * :math.pow(2, iter)
     min(base, max) |> jitter(jitterFactor)
   end
-
 
 end

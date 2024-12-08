@@ -2,9 +2,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   @moduledoc """
   Endpoints for internal channel creation and channel message delivery orders
   """
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.PubSub.PubSubCore
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
 
   use Plug.Router
   require Logger

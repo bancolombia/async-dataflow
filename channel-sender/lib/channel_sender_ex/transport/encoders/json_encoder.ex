@@ -2,8 +2,8 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoder do
   @moduledoc """
   Encoder for json format
   """
-  alias ChannelSenderEx.Transport.MessageEncoder
   alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Transport.MessageEncoder
 
   @behaviour MessageEncoder
 

@@ -1,7 +1,11 @@
 defmodule ChannelSenderEx.Core.BoundedMap do
+  @moduledoc """
+  A map with a maximum size, evicting the oldest key-value pair when the limit is exceeded.
+  """
+
   @max_size 100
 
-  @type t :: { map(), list() }
+  @type t :: {map(), list()}
 
   # Initialize a new BoundedMap
   def new, do: {%{}, []}

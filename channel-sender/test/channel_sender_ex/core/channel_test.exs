@@ -4,8 +4,8 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider.Helper
 
   @moduletag :capture_log
@@ -187,7 +187,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     Helper.compile(:channel_sender_ex)
   end
 
-  defp proxy_process() do
+  defp proxy_process do
     pid = self()
     spawn(fn -> loop_and_resend(pid) end)
   end
@@ -212,7 +212,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
       send(parent, {ref, Channel.start_link(args)})
 
       receive do
-        z -> IO.inspect(z)
+        z -> :ok
       end
     end)
 

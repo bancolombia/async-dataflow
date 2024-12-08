@@ -19,7 +19,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
       ChannelRegistry, [lookup_channel_addr: fn(_) -> :noproc end]
     ) do
 
-      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0,250,0)) == :noproc
+      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)) == :noproc
 
     end
   end
@@ -29,17 +29,17 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
       ChannelRegistry, [lookup_channel_addr: fn(_) -> raise("dummy") end]
     ) do
 
-      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0,250,0)) == :noproc
+      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)) == :noproc
 
     end
   end
 
   test "should query and connect processes" do
     with_mocks([
-      {ChannelRegistry, [], [lookup_channel_addr: fn(_) -> :c.pid(0,200,0) end]},
+      {ChannelRegistry, [], [lookup_channel_addr: fn(_) -> :c.pid(0, 200, 0) end]},
       {Channel, [], [socket_connected: fn(_, _, _) -> :ok end]},
     ]) do
-      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0,250,0)) == :ok
+      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)) == :ok
     end
   end
 

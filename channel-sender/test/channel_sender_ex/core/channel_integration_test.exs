@@ -1,10 +1,11 @@
 defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Transport.EntryPoint
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias ChannelSenderEx.Core.{ChannelRegistry, ChannelSupervisor, ProtocolMessage, Channel}
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+  alias ChannelSenderEx.Core.{Channel, ChannelRegistry, ChannelSupervisor, ProtocolMessage}
+  alias ChannelSenderEx.Core.PubSub.PubSubCore
+  alias ChannelSenderEx.Transport.EntryPoint
 
   @moduletag :capture_log
 
@@ -108,8 +109,10 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {:ok, _} = Horde.Registry.start_link(name: :reg1, keys: :unique)
     {:ok, _} = Horde.Registry.start_link(name: :reg2, keys: :unique)
 
-    {:ok, pid1} = Horde.DynamicSupervisor.start_child(:sup1, ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg1)))
-    {:ok, pid2} = Horde.DynamicSupervisor.start_child(:sup2, ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg2)))
+    {:ok, pid1} = Horde.DynamicSupervisor.start_child(:sup1,
+      ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg1)))
+    {:ok, pid2} = Horde.DynamicSupervisor.start_child(:sup2,
+      ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg2)))
     {_, msg1} = build_message("42")
     {_, msg2} = build_message("82")
     Channel.deliver_message(pid1, msg1)
@@ -128,7 +131,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
   defp deliver_message(channel, message_id \\ "42") do
     {data, message} = build_message(message_id)
-    channel_response = ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel, message)
+    channel_response = PubSubCore.deliver_to_channel(channel, message)
     {channel_response, message_id, data}
   end
 

@@ -3,8 +3,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   use Plug.Test
   import Mock
 
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.PubSub.PubSubCore
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Rest.RestController
 
   @moduletag :capture_log

@@ -1,9 +1,10 @@
 defmodule ChannelSenderEx.Core.PubSub.SocketEventBusTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.PubSub.SocketEventBus
-  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Core.ChannelRegistry
+  alias ChannelSenderEx.Core.PubSub.SocketEventBus
+
   import Mock
 
   test "Should retry n times" do
@@ -17,12 +18,12 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBusTest do
 
   test "Should not retry n times" do
     channel = :some_channel
-    pid = :c.pid(0,250,0)
+    pid = :c.pid(0, 250, 0)
     socket_pid = self()
 
     with_mocks([
       {ChannelRegistry, [], [lookup_channel_addr: fn(_) -> pid end]},
-      {Channel, [], [socket_connected: fn(_,_,_) -> :ok end]}
+      {Channel, [], [socket_connected: fn(_, _, _) -> :ok end]}
       ]) do
       assert SocketEventBus.notify_event({:connected, channel}, socket_pid) == pid
     end

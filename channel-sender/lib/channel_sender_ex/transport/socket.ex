@@ -15,12 +15,14 @@ defmodule ChannelSenderEx.Transport.Socket do
   @invalid_secret_code 1008
 
   require Logger
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Core.RulesProvider
+
   alias ChannelSenderEx.Core.ChannelRegistry
-  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
+  alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
+  alias ChannelSenderEx.Core.RulesProvider
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
+
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
 
   @type channel_ref() :: String.t()
@@ -74,7 +76,7 @@ defmodule ChannelSenderEx.Transport.Socket do
     end)
   end
 
-  defp check_channel_registered({@channel_key, channel_ref} = res) do
+  defp check_channel_registered(res = {@channel_key, channel_ref}) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       :noproc ->
         Logger.warning("Channel #{channel_ref} not found, retrying query...")
@@ -83,7 +85,7 @@ defmodule ChannelSenderEx.Transport.Socket do
     end
   end
 
-  defp check_channel_registered({:error, _desc} = res) do
+  defp check_channel_registered(res = {:error, _desc}) do
     res
   end
 
@@ -112,7 +114,7 @@ defmodule ChannelSenderEx.Transport.Socket do
     end
   end
 
-  defp process_subprotocol_selection({:error, _} = err, _req) do
+  defp process_subprotocol_selection(err = {:error, _}, _req) do
     Logger.error("Socket unable to start. Error: #{inspect(err)}")
     err
   end
@@ -170,8 +172,8 @@ defmodule ChannelSenderEx.Transport.Socket do
   defp notify_connected(channel) do
     Logger.debug("Socket for channel #{channel} connected")
 
-    socketEventBus = RulesProvider.get(:socket_event_bus)
-    ch_pid = socketEventBus.notify_event({:connected, channel}, self())
+    socket_event_bus = RulesProvider.get(:socket_event_bus)
+    ch_pid = socket_event_bus.notify_event({:connected, channel}, self())
     Process.monitor(ch_pid)
   end
 
@@ -237,7 +239,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   @compile {:inline, auth_ok_frame: 1}
   defp auth_ok_frame(encoder), do: encoder.simple_frame("AuthOk")
 
-  defp ws_opts() do
+  defp ws_opts do
     %{
       idle_timeout: RulesProvider.get(:socket_idle_timeout),
       #      active_n: 5,

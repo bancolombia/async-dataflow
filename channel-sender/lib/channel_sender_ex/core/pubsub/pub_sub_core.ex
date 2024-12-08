@@ -3,9 +3,11 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   Handles channel delivery and discovery logic
   """
   require Logger
-  alias ChannelSenderEx.Core.ProtocolMessage
+
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.ChannelRegistry
+  alias ChannelSenderEx.Core.ProtocolMessage
+
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
 
   @type channel_ref() :: String.t()
@@ -28,6 +30,5 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
         :retry
     end
   end
-
 
 end

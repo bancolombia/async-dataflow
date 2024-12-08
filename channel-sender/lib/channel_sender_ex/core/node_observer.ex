@@ -1,4 +1,6 @@
 defmodule ChannelSenderEx.Core.NodeObserver do
+  @moduledoc false
+
   use GenServer
 
   alias ChannelSenderEx.Core.{ChannelRegistry, ChannelSupervisor}
