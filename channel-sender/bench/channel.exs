@@ -50,5 +50,3 @@ Benchee.run(
 #  parallel: 6,
   formatters: [{Benchee.Formatters.Console, extended_statistics: true}]
 )
-
-IO.inspect(:erlang.process_info(socket_pid2))

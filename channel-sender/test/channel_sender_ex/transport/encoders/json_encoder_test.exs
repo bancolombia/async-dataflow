@@ -23,8 +23,6 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoderTest do
 
     assert ProtocolMessage.to_external_message(decoded_message) ==
              ProtocolMessage.to_external_message(message)
-
-    IO.inspect(encoded, limit: :infinity)
   end
 
   test "should encode message with UTF-8 special characters to json", %{external_message: message} do
@@ -41,8 +39,6 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoderTest do
 
     assert ProtocolMessage.to_external_message(decoded_message) ==
              ProtocolMessage.to_external_message(message)
-
-    IO.inspect(encoded, limit: :infinity)
   end
 
   test "Should encode Heartbeat Frame" do

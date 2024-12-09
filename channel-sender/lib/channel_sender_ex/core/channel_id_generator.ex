@@ -40,18 +40,19 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
 
       {:error, :invalid} ->
         {:error, :invalid}
-
-      other ->
-        raise "Error in token verification #{inspect(other)}"
     end
   end
 
-  defp get_secret_and_salt!() do
+  defp get_secret_and_salt! do
     case get_env(:channel_sender_ex, :secret_base) do
       data = {_secret, _salt} -> data
       other -> raise "Secret base no properly configured for application: #{other}"
     end
   end
 
-  defp max_age(), do: RulesProvider.get(:max_age)
+  defp max_age do
+    RulesProvider.get(:max_age)
+    rescue
+      _ -> 900
+  end
 end

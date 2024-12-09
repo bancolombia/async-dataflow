@@ -52,6 +52,7 @@ defmodule ChannelSenderEx.Core.RulesProvider.Compiler do
 end
 
 defmodule ChannelSenderEx.Core.RulesProvider.Helper do
+  @moduledoc false
   alias ChannelSenderEx.Core.RulesProvider.Compiler, as: ModuleCompiler
 
   def compile(app_name, overrides \\ []) do

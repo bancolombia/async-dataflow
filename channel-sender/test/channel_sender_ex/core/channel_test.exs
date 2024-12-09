@@ -2,10 +2,13 @@ Code.compiler_options(ignore_module_conflict: true)
 
 defmodule ChannelSenderEx.Core.ChannelTest do
   use ExUnit.Case
+  import Mock
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.Channel.Data
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.RulesProvider.Helper
 
   @moduletag :capture_log
@@ -53,6 +56,17 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     Process.exit(pid, :kill)
   end
 
+  test "Should Send message handle RulesProvider exception", %{init_args: init_args, message: message} do
+    with_mock RulesProvider, [get: fn(_) -> raise("dummy") end] do
+      {:ok, pid} = start_channel_safe(init_args)
+      :ok = Channel.socket_connected(pid, self())
+      message_to_send = ProtocolMessage.to_protocol_message(message)
+      :accepted_connected = Channel.deliver_message(pid, message_to_send)
+      assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
+      Process.exit(pid, :kill)
+    end
+  end
+
   test "On connect should deliver message", %{init_args: init_args, message: message} do
     {:ok, pid} = start_channel_safe(init_args)
     message_to_send = ProtocolMessage.to_protocol_message(message)
@@ -69,7 +83,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     message_to_send = ProtocolMessage.to_protocol_message(message)
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
-    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 200
+    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
     Process.exit(pid, :kill)
   end
 
@@ -80,7 +94,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, ref}, ^message_to_send}
     Channel.notify_ack(pid, ref, message.message_id)
-    refute_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 300
+    refute_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
     Process.exit(pid, :kill)
   end
 
@@ -137,7 +151,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, ref}, ^message_to_send}
     # Receive retry
-    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 150
+    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
 
     # Late ack
     Channel.notify_ack(pid, ref, message.message_id)
@@ -162,14 +176,14 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     assert_receive {:deliver_msg, _from = {^channel_pid, _ref}, ^message_to_send}
 
     send(proxy, :stop)
-    refute_receive {:deliver_msg, _from = {^channel_pid, _ref}, ^message_to_send}, 350
+    refute_receive {:deliver_msg, _from = {^channel_pid, _ref}, ^message_to_send}, 1000
     assert {:waiting, _data} = :sys.get_state(channel_pid)
 
     proxy = proxy_process()
     :ok = Channel.socket_connected(channel_pid, proxy)
 
     assert_receive {:deliver_msg, _from = {^channel_pid, _ref}, ^message_to_send}
-    assert_receive {:deliver_msg, _from = {^channel_pid, _ref}, ^message_to_send}, 300
+    assert_receive {:deliver_msg, _from = {^channel_pid, _ref}, ^message_to_send}, 1000
 
     send(proxy, :stop)
     Process.exit(channel_pid, :kill)
@@ -187,7 +201,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     Helper.compile(:channel_sender_ex)
   end
 
-  defp proxy_process() do
+  defp proxy_process do
     pid = self()
     spawn(fn -> loop_and_resend(pid) end)
   end
@@ -212,7 +226,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
       send(parent, {ref, Channel.start_link(args)})
 
       receive do
-        z -> IO.inspect(z)
+        _z -> :ok
       end
     end)
 

@@ -2,9 +2,12 @@ defmodule ChannelSenderEx.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
-  alias ChannelSenderEx.Transport.Rest.RestController
-  alias ChannelSenderEx.Transport.EntryPoint
+
   alias ChannelSenderEx.ApplicationConfig
+  alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Transport.EntryPoint
+  alias ChannelSenderEx.Transport.Rest.RestController
+  alias ChannelSenderEx.Utils.ClusterUtils
 
   use Application
   require Logger
@@ -13,8 +16,8 @@ defmodule ChannelSenderEx.Application do
 
     _config = ApplicationConfig.load()
 
-    ChannelSenderEx.Utils.ClusterUtils.discover_and_connect_local()
-    ChannelSenderEx.Core.RulesProvider.Helper.compile(:channel_sender_ex)
+    ClusterUtils.discover_and_connect_local()
+    Helper.compile(:channel_sender_ex)
 
     no_start_param = Application.get_env(:channel_sender_ex, :no_start)
     if !no_start_param do

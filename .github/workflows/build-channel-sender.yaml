@@ -1,4 +1,4 @@
-name: "build channel-streams"
+name: "build channel-sender"
 on:
   push:
     branches:
@@ -6,13 +6,13 @@ on:
       - feature/*
       - fix/*
     paths:
-      - 'channel-streams/**'
+      - 'channel-sender/**'
 
   pull_request:
     branches:
       - main
     paths:
-      - 'channel-streams/**'
+      - 'channel-sender/**'
 
 jobs:
   build:
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./channel-streams
+        working-directory: ./channel-sender
 
     steps:
       - name: Generate a token of Github APP
@@ -51,7 +51,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
         with:
-          node-version-file: './channel-streams/.nvmrc'
+          node-version-file: './channel-sender/.nvmrc'
       - name: Set up Semantic Release
         if: github.ref == 'refs/heads/main'
         run: npm -g install @semantic-release/git semantic-release@23.0.0
@@ -65,7 +65,7 @@ jobs:
         uses: erlef/setup-beam@v1.17.1
         with:
           version-type: strict
-          version-file: "./channel-streams/.tool-versions"
+          version-file: "./channel-sender/.tool-versions"
       - name: Restore dependencies cache
         uses: actions/cache@v4
         with:
@@ -99,7 +99,7 @@ jobs:
         if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
         uses: zgosalvez/github-actions-report-lcov@v3
         with:
-          coverage-files: ./channel-streams/cover/lcov.info
+          coverage-files: ./channel-sender/cover/lcov.info
           minimum-coverage: 70
           artifact-name: code-coverage-report
           github-token: ${{ secrets.GITHUB_TOKEN }}

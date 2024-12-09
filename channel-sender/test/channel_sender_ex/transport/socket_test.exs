@@ -1,10 +1,10 @@
 defmodule ChannelSenderEx.Transport.SocketTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Transport.Socket
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Transport.Encoders.JsonEncoder
+  alias ChannelSenderEx.Transport.Socket
 
   @moduletag :capture_log
 

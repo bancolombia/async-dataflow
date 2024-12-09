@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.Utils.ClusterUtils do
   """
   require Logger
 
-  def discover_and_connect_local() do
+  def discover_and_connect_local do
     [node_name, host] =
       node()
       |> Atom.to_string()
@@ -25,7 +25,7 @@ defmodule ChannelSenderEx.Utils.ClusterUtils do
           |> Enum.filter(&String.starts_with?(&1, prefix))
 
         error ->
-          Logger.warning("EPMD error in node discovery", error)
+          Logger.warning("EPMD error in node discovery #{inspect(error)}")
           []
       end
 
