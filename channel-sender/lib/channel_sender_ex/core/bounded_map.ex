@@ -3,8 +3,6 @@ defmodule ChannelSenderEx.Core.BoundedMap do
   A map with a maximum size, evicting the oldest key-value pair when the limit is exceeded.
   """
 
-  @max_size 100
-
   @type t :: {map(), list()}
 
   # Initialize a new BoundedMap
@@ -12,9 +10,13 @@ defmodule ChannelSenderEx.Core.BoundedMap do
 
   def size({map, _keys}), do: map_size(map)
 
-  # Add a key-value pair, maintaining the max size limit
-  @spec put(t, String.t, any) :: t
-  def put({map, keys}, key, value) do
+  @doc """
+  Put a key-value pair into the map. If the key already exists, update the value.
+  The oldest key-value pair is evicted when the size limit is exceeded.
+  The limit is set by the `max_size` parameter, defaulting to 100.
+  """
+  @spec put(t, String.t, any, integer()) :: t
+  def put({map, keys}, key, value, max_size \\ 100) do
     if Map.has_key?(map, key) do
       # If the key already exists, update the map without changing keys
       {Map.put(map, key, value), keys}
@@ -24,7 +26,7 @@ defmodule ChannelSenderEx.Core.BoundedMap do
       new_keys = [key | keys]
 
       # Enforce the size limit
-      if map_size(new_map) > @max_size do
+      if map_size(new_map) > max_size do
         oldest_key = List.last(new_keys)
         {Map.delete(new_map, oldest_key), List.delete_at(new_keys, -1)}
       else

@@ -8,6 +8,7 @@ defmodule ChannelSenderEx.Core.Channel do
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
+  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [exp_back_off: 4]
 
   @on_connected_channel_reply_timeout 2000
 
@@ -72,10 +73,9 @@ defmodule ChannelSenderEx.Core.Channel do
   @type deliver_response :: :accepted_waiting | :accepted_connected
   @spec deliver_message(:gen_statem.server_ref(), ProtocolMessage.t()) :: deliver_response()
   def deliver_message(server, message) do
-    GenStateMachine.call(server, {:deliver_message, message}, Application.get_env(
-      :channel_sender_ex,
-      :accept_channel_reply_timeout
-    ))
+    GenStateMachine.call(server, {:deliver_message, message},
+      get_param(:accept_channel_reply_timeout, 1_000)
+    )
   end
 
   @spec start_link(any()) :: :gen_statem.start_ret()
@@ -100,7 +100,7 @@ defmodule ChannelSenderEx.Core.Channel do
   def waiting(:enter, _old_state, data) do
     # time to wait for the socket to be authenticated
     waiting_timeout = round(get_param(:max_age, 900) * 1000)
-    Logger.debug("Channel #{data.channel} entering waiting state and expecting a socket connection and authentication. max wait time: #{waiting_timeout} ms")
+    Logger.info("Channel #{data.channel} entering waiting state and expecting a socket connection and authentication. max wait time: #{waiting_timeout} ms")
     {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
   end
 
@@ -182,7 +182,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   def connected(:enter, _old_state, data) do
     refresh_timeout = calculate_refresh_token_timeout()
-    Logger.debug("Channel #{data.channel} entering connected state")
+    Logger.info("Channel #{data.channel} entering connected state")
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
   end
 
@@ -220,7 +220,7 @@ defmodule ChannelSenderEx.Core.Channel do
     # 2. schedule a timer to retry the message delivery if not acknowledged in the expected time frame
     actions = [
       _reply = {:reply, from, :accepted_connected},
-      _timeout = {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 500), 0}
+      _timeout = {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 900), 0}
     ]
 
     new_data =
@@ -246,15 +246,27 @@ defmodule ChannelSenderEx.Core.Channel do
   ## And it will continue to be executed until the message is acknowledged by the client.
   def connected({:timeout, {:redelivery, ref}}, retries, data = %{socket: {socket_pid, _}}) do
     {message, new_data} = retrieve_pending_ack(data, ref)
-    output = send(socket_pid, create_output_message(message, ref))
 
-    # reschedule the timer to keep retrying to deliver the message
-    actions = [
-      _timeout =
-        {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 500), retries + 1}
-    ]
+    max_unacknowledged_retries = get_param(:max_unacknowledged_retries, 20)
+    case retries do
+      r when r >= max_unacknowledged_retries ->
+        {message_id, _, _, _, _} = message
+        Logger.warning("Channel #{data.channel} reached max retries for message #{inspect(message_id)}")
+        {:keep_state, new_data}
 
-    {:keep_state, save_pending_ack(new_data, output), actions}
+      _ ->
+        output = send(socket_pid, create_output_message(message, ref))
+
+        # reschedule the timer to keep retrying to deliver the message
+        next_delay = round(exp_back_off(get_param(:initial_redelivery_time, 900), 3_000, retries, 0.2))
+        Logger.debug("Channel #{data.channel} redelivering message in #{next_delay} ms")
+        actions = [
+          _timeout =
+            {{:timeout, {:redelivery, ref}}, next_delay, retries + 1}
+        ]
+
+        {:keep_state, save_pending_ack(new_data, output), actions}
+      end
   end
 
   ## Handle the case when the socket is disconnected. This method is called because the socket is monitored.
@@ -305,19 +317,23 @@ defmodule ChannelSenderEx.Core.Channel do
     send(socket_pid, output)
   end
 
-  #@spec save_pending_ack(Data.t(), output_message()) :: Data.t()
   @compile {:inline, save_pending_ack: 2}
   defp save_pending_ack(data = %{pending_ack: pending_ack}, {:deliver_msg, {_, ref}, message}) do
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} saving pending ack #{msg_id}")
-    %{data | pending_ack: BoundedMap.put(pending_ack, ref, message)}
+    %{data | pending_ack: BoundedMap.put(pending_ack, ref, message, get_param(:max_unacknowledged_queue, 100))}
   end
 
   @spec retrieve_pending_ack(Data.t(), reference()) :: {ProtocolMessage.t(), Data.t()}
   @compile {:inline, retrieve_pending_ack: 2}
   defp retrieve_pending_ack(data = %{pending_ack: pending_ack}, ref) do
-    {message, new_pending_ack} = BoundedMap.pop(pending_ack, ref)
-    {message, %{data | pending_ack: new_pending_ack}}
+    case BoundedMap.pop(pending_ack, ref) do
+      {:noop, _} ->
+        Logger.warning("Channel #{data.channel} received ack for unknown message ref #{inspect(ref)}")
+        {:noop, data}
+      {message, new_pending_ack} ->
+        {message, %{data | pending_ack: new_pending_ack}}
+    end
   end
 
   @spec save_pending_send(Data.t(), ProtocolMessage.t()) :: Data.t()
@@ -327,7 +343,7 @@ defmodule ChannelSenderEx.Core.Channel do
     Logger.debug("Channel #{data.channel} saving pending msg #{msg_id}")
     %{
       data
-      | pending_sending: BoundedMap.put(pending_sending, msg_id, message)
+      | pending_sending: BoundedMap.put(pending_sending, msg_id, message, get_param(:max_pending_queue, 100))
     }
   end
 

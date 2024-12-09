@@ -90,6 +90,18 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Map.get(fetch(config, :channel_sender_ex), "socket_idle_timeout", 30_000)
     )
 
+    Application.put_env(:channel_sender_ex, :max_unacknowledged_retries,
+      Map.get(fetch(config, :channel_sender_ex), "max_unacknowledged_retries", 20)
+    )
+
+    Application.put_env(:channel_sender_ex, :max_unacknowledged_queue,
+      Map.get(fetch(config, :channel_sender_ex), "max_unacknowledged_queue", 100)
+    )
+
+    Application.put_env(:channel_sender_ex, :max_pending_queue,
+      Map.get(fetch(config, :channel_sender_ex), "max_pending_queue", 100)
+    )
+
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
     if config == %{} do

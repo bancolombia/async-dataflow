@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.Core.BoundedMapTest do
 
   test "should save elements" do
     map = BoundedMap.new
-    |> BoundedMap.put("key1", "value1")
+    |> BoundedMap.put("key1", "value1", 100)
     |> BoundedMap.put("key2", "value2")
 
     assert BoundedMap.get(map, "key1") == "value1"
@@ -73,6 +73,19 @@ defmodule ChannelSenderEx.Core.BoundedMapTest do
     assert is_map(new_map)
     assert Map.has_key?(new_map, "key1")
     assert Map.has_key?(new_map, "key2")
+  end
+
+  test "should allow merge" do
+    map = BoundedMap.new
+    |> BoundedMap.put("key1", "value1")
+    |> BoundedMap.put("key2", "value2")
+
+    map2 = BoundedMap.new
+    |> BoundedMap.put("key3", "value3")
+    |> BoundedMap.put("key4", "value4")
+
+    merged = BoundedMap.merge(map, map2)
+    assert BoundedMap.size(merged) == 4
   end
 
 end

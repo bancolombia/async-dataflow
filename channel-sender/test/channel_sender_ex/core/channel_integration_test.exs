@@ -70,7 +70,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     secret: secret
   } do
 
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+    {conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
     :gun.close(conn)
     Process.sleep(100)
   end

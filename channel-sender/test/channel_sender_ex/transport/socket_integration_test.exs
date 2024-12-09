@@ -77,14 +77,14 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   test "Should handle bad request", %{port: port, channel: channel} do
     conn = bad_connect(port, channel)
-    assert_receive {:gun_response, ^conn, stream, :fin, 400, _}, 300
+    assert_receive {:gun_response, ^conn, _stream, :fin, 400, _}, 300
 
     :gun.close(conn)
   end
 
   test "Should connect to socket", %{port: port, channel: channel} do
     conn = connect(port, channel)
-    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 300
+    assert_receive {:gun_upgrade, ^conn, _stream, ["websocket"], _headers}, 300
     :gun.close(conn)
   end
 
@@ -94,7 +94,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   end
 
   test "Should authenticate with binary protocol", %{port: port, channel: channel, secret: secret} do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
+    {conn, _stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
     :gun.close(conn)
   end
 
@@ -203,7 +203,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {app_id, user_ref} = {"App1", "User1234"}
     channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
     channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
-    {conn, stream} = assert_reject(port, channel_ref, channel_secret)
+    {_conn, _stream} = assert_reject(port, channel_ref, channel_secret)
   end
 
   test "Should reestablish Channel link when Channel gets restarted", %{
@@ -264,13 +264,13 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
     :gun.close(conn)
