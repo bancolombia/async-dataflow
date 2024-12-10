@@ -194,7 +194,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
     actions = [
       _redelivery_timeout =
-        {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 500), 0},
+        {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 900), 0},
       _refresh_timeout = {:state_timeout, refresh_timeout, :refresh_token_timeout}
     ]
 
@@ -280,11 +280,6 @@ defmodule ChannelSenderEx.Core.Channel do
     # returns to the waiting state
     {:next_state, :waiting, new_data, actions}
   end
-
-  # def connected(:info, _m = {:DOWN, _ref, :process, _object, _reason}, _data) do
-  #   Logger.warning(":DOWN message received")
-  #   :keep_state_and_data
-  # end
 
   # test this scenario and register a callback to receive twins_last_letter in connected state
   def connected(

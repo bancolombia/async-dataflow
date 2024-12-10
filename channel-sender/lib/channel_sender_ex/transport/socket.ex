@@ -213,16 +213,15 @@ defmodule ChannelSenderEx.Transport.Socket do
     {_commands = [], state}
   end
 
- @impl :cowboy_websocket
- def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, _}, _}) do
-    Logger.debug("Socket info :DOWN #{inspect(state)} XXX1")
+  @impl :cowboy_websocket
+  def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, _}, _}) do
+    Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
     spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
     {_commands = [], state}
- end
+  end
 
   @impl :cowboy_websocket
   def websocket_info(_message, state) do
-    Logger.debug("Socket info #{inspect(state)} XXX0")
     {_commands = [], state}
   end
 
