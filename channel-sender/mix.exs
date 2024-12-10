@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.1.6",
+      version: "0.1.7",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -47,6 +47,8 @@ defmodule ChannelSenderEx.MixProject do
       {:libcluster, "~> 3.3"},
       {:vapor, "~> 0.10.0"},
       {:mock, "~> 0.3.0", only: :test},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end

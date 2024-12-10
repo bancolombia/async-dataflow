@@ -1,16 +1,16 @@
 defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Transport.EntryPoint
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Core.ChannelSupervisor
-  alias ChannelSenderEx.Core.ChannelRegistry
-  alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.PubSub.PubSubCore
+  alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+  alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
+  alias ChannelSenderEx.Transport.EntryPoint
 
   @moduletag :capture_log
 
@@ -50,7 +50,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {:ok, pid_supervisor} =
       Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
 
-
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
       Application.delete_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
@@ -76,9 +75,16 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {:ok, port: port, channel: channel, secret: secret}
   end
 
+  test "Should handle bad request", %{port: port, channel: channel} do
+    conn = bad_connect(port, channel)
+    assert_receive {:gun_response, ^conn, _stream, :fin, 400, _}, 300
+
+    :gun.close(conn)
+  end
+
   test "Should connect to socket", %{port: port, channel: channel} do
     conn = connect(port, channel)
-    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 300
+    assert_receive {:gun_upgrade, ^conn, _stream, ["websocket"], _headers}, 300
     :gun.close(conn)
   end
 
@@ -88,7 +94,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   end
 
   test "Should authenticate with binary protocol", %{port: port, channel: channel, secret: secret} do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
+    {conn, _stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
     :gun.close(conn)
   end
 
@@ -162,6 +168,19 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     :gun.close(conn)
   end
 
+  test "Should handle unallowed messages", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
+
+    :gun.ws_send(conn, {:text, "foo"})
+
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, "Echo: foo"}}
+    :gun.close(conn)
+  end
+
   test "Should open socket with json sub-protocol (explicit)", %{
     port: port,
     channel: channel,
@@ -184,9 +203,8 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {app_id, user_ref} = {"App1", "User1234"}
     channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
     channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
-    {conn, stream} = assert_reject(port, channel_ref, channel_secret)
+    {_conn, _stream} = assert_reject(port, channel_ref, channel_secret)
   end
-
 
   test "Should reestablish Channel link when Channel gets restarted", %{
     port: port,
@@ -196,27 +214,24 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
     {message_id, data} = deliver_message(channel)
 
-
-    fn  ->
-
-      {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-
-      :gun.close(conn)
-      data
-
-    end
+    # fn  ->
+    #   {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+    #   :gun.close(conn)
+    #   data
+    # end
 
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-
     ch_pid = ChannelRegistry.lookup_channel_addr(channel)
+
     Process.exit(ch_pid, :kill)
+
+    Process.sleep(1200)
 
     {message_id, data} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
-
 
     :gun.close(conn)
   end
@@ -249,13 +264,13 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 150
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
     :gun.close(conn)
@@ -273,7 +288,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         event_name: "event.test"
       })
 
-    ChannelSenderEx.Core.PubSub.PubSubCore.deliver_to_channel(channel, message)
+    PubSubCore.deliver_to_channel(channel, message)
     {message_id, data}
   end
 
@@ -320,8 +335,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         sub_protocol -> connect(port, channel, sub_protocol)
       end
 
-
-    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 500
+    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 1000
     {conn, stream}
   end
 
@@ -332,13 +346,19 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         sub_protocol -> connect(port, channel, sub_protocol)
       end
 
-    assert_receive {:gun_response, ^conn, stream, :fin, 400, _headers}
+    assert_receive {:gun_response, ^conn, stream, :fin, 400, _headers}, 1000
     {conn, stream}
   end
 
   defp connect(port, channel) do
     {:ok, conn} = connect(port)
     :gun.ws_upgrade(conn, "/ext/socket?channel=#{channel}")
+    conn
+  end
+
+  defp bad_connect(port, channel) do
+    {:ok, conn} = connect(port)
+    :gun.ws_upgrade(conn, "/ext/socket?xxxxl=#{channel}")
     conn
   end
 
@@ -352,7 +372,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   defp connect(port, channel, sub_protocol), do: connect(port, channel, [sub_protocol])
 
   defp connect(port) do
-    {:ok, conn} = :gun.open('127.0.0.1', port)
+    {:ok, conn} = :gun.open(~c"127.0.0.1", port)
     {:ok, _} = :gun.await_up(conn)
     {:ok, conn}
   end
@@ -364,7 +384,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   @spec decode_message({:binary, String.t()}) :: ProtocolMessage.t()
   defp decode_message({:binary, data}) do
-    IO.inspect(BinaryEncoder.decode_message(data))
+    BinaryEncoder.decode_message(data)
   end
 
 end

@@ -20,7 +20,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     |> Horde.DynamicSupervisor.init()
   end
 
-  defp members() do
+  defp members do
     Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
   end
 
@@ -44,7 +44,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     %{
       id: "Channel_#{channel_ref}",
       start: {Channel, :start_link, [channel_args, [name: name]]},
-      shutdown: RulesProvider.get(:channel_shutdown_tolerance),
+      shutdown: get_shutdown_tolerance(),
       restart: :transient
     }
   end
@@ -53,4 +53,9 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     {:via, Horde.Registry, {ChannelSenderEx.Core.ChannelRegistry, name}}
   end
 
+  defp get_shutdown_tolerance do
+    RulesProvider.get(:channel_shutdown_tolerance)
+  rescue
+    _ -> 10_000
+  end
 end

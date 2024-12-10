@@ -5,7 +5,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
 
   require Logger
 
-  def load() do
+  def load do
     config_file = Application.get_env(:channel_sender_ex, :config_file)
     Logger.info("Loading configuration from #{inspect(config_file)}")
 
@@ -33,7 +33,6 @@ defmodule ChannelSenderEx.ApplicationConfig do
         Logger.error("Error loading configuration, #{inspect(e)}")
         setup_config(%{})
     end
-
 
   end
 
@@ -91,9 +90,21 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Map.get(fetch(config, :channel_sender_ex), "socket_idle_timeout", 30_000)
     )
 
+    Application.put_env(:channel_sender_ex, :max_unacknowledged_retries,
+      Map.get(fetch(config, :channel_sender_ex), "max_unacknowledged_retries", 20)
+    )
+
+    Application.put_env(:channel_sender_ex, :max_unacknowledged_queue,
+      Map.get(fetch(config, :channel_sender_ex), "max_unacknowledged_queue", 100)
+    )
+
+    Application.put_env(:channel_sender_ex, :max_pending_queue,
+      Map.get(fetch(config, :channel_sender_ex), "max_pending_queue", 100)
+    )
+
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
-    if (config == %{}) do
+    if config == %{} do
       Logger.warning("No valid configuration found!!!, Loading pre-defined default values : #{inspect(Application.get_all_env(:channel_sender_ex))}")
     else
       Logger.info("Succesfully loaded configuration: #{inspect(inspect(Application.get_all_env(:channel_sender_ex)))}")
@@ -107,7 +118,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     case topology do
       nil ->
         Logger.warning("No libcluster topology defined!!! -> Using Default [Gossip]")
-        [ strategy: Cluster.Strategy.Gossip ]
+        [strategy: Cluster.Strategy.Gossip]
       _ ->
         [
           strategy: String.to_existing_atom(topology["strategy"]),

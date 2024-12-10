@@ -3,8 +3,8 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBus do
   Handles different socket events, as connected and disconnected, and abstracts in some way the socket/channel discovery and
   association.
   """
-  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Core.ChannelRegistry
 
   def notify_event({:connected, channel}, socket_pid) do
     connect_channel(channel, socket_pid)

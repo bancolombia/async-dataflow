@@ -2,7 +2,9 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  import Mock
 
   @moduletag :capture_log
 
@@ -37,7 +39,7 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
       end)
     end
 
-    Enum.map(1..process, fn _ -> Task.async(fn_gen) end) |> Enum.each(&Task.await(&1, 20000))
+    Enum.map(1..process, fn _ -> Task.async(fn_gen) end) |> Enum.each(&Task.await(&1, 20_000))
     assert num * process == :ets.info(:t, :size)
   end
 
@@ -68,9 +70,6 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
     assert {:error, :invalid} == ChannelIDGenerator.verify_token(channel_id, token)
   end
 
-  test "Should generate refreshed token for channel" do
-  end
-
   test "Should indicate wrong channel", %{app_id: app_id, user_id: user_id} do
     channel_id = ChannelIDGenerator.generate_channel_id(app_id, user_id)
     channel_id2 = ChannelIDGenerator.generate_channel_id(app_id, "Other_user")
@@ -79,4 +78,23 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
     assert {:error, {:different_channel, channel_id, app_id, user_id}} ==
              ChannelIDGenerator.verify_token(channel_id2, token)
   end
+
+  test "Should handle no secret", %{app_id: app_id, user_id: user_id} do
+    with_mock Application, [get_env: fn(_, _) -> nil end] do
+      channel_id = ChannelIDGenerator.generate_channel_id(app_id, user_id)
+      assert_raise RuntimeError, "Secret base no properly configured for application: ", fn ->
+        ChannelIDGenerator.generate_token(channel_id, app_id, user_id)
+      end
+    end
+  end
+
+  test "Should handle RulesProvider error", %{app_id: app_id, user_id: user_id} do
+    with_mock RulesProvider, [get: fn(_) -> raise("dummy") end] do
+      channel_id = ChannelIDGenerator.generate_channel_id(app_id, user_id)
+      token = ChannelIDGenerator.generate_token(channel_id, app_id, user_id)
+
+      assert {:ok, app_id, user_id} == ChannelIDGenerator.verify_token(channel_id, token)
+    end
+  end
+
 end
