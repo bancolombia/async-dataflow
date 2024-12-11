@@ -1,11 +1,10 @@
 Code.compiler_options(ignore_module_conflict: true)
 
 defmodule ChannelSenderEx.Core.ChannelTest do
-  use ExUnit.Case
+  use ExUnit.Case, sync: true
   import Mock
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.Channel.Data
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
@@ -22,6 +21,8 @@ defmodule ChannelSenderEx.Core.ChannelTest do
       :on_connected_channel_reply_timeout,
       2000)
 
+    Application.put_env(:channel_sender_ex, :channel_shutdown_on_clean_close, 900)
+    Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection, 900)
     Application.put_env(:channel_sender_ex, :secret_base, {
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
         "socket auth"
@@ -36,6 +37,14 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     app = "app23324"
     user_ref = "user234"
     channel_ref = ChannelIDGenerator.generate_channel_id(app, user_ref)
+
+    Application.put_env(:channel_sender_ex, :max_unacknowledged_retries, 3)
+    Helper.compile(:channel_sender_ex)
+
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :max_unacknowledged_retries)
+      Helper.compile(:channel_sender_ex)
+    end)
 
     {:ok,
      init_args: {channel_ref, app, user_ref},
@@ -96,6 +105,26 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     Channel.notify_ack(pid, ref, message.message_id)
     refute_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
     Process.exit(pid, :kill)
+  end
+
+  test "Should not re-deliver message when ack retries is reached", %{init_args: init_args, message: message} do
+    Application.put_env(:channel_sender_ex, :max_unacknowledged_retries, 2)
+    Helper.compile(:channel_sender_ex)
+
+    {:ok, pid} = start_channel_safe(init_args)
+    :ok = Channel.socket_connected(pid, self())
+    message_to_send = ProtocolMessage.to_protocol_message(message)
+    :accepted_connected = Channel.deliver_message(pid, message_to_send)
+    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 600
+    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
+    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1500
+    refute_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 2000
+    Process.exit(pid, :kill)
+
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :max_unacknowledged_retries)
+      Helper.compile(:channel_sender_ex)
+    end)
   end
 
   test "Should send new token in correct interval", %{init_args: init_args = {channel, _, _}} do
@@ -192,7 +221,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   test "Should terminate channel when no socket connected (Waiting timeout)", %{
     init_args: init_args
   } do
-    Helper.compile(:channel_sender_ex, max_age: 1)
+    Helper.compile(:channel_sender_ex, channel_shutdown_on_disconnection: 1)
     {:ok, channel_pid} = start_channel_safe(init_args)
     :sys.trace(channel_pid, true)
     assert Process.alive? channel_pid

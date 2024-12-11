@@ -18,6 +18,9 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
       :on_connected_channel_reply_timeout,
       2000)
 
+    Application.put_env(:channel_sender_ex, :channel_shutdown_on_clean_close, 900)
+    Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection, 900)
+
     Application.put_env(:channel_sender_ex, :secret_base, {
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
         "socket auth"
@@ -57,6 +60,8 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     port = :ranch.get_port(:external_server)
 
     on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
       :ok = :cowboy.stop_listener(:external_server)
     end)
 
@@ -80,7 +85,6 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     channel: channel,
     secret: secret
   } do
-
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
     assert {:accepted_connected, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
@@ -89,8 +93,27 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert {:accepted_waiting, _, _} = deliver_message(channel)
   end
 
+  test "Should do no waiting when connection closes clean", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+    Helper.compile(:channel_sender_ex, channel_shutdown_on_clean_close: 0)
+    Helper.compile(:channel_sender_ex, channel_shutdown_on_disconnection: 0)
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+    assert {:accepted_connected, _, _} = deliver_message(channel)
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
+
+    channel_pid = ChannelRegistry.lookup_channel_addr(channel)
+    :gun.close(conn)
+
+    Process.sleep(500)
+    assert Process.alive?(channel_pid) == false
+  end
+
   test "Should not restart channel when terminated normal (Waiting timeout)" do
-    Helper.compile(:channel_sender_ex, max_age: 1)
+    Helper.compile(:channel_sender_ex, channel_shutdown_on_disconnection: 1)
+
     {channel, _secret} = ChannelAuthenticator.create_channel("App1", "User1234")
     channel_pid = ChannelRegistry.lookup_channel_addr(channel)
 
@@ -126,7 +149,8 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
     assert [{pid, _}] = Horde.Registry.lookup(ChannelRegistry.via_tuple("channel_ref", :reg1))
     {_, %{pending_sending: {pending_msg, _}}} = :sys.get_state(pid)
-    assert %{"42" => msg1, "82" => msg2} = pending_msg
+    assert Map.get(pending_msg, "42") == msg1
+    assert Map.get(pending_msg, "82") == msg2
   end
 
   defp deliver_message(channel, message_id \\ "42") do

@@ -24,10 +24,11 @@ defmodule ChannelSenderEx.Core.Channel do
     @type t() :: %ChannelSenderEx.Core.Channel.Data{
             channel: String.t(),
             application: String.t(),
-            stop_cause: atom(),
             socket: {pid(), reference()},
             pending_ack: ChannelSenderEx.Core.Channel.pending_ack(),
             pending_sending: ChannelSenderEx.Core.Channel.pending_sending(),
+            stop_cause: atom(),
+            socket_stop_cause: atom(),
             user_ref: String.t()
           }
 
@@ -37,6 +38,7 @@ defmodule ChannelSenderEx.Core.Channel do
               pending_ack: BoundedMap.new(),
               pending_sending: BoundedMap.new(),
               stop_cause: nil,
+              socket_stop_cause: nil,
               user_ref: ""
 
     def new(channel, application, user_ref) do
@@ -47,6 +49,7 @@ defmodule ChannelSenderEx.Core.Channel do
         pending_ack: BoundedMap.new(),
         pending_sending: BoundedMap.new(),
         stop_cause: nil,
+        socket_stop_cause: nil,
         user_ref: user_ref
       }
     end
@@ -58,6 +61,13 @@ defmodule ChannelSenderEx.Core.Channel do
   """
   def socket_connected(server, socket_pid, timeout \\ @on_connected_channel_reply_timeout) do
     GenStateMachine.call(server, {:socket_connected, socket_pid}, timeout)
+  end
+
+  @doc """
+  operation to notify this server the reason why the socket was disconnected
+  """
+  def socket_disconnect_reason(server, reason, timeout \\ @on_connected_channel_reply_timeout) do
+    GenStateMachine.call(server, {:socket_disconnected_reason, reason}, timeout)
   end
 
   @doc """
@@ -98,10 +108,17 @@ defmodule ChannelSenderEx.Core.Channel do
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
   def waiting(:enter, _old_state, data) do
-    # time to wait for the socket to be authenticated
-    waiting_timeout = round(get_param(:max_age, 900) * 1000)
-    Logger.info("Channel #{data.channel} entering waiting state and expecting a socket connection and authentication. max wait time: #{waiting_timeout} ms")
-    {:keep_state, data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
+    # time to wait for the socket to be open (or re-opened) and authenticated
+    waiting_timeout = round(estimate_process_wait_time(data) * 1000)
+    case waiting_timeout do
+      0 ->
+        Logger.info("Channel #{data.channel} will not remain in waiting state due calculated wait time is 0. Stopping now.")
+        {:stop, :normal, data}
+      _ ->
+        Logger.info("Channel #{data.channel} entering waiting state. Expecting a socket connection/authentication. max wait time: #{waiting_timeout} ms")
+        new_data = %{data | socket_stop_cause: nil}
+        {:keep_state, new_data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
+    end
   end
 
   ## stop the process with a timeout cause if the socket is not
@@ -113,7 +130,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   def waiting({:call, from}, {:socket_connected, socket_pid}, data) do
     socket_ref = Process.monitor(socket_pid)
-    new_data = %{data | socket: {socket_pid, socket_ref}}
+    new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
 
     actions = [
       _reply = {:reply, from, :ok}
@@ -173,9 +190,9 @@ defmodule ChannelSenderEx.Core.Channel do
     :keep_state_and_data
   end
 
-  ################### END######################
-  ###           WAITING STATE             ####
-  ############################################
+  #############################################
+  ###           CONNECTED STATE            ####
+  #############################################
 
   @type call() :: {:call, GenServer.from()}
   @type state_return() :: :gen_statem.event_handler_result(Data.t())
@@ -184,6 +201,18 @@ defmodule ChannelSenderEx.Core.Channel do
     refresh_timeout = calculate_refresh_token_timeout()
     Logger.info("Channel #{data.channel} entering connected state")
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
+  end
+
+  # this method will be called when the socket is disconnected
+  # to inform this process about the disconnection reason
+  # this will be later used to define if this process will go back to the waiting state
+  # or if it will stop with a specific cause
+  def connected({:call, from}, {:socket_disconnected_reason, reason}, data) do
+    new_data = %{data | socket_stop_cause: reason}
+    actions = [
+      _reply = {:reply, from, :ok}
+    ]
+    {:keep_state, new_data, actions}
   end
 
   def connected(:state_timeout, :refresh_token_timeout, data) do
@@ -259,7 +288,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
         # reschedule the timer to keep retrying to deliver the message
         next_delay = round(exp_back_off(get_param(:initial_redelivery_time, 900), 3_000, retries, 0.2))
-        Logger.debug("Channel #{data.channel} redelivering message in #{next_delay} ms")
+        Logger.debug("Channel #{data.channel} redelivering message in #{next_delay} ms (retry #{retries})")
         actions = [
           _timeout =
             {{:timeout, {:redelivery, ref}}, next_delay, retries + 1}
@@ -269,16 +298,12 @@ defmodule ChannelSenderEx.Core.Channel do
       end
   end
 
-  ## Handle the case when the socket is disconnected. This method is called because the socket is monitored.
+  ## Handle info notification when socket process terminates. This method is called because the socket is monitored.
   ## via Process.monitor(socket_pid) in the waited/connected state.
   def connected(:info, {:DOWN, _ref, :process, _object, _reason}, data) do
     new_data = %{data | socket: nil}
-    actions = []
-
-    Logger.warning("Channel #{data.channel} detected socket disconnection, entering :waiting state")
-
-    # returns to the waiting state
-    {:next_state, :waiting, new_data, actions}
+    Logger.warning("Channel #{data.channel} detected socket close/disconnection. Will enter :waiting state")
+    {:next_state, :waiting, new_data, []}
   end
 
   # test this scenario and register a callback to receive twins_last_letter in connected state
@@ -303,6 +328,10 @@ defmodule ChannelSenderEx.Core.Channel do
     new_token = ChannelIDGenerator.generate_token(channel, app, user)
     ProtocolMessage.of(UUID.uuid4(:hex), ":n_token", new_token)
   end
+
+  #########################################
+  ###      Support functions           ####
+  #########################################
 
   @compile {:inline, send_message: 2}
   defp send_message(%{socket: {socket_pid, _}}, message) do
@@ -364,6 +393,24 @@ defmodule ChannelSenderEx.Core.Channel do
     tolerance = get_param(:min_disconnection_tolerance, 50)
     min_timeout = token_validity / 2
     round(max(min_timeout, token_validity - tolerance) * 1000)
+  end
+
+  defp estimate_process_wait_time(data) do
+    # when is a new socket connection this will resolve false
+    case socket_clean_disconnection?(data) do
+      true ->
+        get_param(:channel_shutdown_on_clean_close, 30)
+      false ->
+        # this time will also apply when socket the first time connected
+        get_param(:channel_shutdown_on_disconnection, 300)
+    end
+  end
+
+  defp socket_clean_disconnection?(data) do
+    case data.socket_stop_cause do
+      {:remote, 1000, _} -> true
+      _ -> false
+    end
   end
 
   defp get_param(param, def) do
