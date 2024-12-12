@@ -10,18 +10,26 @@ module for the implementation.
 ```mermaid
 stateDiagram
 [*] --> Waiting: POST /ext/channel<br>[channel process is created]
-Waiting --> Connected: Socket connection<br>created
-Connected --> Waiting: Socket connection <br> closed
-Waiting --> [*]: Socket (re)connection<br> window expires<br>[channel process terminated]
+Waiting --> Connected: Socket connected/re-connected
+Connected --> Waiting: Socket connection <br> closed or interrupted
+Waiting --> [*]: Socket connection<br> window expires<br>[channel process terminated]
 ```
 
 ### Steps
 
 1. When the client (web or mobile) calls the registration endpoint `POST /ext/channel` a new channel process is started
-   with its initial state **waiting**.
+   with its initial state `waiting`.
 2. When the client (web or mobile) opens a socket connection with the server, internally the process state change to 
-   **connected**.
+   `connected`.
 3. If the connection between client and server is interrupted, the process returns to `waiting` state.
+
    The `waiting` state has a timer control, which expects a socket connection (or re-connection) within the time window
-   defined by the `:max_age` parameter in the configuration (unit time is seconds). If no socket connection is made, 
-   within this window the process is stopped.
+   defined by the `channel_shutdown_socket_disconnect` parameter in the configuration yaml (unit time is seconds) in order to return to the `connected` state.
+   
+   If socket the disconnection was clean (the client requested to close), then the process uses the time defined in te
+   configuration `channel_shutdown_socket_disconnect.on_clean_close` (default 30 seconds). If this parameter is zero (0)
+   the process is terminated inmediatlly.
+
+   If socket disconection wasn't clean (the client and server lost connection), then the process uses the time defined in te
+   configuration `channel_shutdown_socket_disconnect.on_disconnection` (default 300 seconds). If this parameter is zero (0)
+   the process is terminated inmediatlly.

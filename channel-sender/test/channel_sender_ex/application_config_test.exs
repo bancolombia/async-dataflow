@@ -1,6 +1,5 @@
 defmodule ChannelSenderEx.ApplicationConfigTest do
   use ExUnit.Case
-  import Mock
 
   alias ChannelSenderEx.ApplicationConfig
 

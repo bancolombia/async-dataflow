@@ -102,6 +102,13 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Map.get(fetch(config, :channel_sender_ex), "max_pending_queue", 100)
     )
 
+    channel_wait_times = Map.get(fetch(config, :channel_sender_ex),
+      "channel_shutdown_socket_disconnect", %{"on_clean_close" => 30, "on_disconnection" => 300})
+    Application.put_env(:channel_sender_ex, :channel_shutdown_on_clean_close,
+      Map.get(channel_wait_times, "on_clean_close", 30))
+    Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection,
+      Map.get(channel_wait_times, "on_disconnection", 300))
+
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
     if config == %{} do

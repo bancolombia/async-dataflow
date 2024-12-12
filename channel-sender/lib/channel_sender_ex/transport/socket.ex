@@ -135,6 +135,7 @@ defmodule ChannelSenderEx.Transport.Socket do
          {channel, :connected, encoder, {application, user_ref, monitor_ref}, %{}}}
 
       :unauthorized ->
+        Logger.error("Socket unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}")
         {_commands = [{:close, @invalid_secret_code, "Invalid token for channel"}],
          {channel, :unauthorized}}
     end
@@ -230,7 +231,12 @@ defmodule ChannelSenderEx.Transport.Socket do
     case state do
       {channel_ref, _, _, _, _} ->
         Logger.warning("Socket for channel #{channel_ref} terminated with reason: #{inspect(reason)}")
-        :ok
+        socket_event_bus = get_param(:socket_event_bus, :noop)
+        case socket_event_bus do
+          :noop -> :ok
+          _ ->
+            socket_event_bus.notify_event({:socket_down_reason, channel_ref, reason}, self())
+        end
       _ -> :ok
     end
   end
