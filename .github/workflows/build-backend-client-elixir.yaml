@@ -62,7 +62,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
 
       - name: Set up Elixir
-        uses: erlef/setup-beam@v1.17.1
+        uses: erlef/setup-beam@v1.17.6
         with:
           version-type: strict
           version-file: "./clients/backend-client-elixir/.tool-versions"
