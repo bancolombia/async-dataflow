@@ -5,8 +5,6 @@ defmodule AdfSenderConnector.MessageTest do
 
   alias AdfSenderConnector.Message
 
-  @moduletag :capture_log
-
   test "should create new message - minimal data" do
     message = Message.new("ref", %{"hello" => "world"}, "user.created")
     assert "ref" == message.channel_ref

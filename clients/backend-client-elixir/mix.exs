@@ -4,7 +4,7 @@ defmodule AdfSenderConnector.MixProject do
   def project do
     [
       app: :adf_sender_connector,
-      version: "0.3.0",
+      version: "1.0.0",
       elixir: "~> 1.13",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -21,7 +21,7 @@ defmodule AdfSenderConnector.MixProject do
       ],
       aliases: aliases(),
       releases: [
-        adf_sender_connector: [ 
+        adf_sender_connector: [
           include_executables_for: [:unix],
           applications: [
             runtime_tools: :permanent
@@ -35,16 +35,16 @@ defmodule AdfSenderConnector.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {AdfSenderConnector.Application, []}
     ]
   end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:nimble_options, "~> 0.3.0"},
       {:jason, "~> 1.2"},
-      {:httpoison, "~> 1.8"},
+      {:finch, "~> 0.19"},
       {:uuid, "~> 1.1"},
       ## testing deps
       {:mock, "~> 0.3.0", only: :test},
@@ -54,6 +54,7 @@ defmodule AdfSenderConnector.MixProject do
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_unit_sonarqube, "~> 0.1", only: :test},
       {:benchee, "~> 1.1", only: [:dev, :benchee]},
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
     ]
   end
 

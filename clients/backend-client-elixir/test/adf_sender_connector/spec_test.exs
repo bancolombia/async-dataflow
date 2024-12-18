@@ -2,40 +2,72 @@ Code.compiler_options(ignore_module_conflict: true)
 
 defmodule AdfSenderConnector.SpecTest do
   use ExUnit.Case
+  import Mock
 
   defmodule FakeImplementor do
     use AdfSenderConnector.Spec, option: "testable"
 
   end
 
-  @moduletag :capture_log
-
-  setup do
-    {:ok, _} = Registry.start_link(keys: :unique, name: Registry.ADFSenderConnector)
-    HTTPoison.start
-   :ok
+  setup_all do
+    {:ok, pid} = Finch.start_link(name: SenderHttpClient)
+    on_exit(fn -> Process.exit(pid, :normal) end)
+    :ok
   end
 
-  test "should start process" do
-    options = [http_opts: [], name: "foo"]
-
-    {:ok, pid} = FakeImplementor.start_link({:sender_url, "http://localhost:8888"}, options)
-
-    assert is_pid(pid)
-    Process.exit(pid, :normal)
+  test "should make http failed request" do
+    assert {:error, :econnrefused} = FakeImplementor.send_request(%{}, "/some_url")
   end
 
-  test "should start process passing opts" do
-    my_http_options = [
-      hackney: [:insecure, pool: :some_pool],
-      timeout: 10_000, recv_timeout: 10_000, max_connections: 1000,
-      name: "bar"
-    ]
-
-    {:ok, pid} = FakeImplementor.start_link({:sender_url, "http://localhost:8888"}, my_http_options)
-    assert is_pid(pid)
-    Process.exit(pid, :normal)
+  test "should make http sucessful request" do
+    deliver_response = %Finch.Response{
+      status: 200,
+      body: "{\"result\": \"Ok\"}"
+    }
+    with_mocks([
+      {Finch, [], [
+        build: fn _, _, _, _ -> {:ok, %{}} end,
+        request: fn _, _ -> {:ok, deliver_response} end
+        ]}
+    ]) do
+      raw_response = FakeImplementor.send_request(%{}, "/some_url")
+      assert {200, "{\"result\": \"Ok\"}"} = raw_response
+      assert {:ok, %{"result" => "Ok"}} = FakeImplementor.decode_response(raw_response)
+    end
   end
 
+  test "should hanle http invalid request" do
+    deliver_response = %Finch.Response{
+      status: 400,
+      body: "{\"error\": \"invalid foo or bar\"}"
+    }
+    with_mocks([
+      {Finch, [], [
+        build: fn _, _, _, _ -> {:ok, %{}} end,
+        request: fn _, _ -> {:ok, deliver_response} end
+        ]}
+    ]) do
+      raw_response = FakeImplementor.send_request(%{}, "/some_url")
+      assert {400, _} = raw_response
+      assert {:error, :channel_sender_bad_request} = FakeImplementor.decode_response(raw_response)
+    end
+  end
+
+  test "should hanle http unknown error" do
+    deliver_response = %Finch.Response{
+      status: 500,
+      body: "{\"error\": \"opps\"}"
+    }
+    with_mocks([
+      {Finch, [], [
+        build: fn _, _, _, _ -> {:ok, %{}} end,
+        request: fn _, _ -> {:ok, deliver_response} end
+        ]}
+    ]) do
+      raw_response = FakeImplementor.send_request(%{}, "/some_url")
+      assert {500, _} = raw_response
+      assert {:error, :channel_sender_unknown_error} = FakeImplementor.decode_response(raw_response)
+    end
+  end
 
 end

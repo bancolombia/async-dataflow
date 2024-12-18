@@ -10,48 +10,32 @@ defmodule AdfSenderConnector.Credentials do
   @doc """
   Request Channel Sender to register a channel for the application and user indicated. Returns appropriate credentials.
   """
-  @spec exchange_credentials(pid()) :: {:ok, any()} | {:error, any()}
-  def exchange_credentials(pid) do
-    GenServer.call(pid, :exchange_credentials)
-  end
-
-  ##########################
-  # Server Implementation  #
-  ##########################
-
-  @doc false
-  @impl true
-  def handle_call(:exchange_credentials, _ctx, state) do
-
-    response = build_request(state)
-      |> send_request(state)
+  @spec exchange_credentials(application_ref(), user_ref()) :: {:ok, map()} | {:error, any()}
+  def exchange_credentials(application_ref, user_ref)
+    when application_ref != nil and user_ref != nil do
+    response = build_request(application_ref, user_ref)
+      |> send_request("/ext/channel/create")
       |> decode_response
 
-    case response do
-      {:error, reason} ->
-        Logger.error("Error exchanging credentials, #{inspect(reason)}")
+      case response do
+      {:error, reason} = e ->
+        Logger.error("ADF Sender Client - Error exchanging credentials, #{inspect(reason)}")
+        e
       _ ->
-        Logger.debug("Credentials exchanged")
+        Logger.debug("ADF Sender Client - Credentials exchanged")
         response
     end
-
-    {:reply, response, state}
   end
 
-  defp build_request(state) do
+  def exchange_credentials(_application_ref, _user_ref) do
+    Logger.error("ADF Sender Client - invalid parameters for exchange credentials")
+    {:error, :channel_sender_bad_request}
+  end
+
+  defp build_request(application_ref, user_ref) do
     Jason.encode!(%{
-      application_ref: Keyword.fetch!(state, :app_ref),
-      user_ref: Keyword.fetch!(state, :user_ref)
+      application_ref: application_ref,
+      user_ref: user_ref
     })
   end
-
-  defp send_request(request, state) do
-    HTTPoison.post(
-      Keyword.fetch!(state, :sender_url) <> "/ext/channel/create",
-      request,
-      [{"content-type", "application/json"}],
-      parse_http_opts(state)
-    )
-  end
-
 end

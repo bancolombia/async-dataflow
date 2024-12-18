@@ -41,4 +41,11 @@ defmodule AdfSenderConnector.Message do
     }
   end
 
+  def valid?(message) do
+    message.channel_ref != nil
+    and message.message_id != nil
+    and message.event_name != nil
+    and message.message_data != nil
+  end
+
 end
