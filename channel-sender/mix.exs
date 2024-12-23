@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.1.8",
+      version: "0.1.9",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -48,7 +48,12 @@ defmodule ChannelSenderEx.MixProject do
       {:vapor, "~> 0.10.0"},
       {:mock, "~> 0.3.0", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
+      # for metrics
+      {:telemetry_metrics_prometheus, "~> 1.1"},
+      {:telemetry_poller, "~> 1.1"},
+      {:cowboy_telemetry, "~> 0.4.0"},
+      {:telemetry, "~> 1.3"}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end

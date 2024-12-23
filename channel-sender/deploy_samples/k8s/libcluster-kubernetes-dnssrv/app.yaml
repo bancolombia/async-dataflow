@@ -14,7 +14,10 @@ spec:
       port: 8082
     - name: rest-http
       targetPort: 8081
-      port: 8081        
+      port: 8081
+    - name: metrics-http
+      targetPort: 9568
+      port: 9568             
 ---
 ##
 ## headless-service to define EPMD 4369 port, to allow pods to form Erlang cluster.
@@ -55,18 +58,21 @@ spec:
       annotations:
         traffic.sidecar.istio.io/includeOutboundPorts: "4369"
         traffic.sidecar.istio.io/includeInboundPorts: "4369, 8081, 8082"
+        prometheus.io/port: "9568"
+        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: "true"        
       labels:
         app: adfsender
         cluster: beam
     spec:
       containers:
         - name: adfsender
-          image: bancolombia/async-dataflow-channel-sender:0.1.5
+          image: bancolombia/async-dataflow-channel-sender:0.1.9
           env:                   
             - name: ERLANG_COOKIE
-              value: "secret"
+              value: "put_some_random_string_here"
             - name: RELEASE_COOKIE
-              value: "secret"              
+              value: "put_some_random_string_here"   # it should be tthe same as ERLANG_COOKIE          
           ports:
             - name: rest-http
               protocol: TCP

@@ -8,6 +8,7 @@ defmodule ChannelSenderEx.Core.Channel do
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
+  alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [exp_back_off: 4]
 
   @on_connected_channel_reply_timeout 2000
@@ -101,6 +102,7 @@ defmodule ChannelSenderEx.Core.Channel do
   def init({channel, application, user_ref}) do
     data = Data.new(channel, application, user_ref)
     Process.flag(:trap_exit, true)
+    CustomTelemetry.execute_custom_event([:adf, :channel], %{count: 1})
     {:ok, :waiting, data}
   end
 
@@ -244,6 +246,8 @@ defmodule ChannelSenderEx.Core.Channel do
     # will send message to the socket process
     {:deliver_msg, {_, ref}, _} = output = send_message(data, message)
 
+    CustomTelemetry.execute_custom_event([:adf, :message, :delivered], %{count: 1})
+
     # Prepares the actions to be executed when method returns
     # 1. reply to the caller
     # 2. schedule a timer to retry the message delivery if not acknowledged in the expected time frame
@@ -312,13 +316,23 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
-    Logger.warning("Channel #{data.channel} stopping")
+    Logger.error("Channel #{data.channel} stopping, reason: #{inspect(:name_conflict)}")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
 
+  def connected(
+    :info,
+    info_payload,
+    data
+  ) do
+    Logger.warning("Channel #{data.channel} receceived unknown info message #{inspect(info_payload)}")
+    {:keep_state_and_data, :postpone}
+  end
+
   @impl true
   def terminate(reason, state, data) do
+    CustomTelemetry.execute_custom_event([:adf, :channel], %{count: -1})
     level = if reason == :normal, do: :info, else: :warning
     Logger.log(level, "Channel #{data.channel} terminating, from state #{inspect(state)} and reason #{inspect(reason)}")
     :ok
@@ -345,6 +359,8 @@ defmodule ChannelSenderEx.Core.Channel do
   defp save_pending_ack(data = %{pending_ack: pending_ack}, {:deliver_msg, {_, ref}, message}) do
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} saving pending ack #{msg_id}")
+    # ! add a metric here to increment pending ack count
+    #CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :ack], %{count: 1})
     %{data | pending_ack: BoundedMap.put(pending_ack, ref, message, get_param(:max_unacknowledged_queue, 100))}
   end
 
@@ -356,6 +372,8 @@ defmodule ChannelSenderEx.Core.Channel do
         Logger.warning("Channel #{data.channel} received ack for unknown message ref #{inspect(ref)}")
         {:noop, data}
       {message, new_pending_ack} ->
+        # ! add a metric here to decrement pending ack count
+        #CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :ack], %{count: -1})
         {message, %{data | pending_ack: new_pending_ack}}
     end
   end
@@ -365,6 +383,8 @@ defmodule ChannelSenderEx.Core.Channel do
   defp save_pending_send(data = %{pending_sending: pending_sending}, message) do
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} saving pending msg #{msg_id}")
+    # ! add a metric here to increment pending send count
+    #CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :send], %{count: 1})
     %{
       data
       | pending_sending: BoundedMap.put(pending_sending, msg_id, message, get_param(:max_pending_queue, 100))
@@ -377,6 +397,8 @@ defmodule ChannelSenderEx.Core.Channel do
       _ ->
         {message_id, _, _, _, _} = message
         Logger.debug("Channel #{data.channel} clearing pending msg #{message_id}")
+        # ! add a metric here to decrement pending send count
+        #CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :send], %{count: -1})
         %{data | pending_sending: BoundedMap.delete(pending, message_id)}
     end
   end

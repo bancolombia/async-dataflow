@@ -58,7 +58,7 @@ channel_sender_ex:
   # be greater than max_age.
   channel_shutdown_socket_disconnect: 
     on_clean_close: 30
-    on_disconnection: 300
+    on_disconnection: 60
 
   no_start: false
   topology:
@@ -78,7 +78,7 @@ channel_sender_ex:
     # for more information about the kubernetes configuration with libcluser
 
 logger:
-  level: debug
+  level: info
 
 
 

@@ -9,6 +9,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   use Plug.Router
   require Logger
 
+  plug(Plug.Telemetry, event_prefix: [:channel_sender_ex, :plug])
   plug(CORSPlug)
   plug(:match)
 
