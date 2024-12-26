@@ -76,6 +76,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Live counter of routed messages",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -155,6 +156,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Live counter of current channel processes.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -234,6 +236,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Rate of messages delivered/non-delivered via the channel socket.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -316,7 +319,7 @@
           "expr": "sum(rate(elixir_adf_message_delivered_count[5m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
-          "legendFormat": "__auto",
+          "legendFormat": "delivered",
           "range": true,
           "refId": "A",
           "useBackend": false,
@@ -324,6 +327,23 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           }
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "expr": "sum(rate(elixir_adf_message_nodelivered_count[5m]))",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "non_delivered",
+          "range": true,
+          "refId": "B",
+          "useBackend": false
         }
       ],
       "title": "Message Delivery by Sec",
@@ -334,6 +354,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Time series aggregate of the number of live channel processes.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -423,7 +444,7 @@
           "includeNullMetadata": true,
           "instant": false,
           "interval": "",
-          "legendFormat": "channels",
+          "legendFormat": "num of channels",
           "range": true,
           "refId": "A",
           "useBackend": false,
@@ -441,6 +462,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Requests per second to the rest and socket endpoints",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -550,7 +572,7 @@
           "useBackend": false
         }
       ],
-      "title": "Rest requests by Sec.",
+      "title": "Requests by Sec.",
       "type": "timeseries"
     },
     {
@@ -558,6 +580,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "Average response time of rest endpoints",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -637,9 +660,9 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "avg by(request_path) (elixir_http_request_duration_milliseconds_duration)",
+          "expr": "sum by(request_path) (rate(elixir_http_request_duration_milliseconds_duration[5m]))",
           "fullMetaSearch": false,
-          "includeNullMetadata": true,
+          "includeNullMetadata": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A",
@@ -650,7 +673,7 @@
           }
         }
       ],
-      "title": "Rest requests avg duration (msec)",
+      "title": "Rest requests avg duration (millis)",
       "type": "timeseries"
     },
     {
@@ -898,6 +921,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "This represents the total memory in bytes used by the Erlang/Elixir Virtual Machine (VM). It is a high-level aggregate metric that combines all types of memory consumption in the VM.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -983,7 +1007,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
+          "editorMode": "code",
           "expr": "elixir_vm_memory_total",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -994,7 +1018,7 @@
           "useBackend": false
         }
       ],
-      "title": "VM Memory",
+      "title": "VM Memory (bytes)",
       "type": "timeseries"
     },
     {
@@ -1002,6 +1026,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "This metric represents the total memory in bytes used by all processes running in the Erlang/Elixir VM. This includes memory allocated for the process heaps, stacks, and internal data structures required for process execution.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1084,7 +1109,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
+          "editorMode": "code",
           "expr": "elixir_vm_memory_processes",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1095,7 +1120,7 @@
           "useBackend": false
         }
       ],
-      "title": "VM Process Memory",
+      "title": "VM Process Memory (bytes)",
       "type": "timeseries"
     },
     {
@@ -1103,6 +1128,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "This metric is the total length of all run queues across all schedulers in the Erlang VM at a given point in time. \nIt includes the sum of CPU-bound work (Processes waiting to execute) and \nIO-bound work (Processes waiting for IO operations to complete)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1199,6 +1225,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "This metric represents the total number of processes in the run queue across all schedulers in the Erlang VM that are specifically waiting for CPU time.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1295,6 +1322,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "This metric represents the total length of the IO-bound run queues across all schedulers in the Erlang VM. This metric tracks processes waiting for IO-related operations to complete rather than being ready for immediate CPU execution.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1391,6 +1419,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "This metric represents the total amount of memory in bytes used by ETS (Erlang Term Storage) tables in the Erlang/Elixir VM. ETS is a high-performance in-memory storage system built into the Erlang VM, commonly used for storing large amounts of data in key-value format.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1484,7 +1513,7 @@
           "useBackend": false
         }
       ],
-      "title": "VM ETS Memory",
+      "title": "VM ETS Memory (bytes)",
       "type": "timeseries"
     },
     {
@@ -1492,6 +1521,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "This metric represents the amount of memory in bytes being used by binaries in the Erlang/Elixir VM.  Binaries are: String manipulation (when encoded as binaries), Network communication (e.g., TCP/UDP payloads), File I/O and storage, Efficient handling of large data structures.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1574,7 +1604,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
+          "editorMode": "code",
           "expr": "elixir_vm_memory_binary",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1585,11 +1615,11 @@
           "useBackend": false
         }
       ],
-      "title": "VM Binary Memory",
+      "title": "VM Binary Memory (bytes)",
       "type": "timeseries"
     }
   ],
-  "refresh": "auto",
+  "refresh": "5s",
   "schemaVersion": 40,
   "tags": [],
   "templating": {
@@ -1603,6 +1633,6 @@
   "timezone": "browser",
   "title": "ADF Sender",
   "uid": "de7ltonluxse8e",
-  "version": 23,
+  "version": 28,
   "weekStart": ""
 }

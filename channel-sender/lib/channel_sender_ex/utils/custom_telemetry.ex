@@ -76,10 +76,10 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       last_value("elixir.vm.memory.processes", unit: {:byte, :kilobyte}, tags: [:service]),
       last_value("elixir.vm.memory.binary", unit: {:byte, :kilobyte}, tags: [:service]),
       last_value("elixir.vm.memory.ets", unit: {:byte, :kilobyte}, tags: [:service]),
-      sum("elixir.vm.total_run_queue_lengths.total", tags: [:service]),
-      sum("elixir.vm.total_run_queue_lengths.cpu", tags: [:service]),
-      sum("elixir.vm.total_run_queue_lengths.io", tags: [:service]),
-      sum("elixir.vm.system_counts_process.count", tags: [:service])
+      last_value("elixir.vm.total_run_queue_lengths.total", tags: [:service]),
+      last_value("elixir.vm.total_run_queue_lengths.cpu", tags: [:service]),
+      last_value("elixir.vm.total_run_queue_lengths.io", tags: [:service]),
+      last_value("elixir.vm.system_counts_process.count", tags: [:service])
     ]
   end
 
