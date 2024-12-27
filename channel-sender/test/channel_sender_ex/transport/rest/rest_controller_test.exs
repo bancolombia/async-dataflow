@@ -130,5 +130,4 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
     assert %{"error" => "Invalid request" <> _rest} = Jason.decode!(conn.resp_body)
   end
 
-
 end
