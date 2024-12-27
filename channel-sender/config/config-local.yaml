@@ -58,7 +58,7 @@ channel_sender_ex:
   # be greater than max_age.
   channel_shutdown_socket_disconnect: 
     on_clean_close: 30
-    on_disconnection: 60
+    on_disconnection: 300
 
   no_start: false
   topology:
