@@ -29,17 +29,27 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     route_create(conn.body_params, conn)
   end
 
-  defp route_create(_message = %{
+  defp route_create(message = %{
     application_ref: application_ref,
     user_ref: user_ref
    }, conn
   ) do
-    {channel_ref, channel_secret} = ChannelAuthenticator.create_channel(application_ref, user_ref)
-    response = %{channel_ref: channel_ref, channel_secret: channel_secret}
 
-    conn
-    |> put_resp_header("content-type", "application/json")
-    |> send_resp(200, Jason.encode!(response))
+    is_valid = message
+    |> Enum.all?(fn {_, value} -> is_binary(value) and value != "" end)
+
+    case is_valid do
+      true ->
+        {channel_ref, channel_secret} = ChannelAuthenticator.create_channel(application_ref, user_ref)
+        response = %{channel_ref: channel_ref, channel_secret: channel_secret}
+
+        conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(200, Jason.encode!(response))
+
+      false ->
+        invalid_body(conn)
+    end
   end
 
   defp route_create(_body, conn) do
@@ -60,13 +70,31 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
      }, conn
    ) do
 
-    Task.start(fn -> PubSubCore.deliver_to_channel(channel_ref,
-      Map.drop(message, [:channel_ref]) |> ProtocolMessage.to_protocol_message)
+    # assert that minimum required fields are present
+    is_valid = message
+    |> Enum.all?(fn {key, value} ->
+      case key do
+        :message_data ->
+          not is_nil(value)
+        :correlation_id ->
+          true
+        _ ->
+          is_binary(value) and value != ""
+      end
     end)
 
-    conn
-    |> put_resp_header("content-type", "application/json")
-    |> send_resp(202, Jason.encode!(%{result: "Ok"}))
+    case is_valid do
+      true ->
+        Task.start(fn -> PubSubCore.deliver_to_channel(channel_ref,
+          Map.drop(message, [:channel_ref]) |> ProtocolMessage.to_protocol_message)
+        end)
+        conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(202, Jason.encode!(%{result: "Ok"}))
+
+      false ->
+        invalid_body(conn)
+    end
   end
 
   defp route_deliver(_, conn), do: invalid_body(conn)
@@ -75,6 +103,6 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp invalid_body(conn = %{body_params: invalid_body}) do
     conn
     |> put_resp_header("content-type", "application/json")
-    |> send_resp(400, Jason.encode!(%{error: "Invalid request #{inspect(invalid_body)}"}))
+    |> send_resp(400, Jason.encode!(%{error: "Invalid request", request: invalid_body}))
   end
 end

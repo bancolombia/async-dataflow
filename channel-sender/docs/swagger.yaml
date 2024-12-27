@@ -6,15 +6,11 @@ info:
   license:
     name: MIT
     url: https://github.com/bancolombia/async-dataflow-channel-sender/blob/master/LICENSE
-  version: 0.1.0
+  version: 0.2.0
 servers:
 - url: https://virtserver.swaggerhub.com/santitigaga/async-data-flow-channel-sender/0.1.0
   description: SwaggerHub API Auto Mocking
-tags:
-- name: /ext/channel/
-  description: Secured Admin-only calls
-- name: channel
-  description: Available operations for channels
+
 paths:
   /create:
     post:
@@ -22,40 +18,37 @@ paths:
       - /ext/channel/
       summary: Create Channel and session
       description: |
-        By passing in the appropriate options, you can search for
-        available inventory in the system
+        By passing in the appropriate options, you can regisster a new channel in the system
       operationId: createChannel
       requestBody:
         description: Channel to create
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Channel'
+              $ref: '#/components/schemas/ChannelRequest'
       responses:
         "200":
           description: channel_ref and channel_secret
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  channel_ref:
-                    type: string
-                    example: UNIQUE APPLICATION IDENTIFIER
-                  channel_secret:
-                    type: string
-                    example: TOKEN
-        "412":
-          description: No application {application_ref} found
+                $ref: '#/components/schemas/Credentials'
+        "400":
+          description: Bad request due to invalid body or missing required fields    
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidRequest'
+
   /deliver_message:
     post:
       tags:
       - /ext/channel/
       summary: Deliver an event from a message
-      description: Deliver an event from a message to a channel
+      description: Deliver an event message to a previusly registered channel_ref
       operationId: deliverMessage
       requestBody:
-        description: Inventory item to add
+        description: "Triggers internal workflow to deliver message. The message may not be delivered immediately, or not at all. Depends if the channel_ref was previusly registered. The message_data schema is not enforced, but its recommeded to use CloudEvents."
         content:
           application/json:
             schema:
@@ -63,8 +56,20 @@ paths:
       responses:
         "202":
           description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    example: Ok
         "400":
-          description: Invalid request
+          description: Bad request due to invalid body or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidRequest'          
 components:
   schemas:
     Message:
@@ -88,11 +93,11 @@ components:
           example: d290f1ee-6c54-4b01-90e6-d701748f0851
         message_data:
           type: object
-          example: '{}'
+          example: {"product_id": "1234", "product_name": "product name"}
         event_name:
           type: string
           example: event.productCreated
-    Channel:
+    ChannelRequest:
       required:
       - application_ref
       - user_ref
@@ -100,7 +105,30 @@ components:
       properties:
         application_ref:
           type: string
-          example: UNIQUE APPLICATION IDENTIFIER
+          example: app01
         user_ref:
           type: string
-          example: USER@DOMAIN
+          example: jhon.doe
+    Credentials:
+      required:
+      - channel_ref
+      - channel_secret
+      type: object
+      properties:
+        channel_ref:
+          type: string
+          example: beec634503c238f5b84f737275bfd4ba.855b8193bb6f419381eac6cc087aea3f
+        channel_secret:
+          type: string
+          example: SFMyNTY.g2gDaANtAAAAQWJlZWM2MzQ1MDNjMjM4ZjViODRmNzM3Mjc1YmZkNGJhLjg1NWI4MTkzYmI2ZjQxOTM4MWVhYzZjYzA4N2FlYTNmbQAAAAZ4eHh4eHhtAAAAB3h4eHh4eHhuBgDbcXMIlAFiAAFRgA.......
+    InvalidRequest:
+      required:
+      - error
+      - request
+      type: object
+      properties:
+        error:
+          type: string
+          example: Invalid request
+        request:
+          type: object

@@ -132,6 +132,12 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
     Process.sleep(500)
     assert Process.alive?(channel_pid) == false
+
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
+      Helper.compile(:channel_sender_ex)
+    end)
   end
 
   test "Should not restart channel when terminated normal (Waiting timeout)" do
@@ -145,7 +151,11 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Process.sleep(300)
 
     assert :noproc == ChannelRegistry.lookup_channel_addr(channel)
-    Helper.compile(:channel_sender_ex)
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
+      Helper.compile(:channel_sender_ex)
+    end)
   end
 
   test "Should send pending messages to twin process when terminated by supervisor merge (name conflict)" do
