@@ -8,12 +8,16 @@ spec:
     istio: ingressgateway # use istio default controller
   servers:
     - port:
-        name: secure-port
-        number: 443
-        protocol: HTTPS
-      tls:
-        mode: SIMPLE
-        credentialName: adfsender-credential
+        name: default-port
+        number: 80
+        protocol: HTTP
+    # - port:
+    #     name: secure-port
+    #     number: 443
+    #     protocol: HTTPS
+    #   tls:
+    #     mode: SIMPLE
+    #     credentialName: adfsender-credential
       hosts:
         - adfsender.example.com
 ---
@@ -46,7 +50,10 @@ metadata:
   namespace: sendernm
 spec:
   hosts:
-    - adfsender
+    - adfsender            # when exposed internally use the service name
+    # - adfsender.example.com # when exposed externally use FQDN
+  # gateways:
+  #   - adfsender-gw          # when exposed externally link to the gateway
   http:
     - match:
         - uri:
@@ -77,9 +84,6 @@ metadata:
 spec:
   hosts:
   - adfsender-headless
-  # - adfsender-headless.sendernm.svc.cluster.local
-  # - adfsender-0.adfsender-headless.sendernm.svc.cluster.local
-  # - adfsender-1.adfsender-headless.sendernm.svc.cluster.local
   tcp:
   - match:
     - port: 4369

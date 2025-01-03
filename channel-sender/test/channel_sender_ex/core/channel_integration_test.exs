@@ -29,6 +29,8 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
+    {:ok, _} = Application.ensure_all_started(:telemetry)
+
     Helper.compile(:channel_sender_ex)
 
     ext_message = %{
@@ -80,6 +82,27 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Process.sleep(100)
   end
 
+  test "Should send messages collected while in wait state", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+
+    # send 2 messages
+    assert {:accepted_waiting, _, _} = deliver_message(channel, "99")
+    assert {:accepted_waiting, _, _} = deliver_message(channel, "100")
+
+    # connect
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+
+    # recv 2 pending messages
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"99\",\"\",\"event.test\",\"MessageData12_3245rs42112aa99\"]"}}
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"100\",\"\",\"event.test\",\"MessageData12_3245rs42112aa100\"]"}}
+
+    :gun.close(conn)
+    Process.sleep(100)
+  end
+
   test "Should change channel state to waiting when connection closes", %{
     port: port,
     channel: channel,
@@ -109,6 +132,12 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
     Process.sleep(500)
     assert Process.alive?(channel_pid) == false
+
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
+      Helper.compile(:channel_sender_ex)
+    end)
   end
 
   test "Should not restart channel when terminated normal (Waiting timeout)" do
@@ -122,7 +151,11 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Process.sleep(300)
 
     assert :noproc == ChannelRegistry.lookup_channel_addr(channel)
-    Helper.compile(:channel_sender_ex)
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
+      Helper.compile(:channel_sender_ex)
+    end)
   end
 
   test "Should send pending messages to twin process when terminated by supervisor merge (name conflict)" do

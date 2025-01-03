@@ -12,8 +12,7 @@ defmodule ChannelSenderEx.Core.NodeObserverTest do
 
     {:ok, _pid_registry} = Horde.Registry.start_link(name: ChannelRegistry, keys: :unique)
 
-    {:ok, _pid_supervisor} =
-      Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+    Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
 
     {:ok, pid: pid}
   end

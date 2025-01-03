@@ -7,7 +7,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ProtocolMessage
-
+  alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
 
   @type channel_ref() :: String.t()
@@ -19,14 +19,20 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   @spec deliver_to_channel(channel_ref(), ProtocolMessage.t()) :: any()
   def deliver_to_channel(channel_ref, message) do
     action_fn = fn _ -> do_deliver_to_channel(channel_ref, message) end
-    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn -> raise("No channel found") end)
+    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
+      CustomTelemetry.execute_custom_event([:adf, :message, :nodelivered], %{count: 1})
+      raise("No channel found")
+    end)
+  rescue
+    e ->
+      Logger.warning("Could not deliver message after #{@max_retries} retries, to channel: \"#{channel_ref}\". Cause: #{inspect(e)}")
+      :error
   end
 
   defp do_deliver_to_channel(channel_ref, message) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       pid when is_pid(pid) -> Channel.deliver_message(pid, message)
       :noproc ->
-        Logger.warning("Channel #{channel_ref} not found, retrying message delivery request...")
         :retry
     end
   end

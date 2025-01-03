@@ -78,7 +78,7 @@ channel_sender_ex:
     # for more information about the kubernetes configuration with libcluser
 
 logger:
-  level: debug
+  level: info
 
 
 

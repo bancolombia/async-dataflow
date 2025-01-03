@@ -22,7 +22,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
-
+  alias alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
 
   @type channel_ref() :: String.t()
@@ -70,7 +70,7 @@ defmodule ChannelSenderEx.Transport.Socket do
     action_fn = fn _ -> check_channel_registered(channel_ref) end
     # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
     # with a backoff strategy of 100ms initial delay and max of 500ms delay.
-    execute(100, 500, 3, action_fn, fn ->
+    execute(50, 300, 3, action_fn, fn ->
       Logger.error("Socket unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
       {:error, @invalid_channel_code}
     end)
@@ -131,10 +131,17 @@ defmodule ChannelSenderEx.Transport.Socket do
       {:ok, application, user_ref} ->
         monitor_ref = notify_connected(channel)
 
+        CustomTelemetry.execute_custom_event([:adf, :socket, :connection], %{count: 1})
+
         {_commands = [auth_ok_frame(encoder)],
          {channel, :connected, encoder, {application, user_ref, monitor_ref}, %{}}}
 
       :unauthorized ->
+
+        CustomTelemetry.execute_custom_event([:adf, :socket, :badrequest],
+        %{count: 1},
+        %{request_path: "/ext/socket", status: 101, code: @invalid_secret_code})
+
         Logger.error("Socket unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}")
         {_commands = [{:close, @invalid_secret_code, "Invalid token for channel"}],
          {channel, :unauthorized}}
@@ -228,6 +235,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def terminate(reason, _partial_req, state) do
+    CustomTelemetry.execute_custom_event([:adf, :socket, :disconnection], %{count: 1})
     case state do
       {channel_ref, _, _, _, _} ->
         Logger.warning("Socket for channel #{channel_ref} terminated with reason: #{inspect(reason)}")
@@ -237,7 +245,9 @@ defmodule ChannelSenderEx.Transport.Socket do
           _ ->
             socket_event_bus.notify_event({:socket_down_reason, channel_ref, reason}, self())
         end
-      _ -> :ok
+      _ ->
+        Logger.warning("Socket terminated with reason: #{reason} and state: #{inspect(state)}")
+        :ok
     end
   end
 

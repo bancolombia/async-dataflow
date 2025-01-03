@@ -23,13 +23,21 @@ data:
       on_connected_channel_reply_timeout: 2000
       accept_channel_reply_timeout: 1000
       no_start: false
+      max_unacknowledged_queue: 100
+      max_unacknowledged_retries: 10
+      max_pending_queue: 100
+            
+      channel_shutdown_socket_disconnect: 
+        on_clean_close: 30
+        on_disconnection: 60
+
       topology:
         strategy: Elixir.Cluster.Strategy.Kubernetes.DNS
         config: 
           service: "adfsender-headless"
           application_name: "channel_sender_ex"
           namespace: "sendernm"
-          polling_interval: 5000
+          polling_interval: 20000
 
     logger:
-      level: debug    
+      level: info    

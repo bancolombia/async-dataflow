@@ -56,6 +56,17 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
   end
 
+  test "Should not create channel on bad request due to missing fields" do
+    body = Jason.encode!(%{application_ref: "some_application", user_ref: nil})
+
+    conn = conn(:post, "/ext/channel/create", body)
+    |> put_req_header("content-type", "application/json")
+
+    conn = RestController.call(conn, @options)
+
+    assert conn.status == 400
+  end
+
   test "Should send message on request" do
 
     body =
@@ -97,7 +108,26 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
     assert conn.status == 400
 
     assert %{"error" => "Invalid request" <> _rest} = Jason.decode!(conn.resp_body)
+  end
 
+  test "Should fail on invalid body due to invalid values" do
+    body =
+      Jason.encode!(%{
+        channel_ref: nil,
+        message_id: "message_id",
+        correlation_id: "correlation_id",
+        message_data: "message_data",
+        event_name: "event_name"
+      })
+
+    conn = conn(:post, "/ext/channel/deliver_message", body)
+      |> put_req_header("content-type", "application/json")
+
+    conn = RestController.call(conn, @options)
+
+    assert conn.status == 400
+
+    assert %{"error" => "Invalid request" <> _rest} = Jason.decode!(conn.resp_body)
   end
 
 end

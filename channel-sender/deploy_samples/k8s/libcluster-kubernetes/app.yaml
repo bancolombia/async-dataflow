@@ -14,7 +14,10 @@ spec:
       port: 8082
     - name: rest-http
       targetPort: 8081
-      port: 8081        
+      port: 8081
+    - name: metrics-http
+      targetPort: 9568
+      port: 9568               
 ---
 ## headless service to allow pod to pod comunication for epmd port
 apiVersion: v1
@@ -34,7 +37,7 @@ spec:
       protocol: TCP     
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: adfsender
   namespace: sendernm
@@ -46,29 +49,31 @@ spec:
     matchLabels:
       app: adfsender
       cluster: beam
-  serviceName: "adfsender-headless"
   template:
     metadata:
       annotations:
         ## annotations required for istio-proxy to detect ports
         traffic.sidecar.istio.io/includeOutboundPorts: "4369"
         traffic.sidecar.istio.io/includeInboundPorts: "4369, 8081, 8082"
+        prometheus.io/port: "9568"
+        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: "true"        
       labels:
         app: adfsender
         cluster: beam
     spec:
       containers:
         - name: adfsender
-          image: bancolombia/async-dataflow-channel-sender:0.1.5
+          image: bancolombia/async-dataflow-channel-sender:0.1.9
           env:
             - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name    # requires read-pods-role role 
-            - name: POD_NAME_DNS  # see declared file env.sh in configMap
+            - name: POD_NAME_DNS              # see declared file env.sh in configMap
               value: adfsender-headless.sendernm.svc.cluster.local                          
             - name: RELEASE_COOKIE
-              value: "secret"
+              value: "put_some_random_string_here"
           ports:
             - name: rest-http
               protocol: TCP

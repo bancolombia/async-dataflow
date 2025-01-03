@@ -29,4 +29,15 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBusTest do
     end
   end
 
+  test "Should nt find process" do
+    channel = :some_channel
+    pid = :c.pid(0, 250, 0)
+    socket_pid = self()
+
+    with_mocks([
+      {ChannelRegistry, [], [lookup_channel_addr: fn(_) -> :noproc end]},
+      ]) do
+        assert :noproc == SocketEventBus.notify_event({:socket_down_reason, channel, :normal}, socket_pid)
+    end
+  end
 end

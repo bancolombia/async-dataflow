@@ -11,7 +11,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCoreTest do
       ChannelRegistry, [lookup_channel_addr: fn(_) -> :noproc end]
     ) do
 
-      assert_raise RuntimeError, "No channel found", fn -> PubSubCore.deliver_to_channel("channel_ref", %{}) end
+      assert :error == PubSubCore.deliver_to_channel("channel_ref", %{})
 
     end
 

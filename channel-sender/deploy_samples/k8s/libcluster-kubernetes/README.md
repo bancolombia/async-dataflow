@@ -106,6 +106,8 @@ Building an Erlang Cluster with `libcluster` strategy named:  [`Cluster.Strategy
 
 - A headless service: This is a kubernetes service without an IP address. This one instead returns pod IP, allowing pods to comunicate each other. See service named `adfsender-headless` in [app.yaml](./app.yaml).
 
+- This strategy can be deployed as a `Statefulset` or `Deployment`.
+
 - A service-account that allows listing endpoints / pods: this is necesary in this strategy due the need to know available pods in the statefulset. See [roles.yaml](./roles.yaml). 
 
   *IMPORTANT*: If using a service-account its not allowed or desired check the other two supported strategies in `libcluster`: Cluster.Strategy.Kubernetes.DNS or Cluster.Strategy.Kubernetes.DNSSRV

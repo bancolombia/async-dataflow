@@ -106,6 +106,8 @@ Building an Erlang Cluster with `libcluster` strategy named:  [`Cluster.Strategy
 
 - A headless service: This is a kubernetes service without an IP address. This one instead returns pod IP, allowing pods to comunicate each other. See service named `adfsender-headless` in [app.yaml](./app.yaml).
 
+- A this can be deployed as a `Statefulset` or `Deployment`.
+
 **NOTE**: Unlike strategy `Cluster.Strategy.Kubernetes`, a service-account it is not required.
 
 ### 2.1. ADF Sender configuration
@@ -139,7 +141,7 @@ channel_sender_ex:
       service: "adfsender-headless"
       application_name: "channel_sender_ex"
       namespace: "sendernm"
-      polling_interval: 5000
+      polling_interval: 15000
   # --- end libcluster configuration ---
 
 logger:
