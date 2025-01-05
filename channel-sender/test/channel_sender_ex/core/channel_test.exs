@@ -5,6 +5,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   import Mock
 
   alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Core.Channel.Data
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
@@ -62,6 +63,11 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     message_to_send = ProtocolMessage.to_protocol_message(message)
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
+
+    {_, app, user} = init_args
+    data = %Data{application: app, user_ref: user}
+    assert data.application == app
+
     Process.exit(pid, :kill)
   end
 

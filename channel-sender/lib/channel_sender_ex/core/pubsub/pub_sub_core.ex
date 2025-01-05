@@ -11,12 +11,18 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
 
   @type channel_ref() :: String.t()
+  @type app_ref() :: String.t()
+  @type delivery_result() :: %{accepted_waiting: number(), accepted_connected: number()}
 
   @max_retries 10
   @min_backoff 50
   @max_backoff 2000
 
-  @spec deliver_to_channel(channel_ref(), ProtocolMessage.t()) :: any()
+  @doc """
+  Delivers a message to a single channel associated with the given channel reference.
+  If the channel is not found, the message is retried up to @max_retries times with exponential backoff.
+  """
+  @spec deliver_to_channel(channel_ref(), ProtocolMessage.t()) :: Channel.deliver_response()
   def deliver_to_channel(channel_ref, message) do
     action_fn = fn _ -> do_deliver_to_channel(channel_ref, message) end
     execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
@@ -27,6 +33,28 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
     e ->
       Logger.warning("Could not deliver message after #{@max_retries} retries, to channel: \"#{channel_ref}\". Cause: #{inspect(e)}")
       :error
+  end
+
+  @doc """
+  Delivers a message to all channels associated with the given application reference. The message is delivered to each channel in a separate process.
+  No retries are performed since the message is delivered to existing and queriyable channels at the given time.
+  """
+  @spec deliver_to_app_channels(app_ref(), ProtocolMessage.t()) :: delivery_result()
+  def deliver_to_app_channels(app_ref, message) do
+    ChannelRegistry.query_by_app(app_ref)
+    |> Stream.map(fn pid -> Channel.deliver_message(pid, message) end)
+    |> Enum.frequencies()
+  end
+
+  @doc """
+  Delivers a message to all channels associated with the given user reference. The message is delivered to each channel in a separate process.
+  No retries are performed since the message is delivered to existing and queriyable channels at the given time.
+  """
+  @spec deliver_to_user_channels(app_ref(), ProtocolMessage.t()) :: delivery_result()
+  def deliver_to_user_channels(user_ref, message) do
+    ChannelRegistry.query_by_user(user_ref)
+    |> Stream.map(fn pid -> Channel.deliver_message(pid, message) end)
+    |> Enum.frequencies()
   end
 
   defp do_deliver_to_channel(channel_ref, message) do

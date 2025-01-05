@@ -38,40 +38,78 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvalidRequest'
+                $ref: '#/components/schemas/InvalidBodyResponse'
 
   /deliver_message:
     post:
       tags:
       - /ext/channel/
-      summary: Deliver an event from a message
-      description: Deliver an event message to a previusly registered channel_ref
+      summary: Deliver an event message to a channel or group of channels
+      description: Deliver an event message to a previusly registered channel_ref, or deliver a message to all channels related to an specific app_ref or user_ref
       operationId: deliverMessage
       requestBody:
         description: "Triggers internal workflow to deliver message. The message may not be delivered immediately, or not at all. Depends if the channel_ref was previusly registered. The message_data schema is not enforced, but its recommeded to use CloudEvents."
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Message'
+              oneOf:
+                - $ref: '#/components/schemas/Message'
+                - $ref: '#/components/schemas/AppMessage'
+                - $ref: '#/components/schemas/UserMessage'
       responses:
         "202":
           description: Ok
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  result:
-                    type: string
-                    example: Ok
+                $ref: '#/components/schemas/SuccessResponse'
         "400":
           description: Bad request due to invalid body or missing required fields
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvalidRequest'          
+                $ref: '#/components/schemas/InvalidBodyResponse'       
+
+  /deliver_batch:
+    post:
+      tags:
+      - /ext/channel/
+      summary: Batch deliver up to 10 event messages
+      description: Deliver event messages to a group of channel_refs
+      operationId: deliverBatchMessages
+      requestBody:
+        description: ""
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Messages'
+      responses:
+        "202":
+          description: If all messages were accepted SuccessResponse is returned. If some messages were rejected PartialSuccessResponse is returned.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - $ref: '#/components/schemas/PartialSuccessResponse'
+        "400":
+          description: Bad request due to invalid body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidBodyResponse'   
+
 components:
   schemas:
+    Messages:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          items: 
+            $ref: '#/components/schemas/Message'  
     Message:
       required:
       - channel_ref
@@ -97,6 +135,56 @@ components:
         event_name:
           type: string
           example: event.productCreated
+    AppMessage:
+      required:
+      - app_ref
+      - event_name
+      - message_data
+      - message_id
+      type: object
+      properties:
+        app_ref:
+          type: string
+          example: app01
+        message_id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        correlation_id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        message_data:
+          type: object
+          example: {"product_id": "1234", "product_name": "product name"}
+        event_name:
+          type: string
+          example: event.productCreated          
+    UserMessage:
+      required:
+      - user_ref
+      - event_name
+      - message_data
+      - message_id
+      type: object
+      properties:
+        user_ref:
+          type: string
+          example: user.1
+        message_id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        correlation_id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        message_data:
+          type: object
+          example: {"product_id": "1234", "product_name": "product name"}
+        event_name:
+          type: string
+          example: event.productCreated              
     ChannelRequest:
       required:
       - application_ref
@@ -121,7 +209,29 @@ components:
         channel_secret:
           type: string
           example: SFMyNTY.g2gDaANtAAAAQWJlZWM2MzQ1MDNjMjM4ZjViODRmNzM3Mjc1YmZkNGJhLjg1NWI4MTkzYmI2ZjQxOTM4MWVhYzZjYzA4N2FlYTNmbQAAAAZ4eHh4eHhtAAAAB3h4eHh4eHhuBgDbcXMIlAFiAAFRgA.......
-    InvalidRequest:
+    SuccessResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          example: Ok
+    PartialSuccessResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          example: partial-success
+        accepted_messages:
+          type: integer
+          example: 5
+        rejected_messages:
+          type: integer
+          example: 2
+        discarded:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'            
+    InvalidBodyResponse:
       required:
       - error
       - request

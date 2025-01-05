@@ -35,8 +35,8 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
   @spec channel_child_spec(channel_init_args()) :: any()
   @compile {:inline, channel_child_spec: 1}
-  def channel_child_spec(channel_args = {channel_ref, _application, _user_ref}) do
-    channel_child_spec(channel_args, via_tuple(channel_ref))
+  def channel_child_spec(channel_args = {channel_ref, application, user_ref}) do
+    channel_child_spec(channel_args, via_tuple(channel_ref, application, user_ref))
   end
 
   @compile {:inline, channel_child_spec: 2}
@@ -49,8 +49,8 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     }
   end
 
-  defp via_tuple(name) do
-    {:via, Horde.Registry, {ChannelSenderEx.Core.ChannelRegistry, name}}
+  defp via_tuple(ref, app, usr) do
+    {:via, Horde.Registry, {ChannelSenderEx.Core.ChannelRegistry, ref, {app, usr}}}
   end
 
   defp get_shutdown_tolerance do

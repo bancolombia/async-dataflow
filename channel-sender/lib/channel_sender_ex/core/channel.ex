@@ -17,6 +17,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @type output_message() :: {delivery_ref(), ProtocolMessage.t()}
   @type pending_ack() :: BoundedMap.t()
   @type pending_sending() :: BoundedMap.t()
+  @type deliver_response :: :accepted_waiting | :accepted_connected
 
   defmodule Data do
     @moduledoc """
@@ -81,7 +82,6 @@ defmodule ChannelSenderEx.Core.Channel do
   @doc """
   operation to request a message delivery
   """
-  @type deliver_response :: :accepted_waiting | :accepted_connected
   @spec deliver_message(:gen_statem.server_ref(), ProtocolMessage.t()) :: deliver_response()
   def deliver_message(server, message) do
     GenStateMachine.call(server, {:deliver_message, message},
