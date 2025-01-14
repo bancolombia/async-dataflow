@@ -169,7 +169,7 @@ class AsyncClient {
   }
 
   bool isOpen() {
-    return _transport!.isOpen();
+    return _transport?.isOpen() ?? false;
   }
 
   Map<String, dynamic> _buildHeaders() {
@@ -221,7 +221,7 @@ class AsyncClient {
   }
 
   void _onTransportClose(int code, String reason) {
-    _socketStreamSub!.cancel();
+    _socketStreamSub?.cancel();
     _socketStreamSub = null;
     _transport = null;
 
@@ -247,11 +247,11 @@ class AsyncClient {
 
   void _onTransportError(Object error) {
     _log.severe('Transport error: $error');
-    if (!_transport!.isOpen()) {
+    if (!_transport?.isOpen()?? false) {
       _log.severe(
           'Transport error and channel is not open, Scheduling reconnect...');
 
-      _socketStreamSub!.cancel();
+      _socketStreamSub?.cancel();
       _socketStreamSub = null;
       _transport = null;
 
@@ -260,7 +260,7 @@ class AsyncClient {
   }
 
   void _onListen() {
-    _socketStreamSub = _transport!.subscribe(cancelOnErrorFlag: true);
-    _transport!.send('Auth::$_actualToken');
+    _socketStreamSub = _transport?.subscribe(cancelOnErrorFlag: true);
+    _transport?.send('Auth::$_actualToken');
   }
 }
