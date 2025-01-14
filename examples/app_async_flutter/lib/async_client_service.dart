@@ -1,7 +1,7 @@
 import 'package:app_async_flutter/application/app_config.dart';
 import 'package:app_async_flutter/domain/model/channel_credentials.dart';
 import 'package:app_async_flutter/domain/model/gateway/async_client_gateway.dart';
-import 'package:channel_sender_client/adf_client.dart';
+import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
