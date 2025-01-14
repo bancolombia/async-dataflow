@@ -247,7 +247,7 @@ class AsyncClient {
 
   void _onTransportError(Object error) {
     _log.severe('Transport error: $error');
-    if (!_transport?.isOpen()?? false) {
+    if (!(_transport?.isOpen()?? false)) {
       _log.severe(
           'Transport error and channel is not open, Scheduling reconnect...');
 
