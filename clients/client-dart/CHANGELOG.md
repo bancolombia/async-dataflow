@@ -1,5 +1,7 @@
 # CHANGELOG
-## [2.0.1] - Null safety
+## [2.0.1] 
+- Null safety
+- Refactor
 ## [2.0.0] - Add Channel Message to `subscribeTo`
 ## [1.0.2] - Add Dart Code Linter
 ## [1.0.1] - Update of dependencies to comply with null safety definition

@@ -47,11 +47,10 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
   String? _checkString(String? data) {
     if (data == null) {
       return data;
-    } else if (data.trim().isEmpty) {
-      return null;
-    } else {
-      return data.trim();
     }
+    var trim = data.trim();
+
+    return trim.isEmpty ? null : data.trim();
   }
 
   dynamic _formatPayload(String payload) {

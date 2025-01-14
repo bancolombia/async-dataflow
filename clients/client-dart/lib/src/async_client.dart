@@ -8,6 +8,7 @@ import 'package:web_socket_channel/io.dart';
 import 'async_config.dart';
 import 'channel_message.dart';
 import 'retry_timer.dart';
+import 'status_codes.dart';
 import 'transport.dart';
 
 /// Async Data Flow Low Level Client
@@ -16,7 +17,6 @@ import 'transport.dart';
 /// Sender.
 ///
 class AsyncClient {
-  final _log = Logger('AsyncClient');
   static const String JSON_FLOW = 'json_flow';
   static const String BINARY_FLOW = 'binary_flow';
   static const String RESPONSE_AUTH_OK = 'AuthOk';
@@ -24,8 +24,9 @@ class AsyncClient {
   static const String RESPONSE_NEW_TOKEN = ':n_token';
   static const String EVENT_KIND_SYSTEM = 'system_event';
   static const String EVENT_KIND_USER = 'user_event';
-  static final Random _random = Random.secure();
 
+  final _log = Logger('AsyncClient');
+  static final Random _random = Random.secure();
   final AsyncConfig _config;
 
   late List<String> _subProtocols;
@@ -54,6 +55,7 @@ class AsyncClient {
       _openChannel();
       _buildTransport();
       _onListen();
+
       return 1;
     });
   }
@@ -62,11 +64,12 @@ class AsyncClient {
     _localStream.close();
   }
 
-  /// Opens up the connection and performs auth flow.
-  ///
+  // Opens up the connection and performs auth flow.
+
   AsyncClient connect() {
     if (_transport != null && _transport!.isOpen()) {
-      _log.warning('Connect: Transport is aready open');
+      _log.warning('Connect: Transport is already open');
+
       return this;
     }
 
@@ -87,6 +90,7 @@ class AsyncClient {
           } else {
             kind = EVENT_KIND_USER;
           }
+
           return [message, kind];
         })
         .where((data) =>
@@ -96,6 +100,7 @@ class AsyncClient {
           // performs an ack of the user message received
           final message = data[0] as ChannelMessage;
           _ackMessage(message);
+
           return message;
         });
 
@@ -104,6 +109,7 @@ class AsyncClient {
 
     _log.finest('ADF connection');
     _broadCastStream = _broadCastStream.asBroadcastStream();
+
     return this;
   }
 
@@ -118,8 +124,10 @@ class AsyncClient {
   }
 
   StreamSubscription<ChannelMessage> subscribeToMany(
-      List<String>? eventFilters, Function? onData,
-      {Function? onError}) {
+    List<String>? eventFilters,
+    Function? onData, {
+    Function? onError,
+  }) {
     if (eventFilters == null || eventFilters.isEmpty) {
       throw ArgumentError('Invalid event filter(s)');
     } else {
@@ -132,6 +140,7 @@ class AsyncClient {
     if (onData == null) {
       throw ArgumentError('Invalid onData function');
     }
+
     return _broadCastStream.listen((message) {
       if (eventFilters.contains(message.event)) {
         onData(message);
@@ -160,8 +169,13 @@ class AsyncClient {
 
   void _buildTransport() {
     try {
-      _transport = Transport(_channel, _localStream, _onTransportClose,
-          _onTransportError, _config.heartbeatInterval);
+      _transport = Transport(
+        _channel,
+        _localStream,
+        _onTransportClose,
+        _onTransportError,
+        _config.heartbeatInterval,
+      );
       _log.finest('Transport configured');
     } catch (e) {
       _log.severe('Error configuring transport: $e');
@@ -179,20 +193,22 @@ class AsyncClient {
     headers['sec-websocket-version'] = '13';
     headers['sec-websocket-protocol'] = _subProtocols;
     headers['sec-websocket-key'] = _generateSocketKey();
+
     return headers;
   }
 
   String _generateSocketKey() {
     var values = List<int>.generate(8, (i) => _random.nextInt(255));
+
     return base64Url.encode(values);
   }
 
-  /// Disconnects client with ADF channel sender
-  ///
+  // Disconnects client with ADF channel sender
   Future<bool> disconnect() async {
-    await _transport?.close(1000, 'Client disconnect');
+    await _transport?.close(StatusCodes.ok, 'Client disconnect');
     _connectRetryTimer.reset();
     _log.finer('transport closed');
+
     return true;
   }
 
@@ -205,18 +221,18 @@ class AsyncClient {
     _transport?.pendingHeartbeatRef = null;
   }
 
-  /// Function to handle the refreshed channel secret sent by the server
-  ///
+  // Function to handle the refreshed channel secret sent by the server
   void _handleNewToken(ChannelMessage message) {
     _actualToken = message.payload;
     _ackMessage(message);
   }
 
   void _ackMessage(ChannelMessage? message) {
-    if (message != null &&
-        message.messageId != null &&
-        message.messageId!.isNotEmpty) {
-      _transport?.send('Ack::${message.messageId}');
+    if (message != null) {
+      var messageId = message.messageId;
+      if (messageId != null && messageId.isNotEmpty) {
+        _transport?.send('Ack::${message.messageId}');
+      }
     }
   }
 
@@ -226,20 +242,23 @@ class AsyncClient {
     _transport = null;
 
     switch (code) {
-      case 1000:
+      case StatusCodes.ok:
         {
           _log.info('Transport closed by client, not reconnecting');
         }
         break;
-      case 1008:
+      case StatusCodes.credentials_error:
         {
           _log.severe(
-              'Transport closed due invalid credentials, not reconnecting!');
+            'Transport closed due invalid credentials, not reconnecting!',
+          );
         }
         break;
       default:
         {
-          _log.severe('Transport not closed cleanly, Scheduling reconnect...');
+          _log.severe(
+            'Transport not closed cleanly, Scheduling reconnect... code: $code',
+          );
           _connectRetryTimer.schedule();
         }
     }
@@ -249,7 +268,8 @@ class AsyncClient {
     _log.severe('Transport error: $error');
     if (!isOpen()) {
       _log.severe(
-          'Transport error and channel is not open, Scheduling reconnect...');
+        'Transport error and channel is not open, Scheduling reconnect...',
+      );
 
       _socketStreamSub?.cancel();
       _socketStreamSub = null;

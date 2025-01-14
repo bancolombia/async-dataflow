@@ -24,8 +24,13 @@ class Transport {
 
   MessageDecoder? msgDecoder;
 
-  Transport(this._webSocketCh, this._localStream, this._signalSocketClose,
-      this._signalSocketError, this._heartbeatIntervalMs);
+  Transport(
+    this._webSocketCh,
+    this._localStream,
+    this._signalSocketClose,
+    this._signalSocketError,
+    this._heartbeatIntervalMs,
+  );
 
   bool isOpen() {
     return _webSocketCh.innerWebSocket != null && readyState() == 1;
@@ -37,6 +42,7 @@ class Transport {
     if (_webSocketCh.innerWebSocket != null) {
       readyState = _webSocketCh.innerWebSocket!.readyState;
     }
+
     return readyState;
   }
 

@@ -10,33 +10,34 @@ class RetryTimer {
   int _initialWait = 100;
   int _maxWait = 6000;
   late Function _jitterFn;
-  int _defaultJitterFn(int num) => Utils.jitter(num, 0.25);
+  int _defaultJitterFn(int num) {
+    var randomFactor = 0.25;
+
+    return Utils.jitter(num, randomFactor);
+  }
+
   int _tries = 0;
   late Future Function() _function;
   Timer? _timer;
 
-  RetryTimer(Future Function() function,
-      {int? initialWait, int? maxWait, Function? jitterFn}) {
-    if (initialWait != null) {
-      _initialWait = initialWait;
-    }
-    if (maxWait != null) {
-      _maxWait = maxWait;
-    }
-    if (jitterFn == null) {
-      _jitterFn = _defaultJitterFn;
-    } else {
-      _jitterFn = jitterFn;
-    }
+  RetryTimer(
+    Future Function() function, {
+    int? initialWait,
+    int? maxWait,
+    Function? jitterFn,
+  }) {
+    _initialWait = initialWait ?? _initialWait;
+
+    _maxWait = maxWait ?? _maxWait;
+
+    _jitterFn = jitterFn ?? _defaultJitterFn;
     _function = function;
   }
 
   void reset() {
     _tries = 0;
-    if (_timer != null) {
-      _timer!.cancel();
-      _timer = null;
-    }
+    _timer?.cancel();
+    _timer = null;
     _log.finest('Retry timer reset');
   }
 
@@ -54,7 +55,6 @@ class RetryTimer {
   }
 
   int _delay() {
-    var delay = Utils.expBackoff(_initialWait, _maxWait, _tries, _jitterFn);
-    return delay;
+    return Utils.expBackoff(_initialWait, _maxWait, _tries, _jitterFn);
   }
 }
