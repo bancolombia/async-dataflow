@@ -55,7 +55,7 @@ class Transport {
       _heartbeatTimer?.cancel();
     }
 
-    return await close(code, reason);
+    return await _webSocketCh.sink.close(code, reason);
   }
 
   int? getCloseCode() {
@@ -139,6 +139,7 @@ class Transport {
 
   void _abnormalClose(reason) {
     _log.fine('Abnormal Close');
+
     close(StatusCodes.error, reason);
   }
 
