@@ -237,7 +237,7 @@ class AsyncClient {
   }
 
   void _onTransportClose(int code, String reason) {
-    _log.fine('====close code: $code');
+    _log.fine('close code: $code');
     bool wasClosedClean = _transport?.isClosedCleanly() ?? true;
     cleanConnection();
 
