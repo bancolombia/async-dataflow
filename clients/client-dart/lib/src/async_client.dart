@@ -240,19 +240,18 @@ class AsyncClient {
     _log.fine('close code: $code');
     bool wasClosedClean = _transport?.isClosedCleanly() ?? true;
     cleanConnection();
+    if (!wasClosedClean) {
+      _log.severe(
+        'Transport not closed cleanly, Scheduling reconnect... code: $code',
+      );
 
+      _connectRetryTimer.schedule();
+      return;
+    }
     switch (code) {
       case StatusCodes.ok:
         {
-          if (wasClosedClean) {
-            _log.info('Transport closed by client, not reconnecting');
-          } else {
-            _log.severe(
-              'Transport not closed cleanly, Scheduling reconnect...',
-            );
-
-            _connectRetryTimer.schedule();
-          }
+          _log.info('Transport closed by client, not reconnecting');
         }
         break;
       case StatusCodes.credentials_error:
@@ -265,9 +264,8 @@ class AsyncClient {
       default:
         {
           _log.severe(
-            'Transport not closed cleanly, Scheduling reconnect... code: $code',
+            '-- Transport closed cleanly, not reconnecting! code: $code',
           );
-          _connectRetryTimer.schedule();
         }
     }
   }
