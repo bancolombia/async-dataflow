@@ -237,12 +237,22 @@ class AsyncClient {
   }
 
   void _onTransportClose(int code, String reason) {
+    _log.fine('====close code: $code');
+    bool wasClosedClean = _transport?.isClosedCleanly() ?? true;
     cleanConnection();
-    _log.fine('close code: $code');
+
     switch (code) {
       case StatusCodes.ok:
         {
-          _log.info('Transport closed by client, not reconnecting');
+          if (wasClosedClean) {
+            _log.info('Transport closed by client, not reconnecting');
+          } else {
+            _log.severe(
+              'Transport not closed cleanly, Scheduling reconnect...',
+            );
+
+            _connectRetryTimer.schedule();
+          }
         }
         break;
       case StatusCodes.credentials_error:

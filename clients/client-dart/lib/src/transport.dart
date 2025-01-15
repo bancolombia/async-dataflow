@@ -15,11 +15,12 @@ class Transport {
   final IOWebSocketChannel _webSocketCh;
   final StreamController<ChannelMessage> _localStream;
   final int _heartbeatIntervalMs;
-  final Function _signalSocketClose;
-  final Function _signalSocketError;
+  final Function(int, String) _signalSocketClose;
+  final Function(Object) _signalSocketError;
 
   String? pendingHeartbeatRef;
   int _ref = 0;
+  bool _closeWasClean = false;
   Timer? _heartbeatTimer;
 
   MessageDecoder? msgDecoder;
@@ -50,13 +51,15 @@ class Transport {
     return _webSocketCh.protocol;
   }
 
+  bool isClosedCleanly() => _closeWasClean;
+
   Future<dynamic> close(int code, String reason) async {
+    _closeWasClean = true;
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
 
-    await _webSocketCh.sink.close(code, reason);
-    return _signalSocketClose(_webSocketCh.closeCode, _webSocketCh.closeReason);
+    return await _webSocketCh.sink.close(code, reason);
   }
 
   int? getCloseCode() {
@@ -108,7 +111,8 @@ class Transport {
       _heartbeatTimer?.cancel();
     }
 
-    _signalSocketClose(_webSocketCh.closeCode, _webSocketCh.closeReason);
+    _signalSocketClose(_webSocketCh.closeCode ?? StatusCodes.error,
+        _webSocketCh.closeReason ?? '');
   }
 
   void resetHeartbeat() {
@@ -140,8 +144,8 @@ class Transport {
 
   void _abnormalClose(reason) {
     _log.fine('Abnormal Close');
-
-    close(StatusCodes.error, reason);
+    _closeWasClean = false;
+    _webSocketCh.sink.close(StatusCodes.error, reason);
   }
 
   String _makeRef() {
