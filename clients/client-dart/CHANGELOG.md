@@ -1,4 +1,7 @@
 # CHANGELOG
+## [2.0.2] 
+- Fix reconnection 
+- Refactor
 ## [2.0.1] 
 - Null safety
 - Refactor
