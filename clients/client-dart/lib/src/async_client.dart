@@ -31,7 +31,7 @@ class AsyncClient {
 
   late List<String> _subProtocols;
   Transport? _transport;
-  late String _actualToken;
+  late String _currentToken;
   late RetryTimer _connectRetryTimer;
   late IOWebSocketChannel _channel;
   // ----
@@ -41,7 +41,7 @@ class AsyncClient {
   // ----
 
   AsyncClient(this._config) {
-    _actualToken = _config.channelSecret;
+    _currentToken = _config.channelSecret;
 
     _subProtocols = [JSON_FLOW];
     if (_config.enableBinaryTransport) {
@@ -94,11 +94,11 @@ class AsyncClient {
           return [message, kind];
         })
         .where((data) =>
-            data[1] ==
+            data.last ==
             EVENT_KIND_USER) // only allows passing user events from this point
         .map((data) {
           // performs an ack of the user message received
-          final message = data[0] as ChannelMessage;
+          final message = data.first as ChannelMessage;
           _ackMessage(message);
 
           return message;
@@ -223,7 +223,7 @@ class AsyncClient {
 
   // Function to handle the refreshed channel secret sent by the server
   void _handleNewToken(ChannelMessage message) {
-    _actualToken = message.payload;
+    _currentToken = message.payload;
     _ackMessage(message);
   }
 
@@ -237,10 +237,8 @@ class AsyncClient {
   }
 
   void _onTransportClose(int code, String reason) {
-    _socketStreamSub?.cancel();
-    _socketStreamSub = null;
-    _transport = null;
-
+    cleanConnection();
+    _log.fine('close code: $code');
     switch (code) {
       case StatusCodes.ok:
         {
@@ -271,16 +269,20 @@ class AsyncClient {
         'Transport error and channel is not open, Scheduling reconnect...',
       );
 
-      _socketStreamSub?.cancel();
-      _socketStreamSub = null;
-      _transport = null;
+      cleanConnection();
 
       _connectRetryTimer.schedule();
     }
   }
 
+  void cleanConnection() {
+    _socketStreamSub?.cancel();
+    _socketStreamSub = null;
+    _transport = null;
+  }
+
   void _onListen() {
     _socketStreamSub = _transport?.subscribe(cancelOnErrorFlag: true);
-    _transport?.send('Auth::$_actualToken');
+    _transport?.send('Auth::$_currentToken');
   }
 }

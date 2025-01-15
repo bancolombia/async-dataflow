@@ -8,6 +8,7 @@ import 'binary_decoder.dart';
 import 'channel_message.dart';
 import 'json_decoder.dart';
 import 'message_decoder.dart';
+import 'status_codes.dart';
 
 class Transport {
   final _log = Logger('Transport');
@@ -19,7 +20,6 @@ class Transport {
 
   String? pendingHeartbeatRef;
   int _ref = 0;
-  bool _closeWasClean = false;
   Timer? _heartbeatTimer;
 
   MessageDecoder? msgDecoder;
@@ -51,10 +51,10 @@ class Transport {
   }
 
   Future<dynamic> close(int code, String reason) async {
-    _closeWasClean = true;
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
+
     return await _webSocketCh.sink.close(code, reason);
   }
 
@@ -138,9 +138,8 @@ class Transport {
   }
 
   void _abnormalClose(reason) {
-    _closeWasClean = false;
-    _log.fine('Abnormal Close: Modify clean to: $_closeWasClean');
-    _webSocketCh.sink.close(1000, reason);
+    _log.fine('Abnormal Close');
+    _webSocketCh.sink.close(StatusCodes.error, reason);
   }
 
   String _makeRef() {
