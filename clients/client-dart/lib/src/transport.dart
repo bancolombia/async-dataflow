@@ -55,7 +55,8 @@ class Transport {
       _heartbeatTimer?.cancel();
     }
 
-    return await _webSocketCh.sink.close(code, reason);
+    await _webSocketCh.sink.close(code, reason);
+    return _signalSocketClose(_webSocketCh.closeCode, _webSocketCh.closeReason);
   }
 
   int? getCloseCode() {
