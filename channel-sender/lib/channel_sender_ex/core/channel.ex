@@ -71,6 +71,13 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   @doc """
+  get information about this channel
+  """
+  def info(server, timeout \\ @on_connected_channel_reply_timeout) do
+    GenStateMachine.call(server, :info, timeout)
+  end
+
+  @doc """
   operation to mark a message as acknowledged
   """
   def notify_ack(server, ref, message_id) do
@@ -121,6 +128,13 @@ defmodule ChannelSenderEx.Core.Channel do
     end
   end
 
+  def waiting({:call, from}, :info, data) do
+    actions = [
+      _reply = {:reply, from, {:waiting, data}}
+    ]
+    {:keep_state_and_data, actions}
+  end
+
   ## stop the process with a timeout cause if the socket is not
   ## authenticated in the given time
   def waiting(:state_timeout, :waiting_timeout, data) do
@@ -129,6 +143,7 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   def waiting({:call, from}, {:socket_connected, socket_pid}, data) do
+    Logger.debug("Channel #{data.channel} received socket connected notification. Socket pid: #{inspect(socket_pid)}")
     socket_ref = Process.monitor(socket_pid)
     new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
 
@@ -168,6 +183,7 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
+    Logger.debug("Channel #{data.channel} stopping. Cause: :name_conflict")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
@@ -201,6 +217,13 @@ defmodule ChannelSenderEx.Core.Channel do
     refresh_timeout = calculate_refresh_token_timeout()
     Logger.info("Channel #{data.channel} entering connected state")
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
+  end
+
+  def connected({:call, from}, :info, data) do
+    actions = [
+      _reply = {:reply, from, {:connected, data}}
+    ]
+    {:keep_state_and_data, actions}
   end
 
   # this method will be called when the socket is disconnected
@@ -298,6 +321,17 @@ defmodule ChannelSenderEx.Core.Channel do
       end
   end
 
+  def connected({:call, from}, {:socket_connected, socket_pid}, data) do
+    socket_ref = Process.monitor(socket_pid)
+    new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
+
+    actions = [
+      _reply = {:reply, from, :ok}
+    ]
+    Logger.debug("Channel #{data.channel} overwritting socket pid.")
+    {:keep_state, new_data, actions}
+  end
+
   ## Handle info notification when socket process terminates. This method is called because the socket is monitored.
   ## via Process.monitor(socket_pid) in the waited/connected state.
   def connected(:info, {:DOWN, _ref, :process, _object, _reason}, data) do
@@ -315,6 +349,13 @@ defmodule ChannelSenderEx.Core.Channel do
     Logger.warning("Channel #{data.channel} stopping")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
+  end
+
+  # capture shutdown signal
+  def connected(:info, {:EXIT, from_pid, :shutdown}, data) do
+    source_process = Process.info(from_pid)
+    Logger.warning("Channel #{inspect(data)} received shutdown signal: #{inspect(source_process)}")
+    :keep_state_and_data
   end
 
   @impl true

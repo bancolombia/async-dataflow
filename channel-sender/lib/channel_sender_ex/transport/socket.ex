@@ -12,10 +12,16 @@ defmodule ChannelSenderEx.Transport.Socket do
   # not providing a valid channel reference
   @invalid_channel_code "1007"
 
+  # Error to indicate the shared secret for the channel is invalid
   @invalid_secret_code 1008
+
+  # Error code to indicate that the channel is already connected
+  # and a new socket process is trying to connect to it.
+  @invalid_already_stablished "1009"
 
   require Logger
 
+  alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
@@ -70,10 +76,30 @@ defmodule ChannelSenderEx.Transport.Socket do
     action_fn = fn _ -> check_channel_registered(channel_ref) end
     # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
     # with a backoff strategy of 100ms initial delay and max of 500ms delay.
-    execute(100, 500, 3, action_fn, fn ->
+    result = execute(100, 500, 3, action_fn, fn ->
       Logger.error("Socket unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
       {:error, @invalid_channel_code}
     end)
+
+    case result do
+      {:error, _desc} = e->
+        e
+      {pid, res} ->
+        validate_channel_is_waiting(pid, res)
+    end
+  end
+
+  defp validate_channel_is_waiting(pid, res) when is_pid(pid)  do
+    {status, _data} = Channel.info(pid)
+    case status do
+      :waiting ->
+        # process can continue, and socket process will be linked to the channel process
+        res
+      _ ->
+        # channel is already in a connected state, and a previous socket process
+        # was already linked to it.
+        {:error, @invalid_already_stablished}
+    end
   end
 
   defp check_channel_registered(res = {@channel_key, channel_ref}) do
@@ -81,7 +107,8 @@ defmodule ChannelSenderEx.Transport.Socket do
       :noproc ->
         Logger.warning("Channel #{channel_ref} not found, retrying query...")
         :retry
-      _ -> res
+      pid ->
+        {pid, res}
     end
   end
 
@@ -207,22 +234,44 @@ defmodule ChannelSenderEx.Transport.Socket do
     end
   end
 
+  # @impl :cowboy_websocket
+  # def websocket_info({:DOWN, ref, :process, _pid, _cause}, state = {channel_ref, :connected, _enc, {_app, _usr, ref}, _data}) do
+  #   Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
+  #   #spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
+
+  #   new_pid = ReConnectProcess.start(self(), channel_ref)
+  #   Logger.debug("Socket for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}")
+  #   Process.monitor(new_pid)
+
+  #   {_commands = [], state}
+  # end
+
   @impl :cowboy_websocket
-  def websocket_info({:DOWN, ref, :process, _pid, _cause}, state = {channel_ref, :connected, _, {_, _, ref}, _}) do
-    Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
-    spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
+  def websocket_info({:DOWN, ref, proc, pid, cause}, state = {channel_ref, _, _, _, _}) do
+    Logger.warning("Socket for channel #{channel_ref} : received DOWN message: #{inspect({ref, proc, pid, cause})}")
+
+    new_pid = ReConnectProcess.start(self(), channel_ref)
+    Logger.debug("Socket for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}")
+    Process.monitor(new_pid)
+
     {_commands = [], state}
   end
 
   @impl :cowboy_websocket
   def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, _}, _}) do
     Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
-    spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
+    #spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
+
+    new_pid = ReConnectProcess.start(self(), channel_ref)
+    Logger.debug("Socket for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}")
+    Process.monitor(new_pid)
+
     {_commands = [], state}
   end
 
   @impl :cowboy_websocket
-  def websocket_info(_message, state) do
+  def websocket_info(message, state) do
+    Logger.debug("Socket received untracked info message: #{inspect(message)} and Data: #{inspect(state)}")
     {_commands = [], state}
   end
 

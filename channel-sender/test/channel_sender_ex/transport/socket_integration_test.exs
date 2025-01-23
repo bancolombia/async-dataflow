@@ -88,6 +88,16 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     :gun.close(conn)
   end
 
+  test "Should not connect twice to socket", %{port: port, channel: channel, secret: secret} do
+    {conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
+
+    conn2 = connect(port, channel)
+    assert_receive {:gun_response, ^conn2, _stream, :fin, 400, headers}, 300
+    assert Enum.any?(headers, fn {k, v} -> k == "x-error-code" and v == "1009" end)
+
+    :gun.close(conn)
+  end
+
   test "Should authenticate", %{port: port, channel: channel, secret: secret} do
     {conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
     :gun.close(conn)

@@ -109,6 +109,12 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
     Process.sleep(500)
     assert Process.alive?(channel_pid) == false
+
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
+      Helper.compile(:channel_sender_ex)
+    end)
   end
 
   test "Should not restart channel when terminated normal (Waiting timeout)" do
@@ -151,6 +157,65 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {_, %{pending_sending: {pending_msg, _}}} = :sys.get_state(pid)
     assert Map.get(pending_msg, "42") == msg1
     assert Map.get(pending_msg, "82") == msg2
+  end
+
+  test "Should not allow multiple socket to one channel process", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+
+    # try to open a new socket connection and link it to the same channel
+    conn2 = connect(port, channel)
+    assert_receive {:gun_response, _, _, :fin, 400, resp}, 500
+
+    assert Enum.any?(resp, fn {k, v} ->
+      String.contains?(k, "x-error-code") and String.contains?(v, "1009")
+    end)
+
+    :gun.close(conn2)
+  end
+
+  test "Should supervisor re-create channel process when exits abnormally", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+
+    channel_pid = ChannelRegistry.lookup_channel_addr(channel)
+    assert is_pid(channel_pid)
+    assert Process.alive?(channel_pid)
+
+    # terminate channel process
+    Process.exit(channel_pid, :kill)
+    Process.sleep(100)
+
+    # verify new process
+    channel_pid2 = ChannelRegistry.lookup_channel_addr(channel)
+    assert is_pid(channel_pid2)
+    assert Process.alive?(channel_pid2)
+    assert channel_pid != channel_pid2
+  end
+
+  test "Should channel ignore :shutdown signal", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+
+    channel_pid = ChannelRegistry.lookup_channel_addr(channel)
+    assert is_pid(channel_pid)
+    assert Process.alive?(channel_pid)
+
+    # try to terminate channel process
+    Process.exit(channel_pid, :shutdown)
+    Process.sleep(100)
+
+    # verify process still alive
+    assert Process.alive?(channel_pid)
   end
 
   defp deliver_message(channel, message_id \\ "42") do

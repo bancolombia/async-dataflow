@@ -37,6 +37,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
         timeout = Application.get_env(:channel_sender_ex,
                             :on_connected_channel_reply_timeout)
         Channel.socket_connected(pid, socket_pid, timeout)
+        pid
     end
   catch
     _type, _err -> :noproc

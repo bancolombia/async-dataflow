@@ -39,7 +39,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
       {ChannelRegistry, [], [lookup_channel_addr: fn(_) -> :c.pid(0, 200, 0) end]},
       {Channel, [], [socket_connected: fn(_, _, _) -> :ok end]},
     ]) do
-      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)) == :ok
+      assert is_pid(ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)))
     end
   end
 
