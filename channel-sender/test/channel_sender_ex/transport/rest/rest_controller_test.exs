@@ -29,10 +29,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   test "Should create channel on request" do
     body = Jason.encode!(%{application_ref: "some_application", user_ref: "user_ref_00117ALM"})
 
-    with_mock ChannelAuthenticator, [create_channel: fn(_, _) -> {"xxxx", "yyyy"} end] do
+    with_mock ChannelAuthenticator, [create_channel: fn(_, _, _) -> {"xxxx", "yyyy"} end] do
 
       conn = conn(:post, "/ext/channel/create", body)
       |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-meta-foo", "bar")
 
       conn = RestController.call(conn, @options)
 
@@ -348,6 +349,63 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
     assert conn.status == 400
 
     assert %{"error" => "Invalid request" <> _rest} = Jason.decode!(conn.resp_body)
+  end
+
+  test "Should be able to call for close channel" do
+    body = Jason.encode!(%{application_ref: "some_application", user_ref: "user_ref_00117ALM"})
+
+    with_mocks([
+      {PubSubCore, [], [delete_channel: fn(_) -> :ok end]}
+    ]) do
+
+      conn2 = conn(:delete, "/ext/channel?channel_ref=xxxx")
+      |> put_req_header("accept", "application/json")
+
+      conn2 = RestController.call(conn2, @options)
+
+      assert conn2.status == 200
+
+      assert %{"result" => "Ok"} =
+               Jason.decode!(conn2.resp_body)
+    end
+  end
+
+  test "Should be able to handle call for close unexistent channel" do
+    with_mocks([
+      {PubSubCore, [], [delete_channel: fn(_) -> :noproc end]}
+    ]) do
+
+      # then call for close
+
+      conn2 = conn(:delete, "/ext/channel?channel_ref=xxxx")
+      |> put_req_header("accept", "application/json")
+
+      conn2 = RestController.call(conn2, @options)
+
+      assert conn2.status == 410
+
+      assert %{"error" => "Channel not found"} =
+               Jason.decode!(conn2.resp_body)
+
+    end
+  end
+
+  test "Should be able to handle invalid requesr for close channel" do
+    with_mocks([
+      {PubSubCore, [], [delete_channel: fn(_) -> :noproc end]}
+    ]) do
+
+      conn2 = conn(:delete, "/ext/channel")
+      |> put_req_header("accept", "application/json")
+
+      conn2 = RestController.call(conn2, @options)
+
+      assert conn2.status == 400
+
+      assert %{"error" => "Invalid request", "request" => %{}} =
+               Jason.decode!(conn2.resp_body)
+
+    end
   end
 
 end

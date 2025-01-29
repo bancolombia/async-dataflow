@@ -5,9 +5,13 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+  alias Plug.Conn.Query
 
   use Plug.Router
   require Logger
+
+  @metadata_headers_max 3
+  @metadata_headers_prefix "x-meta-"
 
   plug(Plug.Telemetry, event_prefix: [:channel_sender_ex, :plug])
   plug(CORSPlug)
@@ -24,16 +28,23 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   post("/ext/channel/create", do: create_channel(conn))
   post("/ext/channel/deliver_message", do: deliver_message(conn))
   post("/ext/channel/deliver_batch", do: deliver_message(conn))
+  delete("/ext/channel", do: close_channel(conn))
   match(_, do: send_resp(conn, 404, "Route not found."))
 
   defp create_channel(conn) do
-    route_create(conn.body_params, conn)
+    # collect metadata from headers, up to 3 metadata fields
+    metadata = conn.req_headers
+    |> Enum.filter(fn {key, _} -> String.starts_with?(key, @metadata_headers_prefix) end)
+    |> Enum.map(fn {key, value} -> {String.replace(key, @metadata_headers_prefix, ""), String.slice(value, 0, 50)} end)
+    |> Enum.take(@metadata_headers_max)
+    route_create(conn.body_params, metadata, conn)
   end
 
+  @spec route_create(map(), list(), Plug.Conn.t()) :: Plug.Conn.t()
   defp route_create(message = %{
     application_ref: application_ref,
     user_ref: user_ref
-   }, conn
+  }, metadata, conn
   ) do
 
     is_valid = message
@@ -41,7 +52,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
     case is_valid do
       true ->
-        {channel_ref, channel_secret} = ChannelAuthenticator.create_channel(application_ref, user_ref)
+        {channel_ref, channel_secret} = ChannelAuthenticator.create_channel(application_ref, user_ref, metadata)
         response = %{channel_ref: channel_ref, channel_secret: channel_secret}
 
         conn
@@ -53,8 +64,35 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     end
   end
 
-  defp route_create(_body, conn) do
+  defp route_create(_body, _metadata, conn) do
     invalid_body(conn)
+  end
+
+  defp close_channel(conn) do
+    channel = conn.query_string
+    |> Query.decode
+    |> Map.get("channel_ref", nil)
+    case channel do
+      nil ->
+        invalid_body(conn)
+
+      _ ->
+        route_close(channel, conn)
+    end
+  end
+
+  defp route_close(channel, conn) do
+    case PubSubCore.delete_channel(channel) do
+      :ok ->
+        conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(200, Jason.encode!(%{result: "Ok"}))
+
+      :noproc ->
+        conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(410, Jason.encode!(%{error: "Channel not found"}))
+    end
   end
 
   defp deliver_message(conn) do

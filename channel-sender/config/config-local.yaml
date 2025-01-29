@@ -14,7 +14,7 @@ channel_sender_ex:
 
   # max time in seconds to wait the client to send the auth token
   # before closing the channel
-  socket_idle_timeout: 30000
+  socket_idle_timeout: 90000
 
   # Specifies the maximum time (in milliseconds) that the Elixir supervisor waits 
   # for child channel processes to terminate after sending it an exit signal 
@@ -78,7 +78,7 @@ channel_sender_ex:
     # for more information about the kubernetes configuration with libcluser
 
 logger:
-  level: info
+  level: debug
 
 
 

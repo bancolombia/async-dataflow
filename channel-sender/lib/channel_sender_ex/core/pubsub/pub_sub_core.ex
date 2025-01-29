@@ -22,7 +22,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   Delivers a message to a single channel associated with the given channel reference.
   If the channel is not found, the message is retried up to @max_retries times with exponential backoff.
   """
-  @spec deliver_to_channel(channel_ref(), ProtocolMessage.t()) :: Channel.deliver_response()
+  @spec deliver_to_channel(channel_ref(), ProtocolMessage.t()) :: any()
   def deliver_to_channel(channel_ref, message) do
     action_fn = fn _ -> do_deliver_to_channel(channel_ref, message) end
     execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
@@ -65,4 +65,12 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
     end
   end
 
+  def delete_channel(channel_ref) do
+    case ChannelRegistry.lookup_channel_addr(channel_ref) do
+      pid when is_pid(pid) ->
+        Channel.stop(pid)
+      :noproc ->
+        :noproc
+    end
+  end
 end

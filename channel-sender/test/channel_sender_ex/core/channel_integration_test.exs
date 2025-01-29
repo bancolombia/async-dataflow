@@ -82,6 +82,41 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Process.sleep(100)
   end
 
+  test "Should just connect and allow to close explicit", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+
+    # start socket connection and authenticate
+    {conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
+
+    # call for stop
+    channel_pid = ChannelRegistry.lookup_channel_addr(channel)
+    :ok = Channel.stop(channel_pid)
+
+    Process.sleep(100)
+
+    # validate is no longer alive
+    refute Process.alive?(channel_pid)
+  end
+
+  test "Should just connect and allow to call close, even when no socket and channel process waiting", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+
+    # call for stop
+    channel_pid = ChannelRegistry.lookup_channel_addr(channel)
+    :ok = Channel.stop(channel_pid)
+
+    Process.sleep(200)
+
+    # validate is no longer alive
+    refute Process.alive?(channel_pid)
+  end
+
   test "Should send messages collected while in wait state", %{
     port: port,
     channel: channel,
@@ -121,8 +156,10 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     channel: channel,
     secret: secret
   } do
-    Helper.compile(:channel_sender_ex, channel_shutdown_on_clean_close: 0)
-    Helper.compile(:channel_sender_ex, channel_shutdown_on_disconnection: 0)
+    Application.put_env(:channel_sender_ex, :channel_shutdown_on_clean_close, 0)
+    Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection, 0)
+    Helper.compile(:channel_sender_ex)
+
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
     assert {:accepted_connected, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
@@ -159,7 +196,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   end
 
   test "Should send pending messages to twin process when terminated by supervisor merge (name conflict)" do
-    channel_args = {"channel_ref", "application", "user_ref"}
+    channel_args = {"channel_ref", "application", "user_ref", []}
     {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup1, strategy: :one_for_one)
     {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup2, strategy: :one_for_one)
     {:ok, _} = Horde.Registry.start_link(name: :reg1, keys: :unique)
@@ -184,6 +221,20 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {_, %{pending_sending: {pending_msg, _}}} = :sys.get_state(pid)
     assert Map.get(pending_msg, "42") == msg1
     assert Map.get(pending_msg, "82") == msg2
+  end
+
+  test "Should not allow multiple socket to one channel process", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+
+    # try to open a new socket connection and link it to the same channel
+    conn2 = connect(port, channel)
+    assert_receive {:gun_ws, _, _, {:close, 1001, "3009"}}, 500
+
+    :gun.close(conn2)
   end
 
   defp deliver_message(channel, message_id \\ "42") do

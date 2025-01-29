@@ -54,4 +54,21 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCoreTest do
     end
   end
 
+  test "should handle call to delete (end) non-existent channel" do
+    with_mock(
+      ChannelRegistry, [lookup_channel_addr: fn(_) -> :noproc end]
+    ) do
+      assert :noproc == PubSubCore.delete_channel("channel_ref")
+    end
+  end
+
+  test "should handle call to delete (end) existent channel" do
+    with_mocks([
+      {ChannelRegistry, [], [lookup_channel_addr: fn(_) -> :c.pid(0, 255, 0) end]},
+      {Channel, [], [stop: fn(_) -> :ok end]}
+    ]) do
+      assert :ok == PubSubCore.delete_channel("channel_ref")
+    end
+  end
+
 end

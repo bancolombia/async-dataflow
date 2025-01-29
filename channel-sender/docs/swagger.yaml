@@ -15,10 +15,10 @@ paths:
   /create:
     post:
       tags:
-      - /ext/channel/
+      - /ext/channel
       summary: Create Channel and session
       description: |
-        By passing in the appropriate options, you can regisster a new channel in the system
+        By passing in the appropriate options, you can register a new channel in the system
       operationId: createChannel
       requestBody:
         description: Channel to create
@@ -43,7 +43,7 @@ paths:
   /deliver_message:
     post:
       tags:
-      - /ext/channel/
+      - /ext/channel
       summary: Deliver an event message to a channel or group of channels
       description: Deliver an event message to a previusly registered channel_ref, or deliver a message to all channels related to an specific app_ref or user_ref
       operationId: deliverMessage
@@ -73,7 +73,7 @@ paths:
   /deliver_batch:
     post:
       tags:
-      - /ext/channel/
+      - /ext/channel
       summary: Batch deliver up to 10 event messages
       description: Deliver event messages to a group of channel_refs
       operationId: deliverBatchMessages
@@ -98,7 +98,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InvalidBodyResponse'   
-
+  /: 
+    delete:
+      tags:
+      - /ext/channel
+      summary: Perform a graceful shutdown of a channel processes 
+      description: Perform a graceful shutdown of a channel process and related socket process, if any.
+      operationId: stopChannel
+      parameters:
+        - name: channel_ref
+          in: query
+          description: The channel_ref to be stopped
+          required: true
+          schema:
+            type: string
+            example: beec634503c238f5b84f737275bfd4ba.855b8193bb6f419381eac6cc087aea3f
+      responses:
+        "200":
+          description: If the operation is performed succesfully.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+        "400":
+          description: Bad request due to missing required parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidBodyResponse'
+                                 
 components:
   schemas:
     Messages:

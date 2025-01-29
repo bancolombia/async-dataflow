@@ -9,11 +9,12 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   @type user_ref() :: String.t()
   @type channel_ref() :: String.t()
   @type channel_secret() :: String.t()
+  @type meta() :: list()
 
-  @spec create_channel(application(), user_ref()) :: {channel_ref(), channel_secret()}
-  def create_channel(application, user_ref) do
+  @spec create_channel(application(), user_ref(), meta()) :: {channel_ref(), channel_secret()}
+  def create_channel(application, user_ref, meta \\ []) do
     {channel_ref, _channel_secret} = credentials = create_channel_data_for(application, user_ref)
-    {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, application, user_ref})
+    {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, application, user_ref, meta})
     credentials
   end
 
