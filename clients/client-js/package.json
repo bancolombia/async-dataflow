@@ -1,6 +1,6 @@
 {
   "name": "@bancolombia/chanjs-client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AsycnDataflow websocket browser client. By Bancolombia",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,6 +8,7 @@
     "test": "nyc mocha --reporter spec --reporter mocha-sonarqube-reporter --reporter-options output=coverage/xunit.xml --require source-map-support/register --require jsdom-global/register --require ts-node/register 'test/**/*.test.ts'",
     "test-local": "mocha --require jsdom-global/register --require source-map-support/register --require ts-node/register 'test/**/*.test.ts'",
     "watch:build": "tsc --watch",
+    "pub": "npm run build && npm unpublish --registry http://localhost:4873 && npm publish --registry http://localhost:4873 && echo 'Deployed!'",
     "sonar-scanner": "node_modules/sonar-scanner/bin/sonar-scanner",
     "prepare": "npm run build",
     "build": "tsc",

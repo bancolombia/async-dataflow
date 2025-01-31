@@ -15,13 +15,11 @@ defmodule ChannelSenderEx.Transport.Socket do
   # Error to indicate the shared secret for the channel is invalid
   @invalid_secret_code 1008
 
-  # Error code to indicate that the channel is already connected
-  # and a new socket process is trying to connect to it.
-  @invalid_already_stablished "1009"
+  # Error code to indicate that the channel has received a new socket connection
+  @socket_replaced "3009"
 
   require Logger
 
-  alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
@@ -48,7 +46,6 @@ defmodule ChannelSenderEx.Transport.Socket do
   @impl :cowboy_websocket
   def init(req = %{method: "GET"}, opts) do
     init_result = get_relevant_request_info(req)
-      |> lookup_channel_addr
       |> process_subprotocol_selection(req)
 
     case init_result do
@@ -76,39 +73,32 @@ defmodule ChannelSenderEx.Transport.Socket do
     action_fn = fn _ -> check_channel_registered(channel_ref) end
     # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
     # with a backoff strategy of 100ms initial delay and max of 500ms delay.
-    result = execute(100, 500, 3, action_fn, fn ->
+    execute(100, 500, 3, action_fn, fn ->
       Logger.error("Socket unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
-      {:error, @invalid_channel_code}
+      {:error, <<@invalid_channel_code>>}
     end)
-
-    case result do
-      {:error, _desc} = e->
-        e
-      {pid, res} ->
-        validate_channel_is_waiting(pid, res)
-    end
   end
 
-  defp validate_channel_is_waiting(pid, res) when is_pid(pid)  do
-    {status, _data} = Channel.info(pid)
-    case status do
-      :waiting ->
-        # process can continue, and socket process will be linked to the channel process
-        res
-      _ ->
-        # channel is already in a connected state, and a previous socket process
-        # was already linked to it.
-        {:error, @invalid_already_stablished}
-    end
-  end
+  # defp validate_channel_is_waiting(pid, res) when is_pid(pid)  do
+  #   {status, _data} = Channel.info(pid)
+  #   case status do
+  #     :waiting ->
+  #       # process can continue, and socket process will be linked to the channel process
+  #       res
+  #     _ ->
+  #       # channel is already in a connected state, and a previous socket process
+  #       # was already linked to it.
+  #       {:error, @invalid_already_stablished}
+  #   end
+  # end
 
-  defp check_channel_registered(res = {@channel_key, channel_ref}) do
+  defp check_channel_registered({@channel_key, channel_ref}) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       :noproc ->
         Logger.warning("Channel #{channel_ref} not found, retrying query...")
         :retry
       pid ->
-        {pid, res}
+        {:ok, pid}
     end
   end
 
@@ -147,15 +137,21 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def websocket_init(state) do
-    Logger.debug("Socket init #{inspect(state)}")
-    {_commands = [], state}
+  def websocket_init(state = {ref, _, _}) do
+    Logger.debug("Socket init with pid: #{inspect(self())} starting... #{inspect(state)}")
+    case lookup_channel_addr({"channel", ref}) do
+      {:ok, _pid} ->
+        {_commands = [], state}
+      {:error, desc} ->
+        {_commands = [{:close, 1001, desc}], state}
+    end
   end
 
   @impl :cowboy_websocket
   def websocket_handle({:text, "Auth::" <> secret}, {channel, :pre_auth, encoder}) do
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
+
         monitor_ref = notify_connected(channel)
 
         {_commands = [auth_ok_frame(encoder)],
@@ -232,6 +228,13 @@ defmodule ChannelSenderEx.Transport.Socket do
         send(pid, {:non_retry_error, error, ref, message_id})
         {_commands = [], state}
     end
+  end
+
+  @impl :cowboy_websocket
+  def websocket_info(:terminate_socket, state = {channel_ref, _, _, _, _}) do
+    # TODO: check if we need to do something with the new_socket_pid
+    Logger.info("Socket for channel #{channel_ref} : received terminate_socket message")
+    {_commands = [{:close, 1001, <<@socket_replaced>>}], state}
   end
 
   # @impl :cowboy_websocket

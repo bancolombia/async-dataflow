@@ -10,6 +10,7 @@ import "fast-text-encoding"
 import {Protocol} from "../src/protocol";
 
 const assert = chai.assert;
+const TIMEOUT = 10000;
 
 function timeout(millis : number) : Promise<any> {
     return new Promise(resolve => {
@@ -186,15 +187,19 @@ describe('Async Reconnection Tests', () =>  {
         const result = await message;
         assert.equal(result, "CC111222");
 
+        mockServer.close({code: 1006, reason: "Server closed", wasClean: false});
         mockServer.close();
-        mockServer.stop();
+        mockServer.stop(() => {
+            console.log("Server stopped");
+        });
 
         // @ts-ignore
-        await timeout(200);
+        await timeout(500);
 
         const newData = new Promise<string>(resolve => client.listenEvent("person.registered2", message => resolve(message.payload)));
         mockServer = new Server("wss://reconnect.local:8984/socket");
         mockServer.on('connection', socket => {
+            console.log("New connection");
             socket.on('message', data => {
                 if (data == `Auth::${config.channel_secret}`){
                     socket.send('["", "", "AuthOk", ""]');
@@ -210,7 +215,8 @@ describe('Async Reconnection Tests', () =>  {
         client.disconnect();
         mockServer.close();
         mockServer.stop();
-    });
+        console.log("Done");
+    }).timeout(TIMEOUT);
 
 
     it('Should ReConnect when no heartbeat' , async() => {

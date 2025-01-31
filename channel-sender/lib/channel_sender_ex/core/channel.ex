@@ -321,7 +321,9 @@ defmodule ChannelSenderEx.Core.Channel do
       end
   end
 
-  def connected({:call, from}, {:socket_connected, socket_pid}, data) do
+  def connected({:call, from}, {:socket_connected, socket_pid}, data = %{socket: {old_socket_pid, old_socket_ref}}) do
+    Process.demonitor(old_socket_ref)
+    send(old_socket_pid, :terminate_socket)
     socket_ref = Process.monitor(socket_pid)
     new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
 
