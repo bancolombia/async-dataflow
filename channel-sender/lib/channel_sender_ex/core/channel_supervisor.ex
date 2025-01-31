@@ -7,6 +7,10 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.RulesProvider
+  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
+  @max_retries 3
+  @min_backoff 50
+  @max_backoff 300
 
   def start_link(_) do
     result = Horde.DynamicSupervisor.start_link(__MODULE__, [strategy: :one_for_one, shutdown: 1000], name: __MODULE__)
@@ -30,7 +34,8 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @type channel_init_args :: {channel_ref(), application(), user_ref()}
   @spec start_channel(channel_init_args()) :: any()
   def start_channel(args) do
-    Horde.DynamicSupervisor.start_child(__MODULE__, channel_child_spec(args))
+    action_fn = fn _ -> start_channel_retried(args) end
+    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn -> raise("Error creating channel") end)
   end
 
   @spec channel_child_spec(channel_init_args()) :: any()
@@ -47,6 +52,16 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
       shutdown: get_shutdown_tolerance(),
       restart: :transient
     }
+  end
+
+  defp start_channel_retried(args = {channel_ref, _application, _user_ref}) do
+    case Horde.DynamicSupervisor.start_child(__MODULE__, channel_child_spec(args)) do
+      {:ok, pid} -> {:ok, pid}
+      {:error, {:already_started, pid}} -> {:ok, pid}
+      {:error, reason} ->
+        Logger.warning("Error starting channel #{channel_ref}: #{inspect(reason)}")
+        :retry
+    end
   end
 
   defp via_tuple(name) do
