@@ -188,13 +188,9 @@ describe('Async Reconnection Tests', () =>  {
         assert.equal(result, "CC111222");
 
         mockServer.close({code: 1006, reason: "Server closed", wasClean: false});
-        mockServer.close();
         mockServer.stop(() => {
             console.log("Server stopped");
         });
-
-        // @ts-ignore
-        await timeout(500);
 
         const newData = new Promise<string>(resolve => client.listenEvent("person.registered2", message => resolve(message.payload)));
         mockServer = new Server("wss://reconnect.local:8984/socket");
@@ -300,11 +296,9 @@ describe('Refresh token Tests', () =>  {
         const result = await message;
         console.log(`>>>>> result is: ${result}`);
 
-        mockServer.close();
+        mockServer.close({code: 1006, reason: "Server closed", wasClean: false});
         mockServer.stop();
 
-        // @ts-ignore
-        await timeout(200);
         config.channel_secret = "new_token_secret12243";
 
         const newData = new Promise<string>(resolve => client.listenEvent("person.registered2", message => resolve(message.payload)));
