@@ -79,19 +79,6 @@ defmodule ChannelSenderEx.Transport.Socket do
     end)
   end
 
-  # defp validate_channel_is_waiting(pid, res) when is_pid(pid)  do
-  #   {status, _data} = Channel.info(pid)
-  #   case status do
-  #     :waiting ->
-  #       # process can continue, and socket process will be linked to the channel process
-  #       res
-  #     _ ->
-  #       # channel is already in a connected state, and a previous socket process
-  #       # was already linked to it.
-  #       {:error, @invalid_already_stablished}
-  #   end
-  # end
-
   defp check_channel_registered({@channel_key, channel_ref}) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       :noproc ->
@@ -100,10 +87,6 @@ defmodule ChannelSenderEx.Transport.Socket do
       pid ->
         {:ok, pid}
     end
-  end
-
-  defp check_channel_registered(res = {:error, _desc}) do
-    res
   end
 
   defp process_subprotocol_selection({@channel_key, channel}, req) do
@@ -232,22 +215,10 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def websocket_info(:terminate_socket, state = {channel_ref, _, _, _, _}) do
-    # TODO: check if we need to do something with the new_socket_pid
+    # ! check if we need to do something with the new_socket_pid
     Logger.info("Socket for channel #{channel_ref} : received terminate_socket message")
     {_commands = [{:close, 1001, <<@socket_replaced>>}], state}
   end
-
-  # @impl :cowboy_websocket
-  # def websocket_info({:DOWN, ref, :process, _pid, _cause}, state = {channel_ref, :connected, _enc, {_app, _usr, ref}, _data}) do
-  #   Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
-  #   #spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
-
-  #   new_pid = ReConnectProcess.start(self(), channel_ref)
-  #   Logger.debug("Socket for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}")
-  #   Process.monitor(new_pid)
-
-  #   {_commands = [], state}
-  # end
 
   @impl :cowboy_websocket
   def websocket_info({:DOWN, ref, proc, pid, cause}, state = {channel_ref, _, _, _, _}) do
@@ -263,7 +234,6 @@ defmodule ChannelSenderEx.Transport.Socket do
   @impl :cowboy_websocket
   def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, _}, _}) do
     Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
-    #spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
 
     new_pid = ReConnectProcess.start(self(), channel_ref)
     Logger.debug("Socket for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}")

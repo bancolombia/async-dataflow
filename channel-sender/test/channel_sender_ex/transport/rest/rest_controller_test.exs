@@ -100,4 +100,21 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
   end
 
+  test "returns 400 for Plug.Parsers.ParseError" do
+    conn = conn(:post, "/ext/channel/create", "{\n\t\"application_ref\": \"app1\",\n\t\"user_ref\": \"user1\"\n},")
+           |> put_req_header("content-type", "application/json")
+
+    error_info = %{
+      kind: :error,
+      reason: %Plug.Parsers.ParseError{exception:
+        %Jason.DecodeError{position: 52, token: nil,
+        data: "{\n\t\"application_ref\": \"app1\",\n\t\"user_ref\": \"user1\"\n},"}, plug_status: 400},
+      stack: []
+    }
+
+    assert_raise Plug.Parsers.ParseError, fn ->
+      conn = RestController.call(conn, @options)
+    end
+  end
+
 end
