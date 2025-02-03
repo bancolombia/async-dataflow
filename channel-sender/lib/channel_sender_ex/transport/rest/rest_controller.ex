@@ -61,22 +61,70 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
      }, conn
    ) do
 
-    Task.start(fn -> PubSubCore.deliver_to_channel(channel_ref,
-      Map.drop(message, [:channel_ref]) |> ProtocolMessage.to_protocol_message)
-    end)
+    assert_deliver_request(message)
+    |> perform_delivery(%{"channel_ref" => channel_ref})
+    |> build_and_send_response(conn)
 
-    conn
-    |> put_resp_header("content-type", "application/json")
-    |> send_resp(202, Jason.encode!(%{result: "Ok"}))
   end
 
   defp route_deliver(_, conn), do: invalid_body(conn)
+
+  #"""
+  # Asserts that the message is a valid delivery request
+  #"""
+  @spec assert_deliver_request(map()) :: {:ok, map()} | {:error, :invalid_message}
+  defp assert_deliver_request(message) do
+    # Check if minimal fields are present and not nil
+    result = message
+    |> Enum.all?(fn {key, value} ->
+      case key do
+        :message_data ->
+          not is_nil(value)
+        :correlation_id ->
+          true
+        _ ->
+          is_binary(value) and value != ""
+      end
+    end)
+
+    case result do
+      true ->
+        {:ok, message}
+      false ->
+        {:error, :invalid_message}
+    end
+  end
+
+  defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
+    Task.start(fn ->
+      new_msg = message
+      |> Map.drop([:channel_ref])
+      |> ProtocolMessage.to_protocol_message
+
+      PubSubCore.deliver_to_channel(channel_ref, new_msg)
+    end)
+    {202, %{result: "Ok"}}
+  end
+
+  defp perform_delivery(e = {:error, :invalid_message}, _) do
+    {400, e}
+  end
+
+  defp build_and_send_response({202, body}, conn) do
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(202, Jason.encode!(body))
+  end
+
+  defp build_and_send_response({400, _}, conn) do
+    invalid_body(conn)
+  end
 
   @compile {:inline, invalid_body: 1}
   defp invalid_body(conn = %{body_params: invalid_body}) do
     conn
     |> put_resp_header("content-type", "application/json")
-    |> send_resp(400, Jason.encode!(%{error: "Invalid request #{inspect(invalid_body)}"}))
+    |> send_resp(400, Jason.encode!(%{error: "Invalid request", request: invalid_body}))
   end
 
   @impl Plug.ErrorHandler
