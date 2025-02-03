@@ -88,12 +88,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     :gun.close(conn)
   end
 
-  test "Should not connect twice to socket", %{port: port, channel: channel, secret: secret} do
+  test "Should handle connect two sockets to a channel", %{port: port, channel: channel, secret: secret} do
     {conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
 
     conn2 = connect(port, channel)
-    assert_receive {:gun_response, ^conn2, _stream, :fin, 400, headers}, 300
-    assert Enum.any?(headers, fn {k, v} -> k == "x-error-code" and v == "1009" end)
+    assert_receive {:gun_upgrade, ^conn2, _stream, ["websocket"], headers}, 300
 
     :gun.close(conn)
   end
@@ -209,11 +208,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert {:binary, _} = assert_receive_and_close(channel, conn_stream)
   end
 
-  test "Should not connect to channel when not previoulsy registered", %{port: port} do
+  test "Should validate that a channel process already exists, if not then close socket", %{port: port} do
     {app_id, user_ref} = {"App1", "User1234"}
     channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
     channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
-    {_conn, _stream} = assert_reject(port, channel_ref, channel_secret)
+    {_conn, _stream} = assert_reject_no_channel_created(port, channel_ref, channel_secret)
   end
 
   test "Should reestablish Channel link when Channel gets restarted", %{
@@ -349,14 +348,17 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {conn, stream}
   end
 
-  defp assert_reject(port, channel, secret, sub_protocol \\ nil) do
+  defp assert_reject_no_channel_created(port, channel, secret, sub_protocol \\ nil) do
     conn =
       case sub_protocol do
         nil -> connect(port, channel)
         sub_protocol -> connect(port, channel, sub_protocol)
       end
 
-    assert_receive {:gun_response, ^conn, stream, :fin, 400, _headers}, 1000
+    assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 500
+    assert_receive {:gun_ws, ^conn, stream, {:close, 1001, "1007"}}, 3000
+    assert_receive {:gun_down, _, :ws, :closed, [], []}, 500
+
     {conn, stream}
   end
 

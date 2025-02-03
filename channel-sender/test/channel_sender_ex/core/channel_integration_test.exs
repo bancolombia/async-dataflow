@@ -80,6 +80,17 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Process.sleep(100)
   end
 
+  test "Should handle re-creation of a process that already exists", %{
+    port: port,
+    channel: channel,
+    secret: secret
+  } do
+
+    {:ok, pid} = ChannelSupervisor.start_channel({channel, "app", "user"})
+    assert is_pid(pid)
+
+  end
+
   test "Should change channel state to waiting when connection closes", %{
     port: port,
     channel: channel,
@@ -142,8 +153,10 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
       ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg1)))
     {:ok, pid2} = Horde.DynamicSupervisor.start_child(:sup2,
       ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg2)))
+
     {_, msg1} = build_message("42")
     {_, msg2} = build_message("82")
+
     Channel.deliver_message(pid1, msg1)
     Channel.deliver_message(pid2, msg2)
     Process.monitor(pid1)
@@ -154,12 +167,51 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert_receive {:DOWN, _ref, :process, channel_pid, _} when channel_pid in [pid1, pid2]
 
     assert [{pid, _}] = Horde.Registry.lookup(ChannelRegistry.via_tuple("channel_ref", :reg1))
+
     {_, %{pending_sending: {pending_msg, _}}} = :sys.get_state(pid)
+
     assert Map.get(pending_msg, "42") == msg1
     assert Map.get(pending_msg, "82") == msg2
   end
 
-  test "Should not allow multiple socket to one channel process", %{
+  test "Should send pending messages to twin process when terminated by supervisor merge (name conflict) II" do
+    channel_args = {"channel_ref", "application", "user_ref"}
+    {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup1, strategy: :one_for_one)
+    {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup2, strategy: :one_for_one)
+    {:ok, _} = Horde.Registry.start_link(name: :reg1, keys: :unique)
+    {:ok, _} = Horde.Registry.start_link(name: :reg2, keys: :unique)
+
+    {:ok, pid1} = Horde.DynamicSupervisor.start_child(:sup1,
+      ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg1)))
+    {:ok, pid2} = Horde.DynamicSupervisor.start_child(:sup2,
+      ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg2)))
+
+    send(pid1, {:socket_connected, self()})
+    send(pid2, {:socket_connected, self()})
+
+    {_, msg1} = build_message("42")
+    {_, msg2} = build_message("82")
+
+    Channel.deliver_message(pid1, msg1)
+    Channel.deliver_message(pid2, msg2)
+
+    Process.monitor(pid1)
+    Process.monitor(pid2)
+
+    Horde.Cluster.set_members(:sup1, [:sup1, :sup2])
+    Horde.Cluster.set_members(:reg1, [:reg1, :reg2])
+
+    assert_receive {:DOWN, _ref, :process, channel_pid, _} when channel_pid in [pid1, pid2]
+
+    assert [{pid, _}] = Horde.Registry.lookup(ChannelRegistry.via_tuple("channel_ref", :reg1))
+
+    {_, %{pending_sending: {pending_msg, _}}} = :sys.get_state(pid)
+
+    assert Map.get(pending_msg, "42") == msg1
+    assert Map.get(pending_msg, "82") == msg2
+  end
+
+  test "Should not fail when other socket is open and tied to an existing and open channel process", %{
     port: port,
     channel: channel,
     secret: secret
@@ -167,12 +219,11 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
 
     # try to open a new socket connection and link it to the same channel
-    conn2 = connect(port, channel)
-    assert_receive {:gun_response, _, _, :fin, 400, resp}, 500
+    {conn2, stream} = assert_connect_and_authenticate(port, channel, secret)
 
-    assert Enum.any?(resp, fn {k, v} ->
-      String.contains?(k, "x-error-code") and String.contains?(v, "1009")
-    end)
+    # receive the close message from the new connection
+    assert_receive {:gun_ws, ^conn, _, {:close, 1001, "3009"}}, 500
+    assert_receive {:gun_down, ^conn, :ws, :closed, [], []}, 500
 
     :gun.close(conn2)
   end

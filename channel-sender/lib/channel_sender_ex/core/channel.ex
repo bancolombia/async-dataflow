@@ -183,7 +183,7 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
-    Logger.debug("Channel #{data.channel} stopping. Cause: :name_conflict")
+    Logger.warning("Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
@@ -330,6 +330,7 @@ defmodule ChannelSenderEx.Core.Channel do
     actions = [
       _reply = {:reply, from, :ok}
     ]
+
     Logger.debug("Channel #{data.channel} overwritting socket pid.")
     {:keep_state, new_data, actions}
   end
@@ -348,7 +349,10 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
-    Logger.warning("Channel #{data.channel} stopping")
+    Logger.warning("""
+      Channel #{data.channel}, stopping process #{inspect(self())} in status :connected
+      due to :name_conflict, and starting new process #{inspect(new_pid)}
+      """)
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
@@ -414,11 +418,10 @@ defmodule ChannelSenderEx.Core.Channel do
     }
   end
 
-  defp clear_pending_send(data = %{pending_sending: pending}, message) do
+  defp clear_pending_send(data = %{pending_sending: pending}, _message = {message_id, _, _, _, _}) do
     case BoundedMap.size(pending) do
       0 -> data
       _ ->
-        {message_id, _, _, _, _} = message
         Logger.debug("Channel #{data.channel} clearing pending msg #{message_id}")
         %{data | pending_sending: BoundedMap.delete(pending, message_id)}
     end
