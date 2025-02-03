@@ -1,5 +1,6 @@
 import { Utils } from "./utils";
 
+const MAX_DELAY = 6000;
 export class RetryTimer {
 
     private timer: number;
@@ -35,9 +36,9 @@ export class RetryTimer {
 
     private delay(): number {
         if (this.jitterFn === undefined) {
-            return Utils.expBackoff(this.initial, 6000, this.tries, (num) => Utils.jitter(num, 0.25));
+            return Utils.expBackoff(this.initial, MAX_DELAY, this.tries, (num) => Utils.jitter(num, 0.25));
         } else {
-            return Utils.expBackoff(this.initial, 6000, this.tries, this.jitterFn);
+            return Utils.expBackoff(this.initial, MAX_DELAY, this.tries, this.jitterFn);
         }
     }
 
