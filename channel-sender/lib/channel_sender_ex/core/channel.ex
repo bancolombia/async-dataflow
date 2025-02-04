@@ -161,6 +161,7 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   def waiting({:call, from}, {:socket_connected, socket_pid}, data) do
+    Logger.debug("Channel #{data.channel} received socket connected notification. Socket pid: #{inspect(socket_pid)}")
     socket_ref = Process.monitor(socket_pid)
     new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
 
@@ -200,6 +201,7 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
+    Logger.warning("Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
@@ -242,13 +244,16 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state_and_data, actions}
   end
 
-  def connected({:call, from}, {:socket_connected, socket_pid}, data) do
+  def connected({:call, from}, {:socket_connected, socket_pid}, data = %{socket: {old_socket_pid, old_socket_ref}}) do
+    Process.demonitor(old_socket_ref)
+    send(old_socket_pid, :terminate_socket)
     socket_ref = Process.monitor(socket_pid)
     new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
 
     actions = [
       _reply = {:reply, from, :ok}
     ]
+
     Logger.debug("Channel #{data.channel} overwritting socket pid.")
     {:keep_state, new_data, actions}
   end
@@ -364,7 +369,7 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
-    Logger.error("Channel #{data.channel} stopping, reason: #{inspect(:name_conflict)}")
+        Logger.warning("Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end

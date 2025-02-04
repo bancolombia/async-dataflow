@@ -223,7 +223,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert Map.get(pending_msg, "82") == msg2
   end
 
-  test "Should not allow multiple socket to one channel process", %{
+  test "Should allow new socket to one channel process", %{
     port: port,
     channel: channel,
     secret: secret
@@ -232,7 +232,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
     # try to open a new socket connection and link it to the same channel
     conn2 = connect(port, channel)
-    assert_receive {:gun_ws, _, _, {:close, 1001, "3009"}}, 500
+    assert_receive {:gun_upgrade, _, _, ["websocket"], _}, 500
 
     :gun.close(conn2)
   end

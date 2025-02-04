@@ -1,17 +1,18 @@
 import * as chai from 'chai';
 
-import {AsyncClient, AsyncConfig} from "../src/async-client";
-import {Server, WebSocket} from 'mock-socket';
+import { AsyncClient, AsyncConfig } from "../src/async-client";
+import { Server, WebSocket } from 'mock-socket';
 
-import {ChannelMessage} from "../src/channel-message";
-import {JsonDecoder} from "../src/json-decoder";
-import {BinaryDecoder} from "../src/binary-decoder";
+import { ChannelMessage } from "../src/channel-message";
+import { JsonDecoder } from "../src/json-decoder";
+import { BinaryDecoder } from "../src/binary-decoder";
 import "fast-text-encoding"
-import {Protocol} from "../src/protocol";
+import { Protocol } from "../src/protocol";
 
 const assert = chai.assert;
+const TIMEOUT = 10000;
 
-function timeout(millis : number) : Promise<any> {
+function timeout(millis: number): Promise<any> {
     return new Promise(resolve => {
         // @ts-ignore
         setTimeout(resolve, millis, "timeout");
@@ -19,9 +20,9 @@ function timeout(millis : number) : Promise<any> {
 }
 
 
-describe('Async client Tests', function()  {
+describe('Async client Tests', function () {
     let mockServer;
-    let client : AsyncClient;
+    let client: AsyncClient;
     let config: AsyncConfig = {
         socket_url: "wss://host.local/socket",
         channel_ref: "ab771f3434aaghjgr",
@@ -41,26 +42,26 @@ describe('Async client Tests', function()  {
         client.disconnect();
     });
 
-    it('Should try to connect with correct url' , () => {
+    it('Should try to connect with correct url', () => {
         client.connect();
         assert.equal(client.rawSocket().url, "wss://host.local/socket?channel=ab771f3434aaghjgr");
         client.disconnect();
     });
 
-    it('Should notify socket connect' , async() => {
+    it('Should notify socket connect', async () => {
         client.connect();
         const isOpen = await new Promise<boolean>(resolve => client.doOnSocketOpen((event) => resolve(client.isOpen)));
         assert.isTrue(isOpen);
         client.disconnect();
     });
 
-    it('Should authenticate with server and route message' , async() => {
+    it('Should authenticate with server and route message', async () => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "person.registered", "CC111222"]');
-                }else {
+                } else {
                     socket.send('["", "", "NoAuth", ""]');
                 }
             });
@@ -78,13 +79,13 @@ describe('Async client Tests', function()  {
     });
 
 
-    it('Should send ack on message' , async() => {
+    it('Should send ack on message', async () => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "person.registered", "CC111222"]');
-                }else if (data == 'Ack::12'){
+                } else if (data == 'Ack::12') {
                     socket.send('["14", "", "ack.reply.ok", "ok"]');
                 }
             });
@@ -101,9 +102,9 @@ describe('Async client Tests', function()  {
 
 });
 
-describe('Async client No Dedup Tests', function()  {
+describe('Async client No Dedup Tests', function () {
     let mockServer;
-    let client : AsyncClient;
+    let client: AsyncClient;
     let config: AsyncConfig = {
         socket_url: "wss://host.local/socket",
         channel_ref: "ab771f3434aaghjgr",
@@ -124,21 +125,23 @@ describe('Async client No Dedup Tests', function()  {
         client.disconnect();
     });
 
-    it('Should authenticate with server and route duplicated message' , async() => {
+    it('Should authenticate with server and route duplicated message', async () => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["333444", "001", "person.registered", "CC111222"]');
                     socket.send('["333444", "002", "person.registered", "CC111222"]');
                     socket.send('["444444", "003", "person.registered", "CC983979"]');
-                }else {
+                } else {
                     socket.send('["", "", "NoAuth", ""]');
                 }
             });
         });
 
-        assert.isFalse(client.isActive);
+        const clientActive: boolean = client.isActive;
+
+        assert.isFalse(clientActive);
         const message = new Promise<number>(resolve => {
             var counter = 0;
             client.listenEvent("person.registered", message => {
@@ -158,7 +161,7 @@ describe('Async client No Dedup Tests', function()  {
 
 });
 
-describe('Async Reconnection Tests', () =>  {
+describe('Async Reconnection Tests', () => {
 
     let config = {
         socket_url: "wss://reconnect.local:8984/socket",
@@ -166,14 +169,14 @@ describe('Async Reconnection Tests', () =>  {
         channel_secret: "secret234342432dsfghjikujyg1221",
         heartbeat_interval: 200
     };
-    
 
-    it('Should ReConnect when server closes the socket' , async() => {
+
+    it('Should ReConnect when server closes the socket', async () => {
         let mockServer = new Server("wss://reconnect.local:8984/socket");
-        let client : AsyncClient = new AsyncClient(config, WebSocket);
+        let client: AsyncClient = new AsyncClient(config, WebSocket);
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "person.registered", "CC111222"]');
                 }
@@ -186,38 +189,38 @@ describe('Async Reconnection Tests', () =>  {
         const result = await message;
         assert.equal(result, "CC111222");
 
-        mockServer.close();
-        mockServer.stop();
-
-        // @ts-ignore
-        await timeout(200);
+        mockServer.close({ code: 1006, reason: "Server closed", wasClean: false });
+        mockServer.stop(() => {
+            console.log("Server stopped");
+        });
 
         const newData = new Promise<string>(resolve => client.listenEvent("person.registered2", message => resolve(message.payload)));
         mockServer = new Server("wss://reconnect.local:8984/socket");
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     // @ts-ignore
                     setTimeout(() => socket.send('["120", "", "person.registered2", "CC1112223"]'), 200)
                 }
             });
         });
-        
+
         const message2 = await newData;
         assert.equal(message2, "CC1112223");
 
         client.disconnect();
         mockServer.close();
         mockServer.stop();
-    });
+        console.log("Done");
+    }).timeout(TIMEOUT);
 
 
-    it('Should ReConnect when no heartbeat' , async() => {
+    it('Should ReConnect when no heartbeat', async () => {
 
         config.socket_url = "wss://reconnect.local:8987/socket";
         let mockServer = new Server(config.socket_url);
-        let client : AsyncClient = new AsyncClient(config, WebSocket);
+        let client: AsyncClient = new AsyncClient(config, WebSocket);
         let respondBeat = false;
         let socketSender;
         let connectCount = 0;
@@ -227,12 +230,12 @@ describe('Async Reconnection Tests', () =>  {
             socket.on('message', raw_data => {
                 if (typeof raw_data == "string") {
                     let data = String(raw_data);
-                    if (data == `Auth::${config.channel_secret}`){
+                    if (data == `Auth::${config.channel_secret}`) {
                         connectCount = connectCount + 1;
                         socket.send('["", "", "AuthOk", ""]');
                         // @ts-ignore
                         setTimeout(() => socket.send('["12", "", "person.registered", "CC111222"]'), 200)
-                    }else if (data.startsWith("hb::") && respondBeat){
+                    } else if (data.startsWith("hb::") && respondBeat) {
                         let correlation = data.split("::")[1];
                         socket.send(`["", ${correlation}, ":hb", ""]`);
                     }
@@ -244,7 +247,7 @@ describe('Async Reconnection Tests', () =>  {
 
         await timeout(600);
         respondBeat = true;
-        const lastCount =  connectCount;
+        const lastCount = connectCount;
         // @ts-ignore
         console.log("Count", connectCount);
 
@@ -263,7 +266,7 @@ describe('Async Reconnection Tests', () =>  {
 
 });
 
-describe('Refresh token Tests', () =>  {
+describe('Refresh token Tests', () => {
 
     let config = {
         socket_url: "wss://reconnect.local:8985/socket",
@@ -273,14 +276,14 @@ describe('Refresh token Tests', () =>  {
     };
 
 
-    it('Should ReConnect with new token' , async() => {
+    it('Should ReConnect with new token', async () => {
         let mockServer = new Server(config.socket_url);
-        let client : AsyncClient = new AsyncClient(config, WebSocket);
+        let client: AsyncClient = new AsyncClient(config, WebSocket);
         // let socketSender;
         mockServer.on('connection', socket => {
             // socketSender = socket;
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["01", "", ":n_token", "new_token_secret12243"]');
                     socket.send('["02", "", "person.registered", "CC10202029"]');
@@ -294,11 +297,9 @@ describe('Refresh token Tests', () =>  {
         const result = await message;
         console.log(`>>>>> result is: ${result}`);
 
-        mockServer.close();
+        mockServer.close({ code: 1006, reason: "Server closed", wasClean: false });
         mockServer.stop();
 
-        // @ts-ignore
-        await timeout(200);
         config.channel_secret = "new_token_secret12243";
 
         const newData = new Promise<string>(resolve => client.listenEvent("person.registered2", message => resolve(message.payload)));
@@ -307,13 +308,13 @@ describe('Refresh token Tests', () =>  {
             socket.on('message', raw_data => {
                 if (typeof raw_data == "string") {
                     let data = String(raw_data);
-                    if (data == `Auth::${config.channel_secret}`){
+                    if (data == `Auth::${config.channel_secret}`) {
                         socket.send('["", "", "AuthOk", ""]');
                         socket.send('["12", "", "person.registered2", "CC1112223"]');
-                    }else if (data.startsWith("Auth::")){
+                    } else if (data.startsWith("Auth::")) {
                         // @ts-ignore
                         console.log("Credenciales no validas");
-                        mockServer.close({code: 4403, reason: "Invalid auth", wasClean: true})
+                        mockServer.close({ code: 4403, reason: "Invalid auth", wasClean: true })
                     }
                 }
             });
@@ -330,7 +331,7 @@ describe('Refresh token Tests', () =>  {
 
 });
 
-describe('Protocol negotiation Tests', function()  {
+describe('Protocol negotiation Tests', function () {
     let client: AsyncClient;
     let mockServer: Server;
     let baseConf = {
@@ -344,8 +345,9 @@ describe('Protocol negotiation Tests', function()  {
         mockServer.stop(() => done());
     });
 
-    it('Should use Json decoder when specified' , async() => {
-        let config = {...baseConf,
+    it('Should use Json decoder when specified', async () => {
+        let config = {
+            ...baseConf,
             enable_binary_transport: false
         };
         initServer((protocols) => {
@@ -357,8 +359,9 @@ describe('Protocol negotiation Tests', function()  {
         assert.instanceOf(decoder, JsonDecoder);
     });
 
-    it('Should use binary protocol when available' , async() => {
-        let config = {...baseConf,
+    it('Should use binary protocol when available', async () => {
+        let config = {
+            ...baseConf,
             enable_binary_transport: true
         };
         initServer((protocols) => {
@@ -370,8 +373,9 @@ describe('Protocol negotiation Tests', function()  {
         assert.instanceOf(decoder, BinaryDecoder);
     });
 
-    it('Should fallback to json protocol when server select it' , async() => {
-        let config = {...baseConf,
+    it('Should fallback to json protocol when server select it', async () => {
+        let config = {
+            ...baseConf,
             enable_binary_transport: true
         };
         initServer((protocols) => {
@@ -383,8 +387,9 @@ describe('Protocol negotiation Tests', function()  {
         assert.instanceOf(decoder, JsonDecoder);
     });
 
-    it('Should fallback to Json decoder when Binary decoder is not available' , async() => {
-        let config = {...baseConf,
+    it('Should fallback to Json decoder when Binary decoder is not available', async () => {
+        let config = {
+            ...baseConf,
             enable_binary_transport: true
         };
 
@@ -411,7 +416,7 @@ describe('Protocol negotiation Tests', function()  {
         })
     };
 
-    let connectAndGetDecoderSelected = async(config) => {
+    let connectAndGetDecoderSelected = async (config) => {
         client = new AsyncClient(config, WebSocket);
         const connected = new Promise<boolean>(resolve => client.doOnSocketOpen(() => resolve(true)));
         client.connect();
@@ -421,9 +426,9 @@ describe('Protocol negotiation Tests', function()  {
     }
 });
 
-describe('Event handler matching Tests', function()  {
+describe('Event handler matching Tests', function () {
     let mockServer;
-    let client : AsyncClient;
+    let client: AsyncClient;
     let config = {
         socket_url: "wss://host.local/socket",
         channel_ref: "ab771f3434aaghjgr",
@@ -443,13 +448,13 @@ describe('Event handler matching Tests', function()  {
         client.disconnect();
     });
 
-    it('Should match direct equality' , async() => {
+    it('Should match direct equality', async () => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "quick.orange.rabbit", "Hi, There"]');
-                }else {
+                } else {
                     socket.send('["", "", "NoAuth", ""]');
                 }
             });
@@ -467,13 +472,13 @@ describe('Event handler matching Tests', function()  {
         client.disconnect();
     });
 
-    it('Should match single word wildcard I' , async() => {
+    it('Should match single word wildcard I', async () => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "quick.orange.rabbit", "Hi, There Rabbit"]');
-                }else {
+                } else {
                     socket.send('["", "", "NoAuth", ""]');
                 }
             });
@@ -492,13 +497,13 @@ describe('Event handler matching Tests', function()  {
         client.disconnect();
     });
 
-    it('Should match single word wildcard II' , async() => {
+    it('Should match single word wildcard II', async () => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "lazy.brown.fox", "Hi, There Fox"]');
-                }else {
+                } else {
                     socket.send('["", "", "NoAuth", ""]');
                 }
             });
@@ -517,13 +522,13 @@ describe('Event handler matching Tests', function()  {
         client.disconnect();
     });
 
-    it('Should match single word wildcard III' , async() => {
+    it('Should match single word wildcard III', async () => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "lazy.orange.elephant", "Hi, There Elephant"]');
-                }else {
+                } else {
                     socket.send('["", "", "NoAuth", ""]');
                 }
             });
@@ -542,14 +547,14 @@ describe('Event handler matching Tests', function()  {
         client.disconnect();
     });
 
-    it('Should match multi word wildcard' , async() => {
+    it('Should match multi word wildcard', async () => {
         mockServer.on('connection', socket => {
             socket.on('message', data => {
-                if (data == `Auth::${config.channel_secret}`){
+                if (data == `Auth::${config.channel_secret}`) {
                     socket.send('["", "", "AuthOk", ""]');
                     socket.send('["12", "", "quick.white.male.bird", "Hi, There Male Bird"]');
                     socket.send('["12", "", "quick.orange.rabbit", "Hi, There Rabbit"]');
-                }else {
+                } else {
                     socket.send('["", "", "NoAuth", ""]');
                 }
             });

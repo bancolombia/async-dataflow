@@ -19,7 +19,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   # Error code to indicate that the channel is already connected
   # and a new socket process is trying to connect to it.
-  @invalid_already_stablished "3009"
+  @socket_replaced "3009"
 
   ## -----------------
   ## Retryable errors
@@ -72,22 +72,11 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def websocket_init(state) do
+  def websocket_init(state = {ref, _, _}) do
     Logger.debug("Socket init with pid: #{inspect(self())} starting... #{inspect(state)}")
-    {ref, _, _} = state
-    proc = lookup_channel_addr({"channel", ref})
-    case proc do
-      {:ok, pid} ->
-        case validate_channel_is_waiting(pid) do
-          {:error, desc, data} ->
-            Logger.warning("""
-            Socket init with pid: #{inspect(self())} will not continue for #{ref}.
-            Error: #{desc}. There is a socket already connected = #{inspect(data.socket)}
-            """)
-            {_commands = [{:close, 1001, desc}], state}
-          _ ->
-            {_commands = [], state}
-        end
+    case lookup_channel_addr({"channel", ref}) do
+      {:ok, _pid} ->
+        {_commands = [], state}
       {:error, desc} ->
         {_commands = [{:close, 1001, desc}], state}
     end
@@ -162,21 +151,12 @@ defmodule ChannelSenderEx.Transport.Socket do
     end
   end
 
-  # @impl :cowboy_websocket
-  # def websocket_info({:DOWN, ref, :process, _pid, cause}, state = {channel_ref, :connected, _, {_, _, ref}, _}) do
-  #   case cause do
-  #     :normal ->
-  #       Logger.info("Socket for channel #{channel_ref}. Related process #{inspect(ref)} down normally")
-  #       {_commands = [{:close, @normal_close_code, "close"}], state}
-  #   _ ->
-  #       Logger.warning("""
-  #         Socket for channel #{channel_ref}. Related Process #{inspect(ref)}
-  #         down with cause #{inspect(cause)}. Spawning process for re-conection
-  #       """)
-  #       spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
-  #       {_commands = [], state}
-  #   end
-  # end
+  @impl :cowboy_websocket
+  def websocket_info(:terminate_socket, state = {channel_ref, _, _, _, _}) do
+    # ! check if we need to do something with the new_socket_pid
+    Logger.info("Socket for channel #{channel_ref} : received terminate_socket message")
+    {_commands = [{:close, 1001, <<@socket_replaced>>}], state}
+  end
 
   @impl :cowboy_websocket
   def websocket_info({:DOWN, ref, proc, pid, cause}, state = {channel_ref, _, _, _, _}) do
@@ -254,43 +234,19 @@ defmodule ChannelSenderEx.Transport.Socket do
     action_fn = fn _ -> check_channel_registered(channel_ref) end
     # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
     # with a backoff strategy of 100ms initial delay and max of 500ms delay.
-    result = execute(50, 300, 3, action_fn, fn ->
+    execute(100, 500, 3, action_fn, fn ->
       Logger.error("Socket unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
       {:error, <<@invalid_channel_code>>}
     end)
-
-    case result do
-      {:error, _desc} = e ->
-        e
-      {pid, _res} ->
-        {:ok, pid}
-    end
   end
 
   defp check_channel_registered(res = {@channel_key, channel_ref}) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       :noproc ->
-        Logger.warning("Socket: #{channel_ref} not found, retrying query...")
+        Logger.warning("Channel #{channel_ref} not found, retrying query...")
         :retry
       pid ->
-        {pid, res}
-    end
-  end
-
-  # defp check_channel_registered({:error, _desc}) do
-  #   :retry
-  # end
-
-  defp validate_channel_is_waiting(pid) when is_pid(pid)  do
-    {status, data} = Channel.info(pid)
-    case status do
-      :waiting ->
-        # process can continue, and socket process will be linked to the channel process
-        {:ok, data}
-      _ ->
-        # channel is already in a connected state, and a previous socket process
-        # was already linked to it.
-        {:error, <<@invalid_already_stablished>>, data}
+        {:ok, pid}
     end
   end
 

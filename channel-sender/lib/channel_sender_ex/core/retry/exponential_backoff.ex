@@ -9,7 +9,7 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
   defp normalize(value) when is_function(value), do: value
   defp normalize(value) when is_atom(value), do: fn -> exit(value) end
 
-  def loop(_, _, max_retries, _, on_give_up, max_retries), do: on_give_up.()
+  def loop(_, _, max_retries, _, on_give_up, current_tries) when max_retries == current_tries, do: on_give_up.()
 
   def loop(initial, max_delay, max_retries, action_fn, on_give_up, iter) do
     actual_delay = exp_back_off(initial, max_delay, iter)

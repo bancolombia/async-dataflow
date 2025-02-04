@@ -6,7 +6,11 @@ defmodule ChannelSenderEx.Core.NodeObserverTest do
   alias ChannelSenderEx.Core.{ChannelRegistry, ChannelSupervisor}
 
   setup do
-    {:ok, pid} = NodeObserver.start_link([])
+    {:ok, pid} =
+      case NodeObserver.start_link([]) do
+        {:ok, pid} -> {:ok, pid}
+        {:error, {:already_started, pid}} -> {:ok, pid}
+      end
 
     {:ok, _} = Application.ensure_all_started(:telemetry)
 
@@ -19,16 +23,17 @@ defmodule ChannelSenderEx.Core.NodeObserverTest do
 
   test "handles nodeup message", %{pid: pid} do
     assert capture_log(fn ->
-      send(pid, {:nodeup, :some_node, :visible})
-      :timer.sleep(100) # Allow some time for the message to be processed
-    end) == ""
+             send(pid, {:nodeup, :some_node, :visible})
+             # Allow some time for the message to be processed
+             :timer.sleep(100)
+           end) == ""
   end
 
   test "handles nodedown message", %{pid: pid} do
     assert capture_log(fn ->
-      send(pid, {:nodedown, :some_node, :visible})
-      :timer.sleep(100) # Allow some time for the message to be processed
-    end) == ""
+             send(pid, {:nodedown, :some_node, :visible})
+             # Allow some time for the message to be processed
+             :timer.sleep(100)
+           end) == ""
   end
-
 end
