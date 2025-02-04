@@ -38,7 +38,7 @@ public class RestConsumer implements AsyncDataFlowGateway {
                 .build();
 
         return client
-                .post().uri("/ext/channel/create")
+                .post().uri("/create")
                 .body(Mono.just(request), ObjectRequest.class)
                 .retrieve()
                 .bodyToMono(DTOCredentials.class)
@@ -48,7 +48,7 @@ public class RestConsumer implements AsyncDataFlowGateway {
     @Override
     public Mono<Void> deliverMessage(String channelRef, DeliverMessage deliverMessage) {
         return client
-                .post().uri("/ext/channel/deliver_message")
+                .post().uri("/deliver_message")
                 .bodyValue(mapperDTO(deliverMessage))
                 .retrieve().toBodilessEntity().then();
     }

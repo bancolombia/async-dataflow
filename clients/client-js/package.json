@@ -1,6 +1,6 @@
 {
   "name": "@bancolombia/chanjs-client",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AsycnDataflow websocket browser client. By Bancolombia",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,6 +11,7 @@
     "sonar-scanner": "node_modules/sonar-scanner/bin/sonar-scanner",
     "prepare": "npm run build",
     "build": "tsc",
+    "publish-local": "npm run build && npm unpublish --registry http://localhost:4873 && npm publish --registry http://localhost:4873 && echo 'Deployed!'",
     "lint": "eslint --ext .ts ."
   },
   "nyc": {

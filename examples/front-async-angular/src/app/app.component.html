@@ -239,6 +239,9 @@
             [(ngModel)]="delay"
           />
             <button class="card" (click)="generateRequest()">send request</button>
+            <button class="card" (click)="connect()">connect</button>
+            <button class="card" (click)="reconnect()">reconnect</button>
+            <button class="card" (click)="disconnect()">disconnect</button>
       </div>
 
         <div *ngIf="results" class="card-container">
@@ -316,6 +319,13 @@
     </div>
   </div>
 </main>
+<div>
+  <h1>Captured Console Logs</h1>
+  <div *ngFor="let log of logs">
+    <p>{{ log }}</p>
+  </div>
+</div>
+
 
 <!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
 <!-- * * * * * * * * * * * The content above * * * * * * * * * * * * -->

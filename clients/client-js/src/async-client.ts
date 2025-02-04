@@ -53,7 +53,7 @@ export class AsyncClient {
 
     public connect() {
         if (this.socket && this.socket.readyState == SocketState.OPEN) { // TODO: Verify conditions
-            console.debug('async-client. socket already created');
+            console.debug('async-client. socket already created and open');
             return;
         }
         console.debug('async-client. connect() called')

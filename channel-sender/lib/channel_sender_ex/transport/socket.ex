@@ -295,39 +295,33 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   defp handle_terminate(cause = {:remote, _code, _}, _req, state) do
-    {channel_ref, _, _, _, _} = state
-    Logger.info("Socket with pid: #{inspect(self())}, for ref #{channel_ref} terminated normally. CAUSE: #{inspect(cause)}")
+    channel_ref = extract_ref(state)
+    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated normally. CAUSE: #{inspect(cause)}")
     :ok
   end
 
   defp handle_terminate(:stop, _req, state) do
-    channel_ref = case state do
-      {ref, _, _} -> ref
-      {ref, _unauthorized_atom} -> ref
-      _ -> state
-    end
+    channel_ref = extract_ref(state)
     Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :stop. STATE: #{inspect(state)}")
     :ok
   end
 
   defp handle_terminate(:timeout, _req, state) do
-    channel_ref = case state do
-      {ref, _, _} -> ref
-      {ref, _, _, _, _} -> ref
-      _ -> state
-    end
+    channel_ref = extract_ref(state)
     Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :timeout. STATE: #{inspect(state)}")
     :ok
   end
 
   defp handle_terminate({:error, :closed}, _req, state) do
-    channel_ref = case state do
-      {ref, _, _} -> ref
-      _ -> state
-    end
+    channel_ref = extract_ref(state)
     Logger.warning("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} was closed without receiving closing frame first")
     :ok
   end
+
+  defp extract_ref(state) when is_tuple(state) do
+    elem(state, 0)
+  end
+  defp extract_ref(state), do: state
 
   # handle other possible termination reasons:
   # {:crash, Class, Reason}

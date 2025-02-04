@@ -16,6 +16,7 @@
             "outputPath": "dist/front-async",
             "index": "src/index.html",
             "browser": "src/main.ts",
+            "preserveSymlinks": true,
             "polyfills": [
               "zone.js"
             ],

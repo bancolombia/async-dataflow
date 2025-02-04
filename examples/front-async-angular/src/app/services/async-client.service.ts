@@ -12,40 +12,28 @@ export class AsyncClientService {
   private getEventFromAsyncDataflow = new Subject<Message>();
   public eventRecived$ = this.getEventFromAsyncDataflow.asObservable();
   private client?: AsyncClient;
-  constructor(private http: HttpClient) {}
+  private channel_ref: string = '';
+  constructor(private http: HttpClient) { }
 
   public getCredentials(user_ref: string) {
-    if (this.hasChannelCreated()) {
-      this.initChannel(
-        sessionStorage.getItem('channel_ref')??'',
-        sessionStorage.getItem('channel_secret')??''
-      );
-    } else {
-      const url = `${environment.api_business}/credentials`;
+    const url = `${environment.api_business}/credentials`;
 
-      this.http
-        .get(url, { params: { user_ref: user_ref } })
-        .subscribe((res: any) => {
-          sessionStorage.setItem('channel_ref', res.channelRef);
-          sessionStorage.setItem('channel_secret', res.channelSecret);
-          this.createChannel(res);
-        });
-    }
-  }
-  private hasChannelCreated() {
-    return (
-      sessionStorage.getItem('channel_ref') &&
-      sessionStorage.getItem('channel_secret') != null
-    );
+    this.http
+      .get(url, { params: { user_ref: user_ref } })
+      .subscribe((res: any) => {
+        this.channel_ref = res.channelRef;
+        this.createChannel(res);
+      });
   }
 
   private createChannel(res: any) {
     this.initChannel(res.channelRef, res.channelSecret);
   }
 
-  private initChannel(channel_ref: string, channel_secret:string) {
+  private initChannel(channel_ref: string, channel_secret: string) {
+    console.log('Opening web socket with channel_ref:', channel_ref);
     this.client = new AsyncClient({
-      socket_url: `ws://${environment.socket_url_async}/ext/socket`,
+      socket_url: `ws://${environment.socket_url_async}`,
       channel_ref,
       channel_secret,
       heartbeat_interval: environment.heartbeat_interval,
@@ -62,8 +50,14 @@ export class AsyncClientService {
   }
 
   public closeChannel() {
-    sessionStorage.removeItem('channel_ref');
-    sessionStorage.removeItem('channel_secret');
     this.client?.disconnect();
+  }
+
+  public forceConnect(){
+    return this.client?.connect();
+  }
+
+  public getRef() {
+    return this.channel_ref;
   }
 }
