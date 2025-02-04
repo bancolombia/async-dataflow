@@ -9,7 +9,7 @@ import { BinaryDecoder } from "../src/binary-decoder";
 import "fast-text-encoding"
 import { Protocol } from "../src/protocol";
 
-const assert = chai.assert;
+const assert: Chai.AssertStatic = chai.assert;
 const TIMEOUT = 10000;
 
 function timeout(millis: number): Promise<any> {
@@ -22,7 +22,7 @@ function timeout(millis: number): Promise<any> {
 
 describe('Async client Tests', function () {
     let mockServer;
-    let client: AsyncClient;
+    let client: AsyncClient | undefined;
     let config: AsyncConfig = {
         socket_url: "wss://host.local/socket",
         channel_ref: "ab771f3434aaghjgr",
