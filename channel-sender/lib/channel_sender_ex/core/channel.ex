@@ -17,6 +17,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @type output_message() :: {delivery_ref(), ProtocolMessage.t()}
   @type pending_ack() :: BoundedMap.t()
   @type pending_sending() :: BoundedMap.t()
+  @type deliver_response :: :accepted_waiting | :accepted_connected
 
   defmodule Data do
     @moduledoc """
@@ -30,7 +31,8 @@ defmodule ChannelSenderEx.Core.Channel do
             pending_sending: ChannelSenderEx.Core.Channel.pending_sending(),
             stop_cause: atom(),
             socket_stop_cause: atom(),
-            user_ref: String.t()
+            user_ref: String.t(),
+            meta: String.t()
           }
 
     defstruct channel: "",
@@ -40,9 +42,10 @@ defmodule ChannelSenderEx.Core.Channel do
               pending_sending: BoundedMap.new(),
               stop_cause: nil,
               socket_stop_cause: nil,
-              user_ref: ""
+              user_ref: "",
+              meta: nil
 
-    def new(channel, application, user_ref) do
+    def new(channel, application, user_ref, meta) do
       %Data{
         channel: channel,
         application: application,
@@ -51,7 +54,8 @@ defmodule ChannelSenderEx.Core.Channel do
         pending_sending: BoundedMap.new(),
         stop_cause: nil,
         socket_stop_cause: nil,
-        user_ref: user_ref
+        user_ref: user_ref,
+        meta: meta
       }
     end
 
@@ -72,6 +76,13 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   @doc """
+  get information about this channel
+  """
+  def info(server, timeout \\ @on_connected_channel_reply_timeout) do
+    GenStateMachine.call(server, :info, timeout)
+  end
+
+  @doc """
   operation to mark a message as acknowledged
   """
   def notify_ack(server, ref, message_id) do
@@ -81,7 +92,6 @@ defmodule ChannelSenderEx.Core.Channel do
   @doc """
   operation to request a message delivery
   """
-  @type deliver_response :: :accepted_waiting | :accepted_connected
   @spec deliver_message(:gen_statem.server_ref(), ProtocolMessage.t()) :: deliver_response()
   def deliver_message(server, message) do
     GenStateMachine.call(server, {:deliver_message, message},
@@ -89,18 +99,23 @@ defmodule ChannelSenderEx.Core.Channel do
     )
   end
 
+  def stop(server) do
+    GenStateMachine.call(server, :stop)
+  end
+
   @spec start_link(any()) :: :gen_statem.start_ret()
   @doc """
   Starts the state machine.
   """
-  def start_link(args = {_channel, _application, _user_ref}, opts \\ []) do
+  def start_link(args = {_channel, _application, _user_ref, _meta}, opts \\ []) do
     GenStateMachine.start_link(__MODULE__, args, opts)
   end
 
   @impl GenStateMachine
   @doc false
-  def init({channel, application, user_ref}) do
-    data = Data.new(channel, application, user_ref)
+  def init({channel, application, user_ref, meta}) do
+    data = Data.new(channel, application, user_ref, meta)
+    Logger.debug("Channel #{channel} created. Data: #{inspect(data)}")
     Process.flag(:trap_exit, true)
     CustomTelemetry.execute_custom_event([:adf, :channel], %{count: 1})
     {:ok, :waiting, data}
@@ -121,6 +136,21 @@ defmodule ChannelSenderEx.Core.Channel do
         new_data = %{data | socket_stop_cause: nil}
         {:keep_state, new_data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
     end
+  end
+
+  def waiting({:call, from}, :info, data) do
+    actions = [
+      _reply = {:reply, from, {:waiting, data}}
+    ]
+    {:keep_state_and_data, actions}
+  end
+
+  def waiting({:call, from}, :stop, data) do
+    actions = [
+      _reply = {:reply, from, :ok}
+    ]
+    Logger.info("Channel #{data.channel} stopping, reason: :explicit_close")
+    {:next_state, :closed, %{data | stop_cause: :explicit_close}, actions}
   end
 
   ## stop the process with a timeout cause if the socket is not
@@ -203,6 +233,24 @@ defmodule ChannelSenderEx.Core.Channel do
     refresh_timeout = calculate_refresh_token_timeout()
     Logger.info("Channel #{data.channel} entering connected state")
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
+  end
+
+  def connected({:call, from}, :info, data) do
+    actions = [
+      _reply = {:reply, from, {:connected, data}}
+    ]
+    {:keep_state_and_data, actions}
+  end
+
+  def connected({:call, from}, {:socket_connected, socket_pid}, data) do
+    socket_ref = Process.monitor(socket_pid)
+    new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
+
+    actions = [
+      _reply = {:reply, from, :ok}
+    ]
+    Logger.debug("Channel #{data.channel} overwritting socket pid.")
+    {:keep_state, new_data, actions}
   end
 
   # this method will be called when the socket is disconnected
@@ -304,8 +352,8 @@ defmodule ChannelSenderEx.Core.Channel do
 
   ## Handle info notification when socket process terminates. This method is called because the socket is monitored.
   ## via Process.monitor(socket_pid) in the waited/connected state.
-  def connected(:info, {:DOWN, _ref, :process, _object, _reason}, data) do
-    new_data = %{data | socket: nil}
+  def connected(:info, {:DOWN, _ref, :process, _object, reason}, data) do
+    new_data = %{data | socket: nil, socket_stop_cause: reason}
     Logger.warning("Channel #{data.channel} detected socket close/disconnection. Will enter :waiting state")
     {:next_state, :waiting, new_data, []}
   end
@@ -321,6 +369,14 @@ defmodule ChannelSenderEx.Core.Channel do
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
 
+  # capture shutdown signal
+  def connected(:info, {:EXIT, from_pid, :shutdown}, data) do
+    source_process = Process.info(from_pid)
+    Logger.info("Channel #{inspect(data)} received shutdown signal: #{inspect(source_process)}")
+    :keep_state_and_data
+  end
+
+  # capture any other info message
   def connected(
     :info,
     info_payload,
@@ -330,17 +386,36 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state_and_data, :postpone}
   end
 
-  @impl true
-  def terminate(reason, state, data) do
-    CustomTelemetry.execute_custom_event([:adf, :channel], %{count: -1})
-    level = if reason == :normal, do: :info, else: :warning
-    Logger.log(level, "Channel #{data.channel} terminating, from state #{inspect(state)} and reason #{inspect(reason)}")
-    :ok
+  def connected({:call, from}, :stop, data) do
+    actions = [
+      _reply = {:reply, from, :ok}
+    ]
+    Logger.debug("Channel #{data.channel} stopping, reason: :explicit_close")
+    {:next_state, :closed, %{data | stop_cause: :explicit_close}, actions}
   end
 
   defp new_token_message(_data = %{application: app, channel: channel, user_ref: user}) do
     new_token = ChannelIDGenerator.generate_token(channel, app, user)
     ProtocolMessage.of(UUID.uuid4(:hex), ":n_token", new_token)
+  end
+
+  ############################################
+  ###           CLOSED STATE              ####
+  ############################################
+  def closed(:enter, _old_state, data) do
+    {:stop, :normal, data}
+  end
+
+  @impl true
+  def terminate(reason, state, data) do
+    CustomTelemetry.execute_custom_event([:adf, :channel], %{count: -1})
+    level = if reason == :normal, do: :info, else: :warning
+    Logger.log(level,
+    """
+    Channel #{data.channel} terminating, from state #{inspect(state)}
+    and reason #{inspect(reason)}. Data: #{inspect(data)}
+    """)
+    :ok
   end
 
   #########################################
@@ -430,6 +505,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   defp socket_clean_disconnection?(data) do
     case data.socket_stop_cause do
+      :normal -> true
       {:remote, 1000, _} -> true
       _ -> false
     end

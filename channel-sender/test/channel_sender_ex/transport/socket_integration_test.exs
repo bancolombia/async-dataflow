@@ -102,7 +102,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     conn = connect(port, channel)
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
     :gun.ws_send(conn, {:text, "Auth::#{secret}Invalid"})
-    assert_receive {:gun_ws, ^conn, ^stream, {:close, 1008, "Invalid token for channel"}}
+    assert_receive {:gun_ws, ^conn, ^stream, {:close, 1001, "3008"}}
     assert_receive {:gun_down, ^conn, :ws, :closed, [], []}
     refute_receive {:gun_up, _conn, _}
     :gun.close(conn)
@@ -346,7 +346,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         sub_protocol -> connect(port, channel, sub_protocol)
       end
 
-    assert_receive {:gun_response, ^conn, stream, :fin, 400, _headers}, 1000
+    assert_receive {:gun_ws, ^conn, stream, {:close, 1001, "3050"}}, 1000
     {conn, stream}
   end
 

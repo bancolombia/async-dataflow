@@ -33,7 +33,12 @@ defmodule ChannelSenderEx.Transport.CowboyStarter do
         CustomTelemetry.execute_custom_event([:adf, :socket, :switchprotocol],
           %{count: 1},
           %{request_path: "/ext/socket", status: 101, code: "0"})
+      _ ->
+        :ok
     end
+
+  rescue
+    e -> Logger.warning("Error in metrics callback: #{inspect(e)}")
   end
 
   defp compile_routes(paths) do
