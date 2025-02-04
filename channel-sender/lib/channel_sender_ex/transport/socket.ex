@@ -33,7 +33,6 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   require Logger
 
-  alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
@@ -193,24 +192,11 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def terminate(reason, partial_req, state) do
-
     Logger.debug("Socket terminate with pid: #{inspect(self())}. REASON: #{inspect(reason)}. REQ: #{inspect(partial_req)}, STATE: #{inspect(state)}")
 
     CustomTelemetry.execute_custom_event([:adf, :socket, :disconnection], %{count: 1})
 
     handle_terminate(reason, partial_req, state)
-
-    # level = if reason == :normal, do: :info, else: :warning
-    # case state do
-    #   { channel_ref, _, _, _, _} ->
-    #     level = if reason == :normal, do: :info, else: :warning
-    #     Logger.log(level, "Socket for channel #{channel_ref} terminated with reason: #{inspect(reason)}")
-    #     post_terminate(reason, channel_ref)
-    #     :ok
-    #   _ ->
-    #     Logger.log(level, "Socket terminated with reason: #{reason}. State: #{inspect(state)}")
-    #     :ok
-    # end
   end
 
   #############################
@@ -240,7 +226,7 @@ defmodule ChannelSenderEx.Transport.Socket do
     end)
   end
 
-  defp check_channel_registered(res = {@channel_key, channel_ref}) do
+  defp check_channel_registered({@channel_key, channel_ref}) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
       :noproc ->
         Logger.warning("Channel #{channel_ref} not found, retrying query...")
@@ -320,7 +306,7 @@ defmodule ChannelSenderEx.Transport.Socket do
       {ref, _unauthorized_atom} -> ref
       _ -> state
     end
-    Logger.info("Socket with pid: #{inspect(self())}, for ref #{channel_ref} terminated with :stop. STATE: #{inspect(state)}")
+    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :stop. STATE: #{inspect(state)}")
     :ok
   end
 

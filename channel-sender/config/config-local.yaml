@@ -57,8 +57,8 @@ channel_sender_ex:
   # A value of 0, will terminate the channel process immediately. This value should never 
   # be greater than max_age.
   channel_shutdown_socket_disconnect: 
-    on_clean_close: 30
-    on_disconnection: 300
+    on_clean_close: 300
+    on_disconnection: 900
 
   no_start: false
   topology:

@@ -8,6 +8,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias Plug.Conn.Query
 
   use Plug.Router
+  use Plug.ErrorHandler
+
   require Logger
 
   @metadata_headers_max 3
@@ -302,6 +304,22 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     conn
     |> put_resp_header("content-type", "application/json")
     |> send_resp(400, Jason.encode!(%{error: "Invalid request", request: invalid_body}))
+  end
+
+  @impl Plug.ErrorHandler
+  def handle_errors(conn, %{kind: _kind, reason: reason, stack: _stack}) do
+    response = case conn.status do
+      400 ->
+        Jason.encode!(%{error: "Invalid or malformed request body"})
+      500 ->
+        Jason.encode!(%{error: "Internal server error"})
+      _ ->
+        Jason.encode!(%{error: "Unknown error"})
+    end
+    Logger.error("Error detected in request: #{inspect(reason)}, response will be: #{response}")
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(conn.status, response)
   end
 
 end
