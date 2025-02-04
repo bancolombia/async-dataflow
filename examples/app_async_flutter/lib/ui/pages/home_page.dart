@@ -2,7 +2,10 @@ import 'package:app_async_flutter/async_client_service.dart';
 import 'package:app_async_flutter/ui/atoms/button.dart';
 import 'package:app_async_flutter/ui/atoms/delay_field.dart';
 import 'package:app_async_flutter/ui/helpers/home_helper.dart';
+import 'package:app_async_flutter/ui/pages/log_viewer.dart';
 import 'package:flutter/material.dart';
+
+import '../../application/app_config.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
@@ -42,18 +45,25 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Padding(
         padding: const EdgeInsets.all(40.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             DelayField(textEditingController: textEditingController),
-            const SizedBox(
-              height: 20,
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Button(
+                    text: "Generate Request",
+                    onTap: () =>
+                        homeHelper.callAsyncBackend(textEditingController)),
+                const SizedBox(width: 10),
+                Button(text: "Re-Connect", onTap: () => homeHelper.connect()),
+                const SizedBox(width: 10),
+                Button(
+                    text: "Disconnect", onTap: () => homeHelper.disconnect()),
+              ],
             ),
-            Button(
-                onTap: () =>
-                    homeHelper.callAsyncBackend(textEditingController)),
-            const SizedBox(
-              height: 20,
-            ),
+            const SizedBox(height: 10),
+            const Text("Response"),
             Expanded(
               child: AnimatedBuilder(
                   animation: asyncClientService.responsesNotifier,
@@ -64,7 +74,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         itemBuilder: (context, index) =>
                             ListTile(title: Text(data[index])));
                   }),
-            )
+            ),
+            const Text("Captured Console Logs"),
+            Button(
+                text: "Clean Logs",
+                onTap: () => AppConfig.of(context).logNotifier.clean()),
+            const Expanded(child: LogViewer()),
           ],
         ),
       ),

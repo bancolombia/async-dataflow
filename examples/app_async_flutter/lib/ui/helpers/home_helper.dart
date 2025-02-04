@@ -16,4 +16,12 @@ class HomeHelper {
         .then((value) => asyncClientService.responsesNotifier.addResponse(
             "Get empty response after ${DateTime.now().millisecondsSinceEpoch - start} ms"));
   }
+
+  void disconnect() {
+    asyncClientService.closeSession();
+  }
+
+  void connect() {
+    asyncClientService.initAsyncClient();
+  }
 }
