@@ -7,7 +7,7 @@ import 'package:logging/logging.dart';
 class Setup {
   static AppConfig getApp() {
     var env = dotenv.env;
-    Logger.root.level = Level.FINEST;
+    Logger.root.level = Level.INFO;
     LogNotifier logNotifier = LogNotifier();
     Logger.root.onRecord.listen((record) {
       var log = '${record.level.name}: ${record.time}: ${record.message}';

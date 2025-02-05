@@ -11,6 +11,9 @@ import 'message_decoder.dart';
 import 'status_codes.dart';
 
 class Transport {
+  MessageDecoder msgDecoder = JsonDecoder();
+  String? pendingHeartbeatRef;
+
   final _log = Logger('Transport');
   final IOWebSocketChannel _webSocketCh;
   final StreamController<ChannelMessage> _localStream;
@@ -18,12 +21,9 @@ class Transport {
   final Function(int, String) _signalSocketClose;
   final Function(Object) _signalSocketError;
 
-  String? pendingHeartbeatRef;
   int _ref = 0;
   bool _closeWasClean = false;
   Timer? _heartbeatTimer;
-
-  MessageDecoder? msgDecoder;
 
   Transport(
     this._webSocketCh,
@@ -31,7 +31,9 @@ class Transport {
     this._signalSocketClose,
     this._signalSocketError,
     this._heartbeatIntervalMs,
-  );
+  ) {
+    msgDecoder = _selectMessageDecoder();
+  }
 
   bool isOpen() {
     return _webSocketCh.innerWebSocket != null && readyState() == 1;
@@ -53,7 +55,7 @@ class Transport {
 
   bool isClosedCleanly() => _closeWasClean;
 
-  Future<dynamic> close(int code, String reason) async {
+  Future close(int code, String reason) async {
     _closeWasClean = true;
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
@@ -66,39 +68,40 @@ class Transport {
     return _webSocketCh.closeCode;
   }
 
-  StreamSubscription<dynamic> subscribe({required bool cancelOnErrorFlag}) {
-    return _webSocketCh.stream.listen((data) {
-      _onData(data);
-    }, onError: (error, stackTrace) {
-      _onSocketError(error, stackTrace);
-    }, onDone: () {
-      _onSocketClose();
-    }, cancelOnError: cancelOnErrorFlag);
+  StreamSubscription subscribe({required bool cancelOnErrorFlag}) {
+    return _webSocketCh.stream.listen(
+      (data) {
+        _onData(data);
+      },
+      onError: (error, stackTrace) {
+        _onSocketError(error, stackTrace);
+      },
+      onDone: () {
+        _onSocketClose();
+      },
+      cancelOnError: cancelOnErrorFlag,
+    );
   }
 
   void send(String message) {
-    _log.finest('Sending $message');
+    _log.finest('async-client. Sending $message');
     _webSocketCh.sink.add(message);
   }
 
   void _onData(dynamic data) {
-    _log.finest('Received raw from Server: $data');
-    if (msgDecoder == null) {
-      // selection of message decoder is delayed until receiving first message from socket
-      _selectMessageDecoder();
-    }
-    var decoded = msgDecoder!.decode(data);
-    _log.finest('Received Decoded: $decoded');
+    _log.finest('async-client. Received raw from Server: $data');
+    var decoded = msgDecoder.decode(data);
+    _log.finest('async-client. Received Decoded: $decoded');
     // decodes message received and pushes it to the stream
     _localStream.add(decoded);
   }
 
   void _onSocketError(WebSocketChannelException error, StackTrace stackTrace) {
-    _log.severe('onSocketError: $error');
-    _log.severe('onSocketError: $stackTrace');
+    _log.severe('async-client. onSocketError: $error $stackTrace');
 
-    if (_heartbeatTimer != null) {
-      _heartbeatTimer!.cancel();
+    var heartbeatTimer = _heartbeatTimer;
+    if (heartbeatTimer != null) {
+      heartbeatTimer.cancel();
     }
 
     _signalSocketError(error);
@@ -106,13 +109,16 @@ class Transport {
 
   void _onSocketClose() {
     _log.warning(
-        'onSocketClose, code: ${_webSocketCh.closeCode}, reason: ${_webSocketCh.closeReason}');
+      'async-client. onSocketClose, code: ${_webSocketCh.closeCode}, reason: ${_webSocketCh.closeReason}',
+    );
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
 
-    _signalSocketClose(_webSocketCh.closeCode ?? StatusCodes.error,
-        _webSocketCh.closeReason ?? '');
+    _signalSocketClose(
+      _webSocketCh.closeCode ?? StatusCodes.ok,
+      _webSocketCh.closeReason ?? '',
+    );
   }
 
   void resetHeartbeat() {
@@ -132,8 +138,9 @@ class Transport {
     }
     if (pendingHeartbeatRef != null) {
       pendingHeartbeatRef = null;
-      const reason = 'heartbeat timeout. Attempting to re-establish connection';
-      _log.warning('transport: $reason');
+      String reason =
+          'heartbeat timeout. Attempting to re-establish connection heartbeat interval $_heartbeatIntervalMs';
+      _log.warning('async-client. transport: $reason');
       _abnormalClose(reason);
 
       return;
@@ -143,28 +150,24 @@ class Transport {
   }
 
   void _abnormalClose(reason) {
-    _log.fine('Abnormal Close');
+    _log.warning('async-client. Abnormal Close');
     _closeWasClean = false;
-    _webSocketCh.sink.close(StatusCodes.error, reason);
+    _webSocketCh.sink.close(StatusCodes.ok, reason);
   }
 
   String _makeRef() {
     var newRef = _ref + 1;
-    if (newRef == _ref) {
-      _ref = 0;
-    } else {
-      _ref = newRef;
-    }
+    _ref = newRef == _ref ? 0 : newRef;
 
     return _ref.toString();
   }
 
-  void _selectMessageDecoder() {
-    if (getProtocol() == 'binary_flow') {
-      msgDecoder = BinaryDecoder();
-    } else {
-      msgDecoder = JsonDecoder();
-    }
-    _log.finest('Decoder selected : $msgDecoder');
+  MessageDecoder _selectMessageDecoder() {
+    MessageDecoder decoder = getProtocol() == 'binary_flow'
+        ? BinaryDecoder()
+        : JsonDecoder() as MessageDecoder;
+    _log.finest('async-client. Decoder selected : $decoder');
+
+    return decoder;
   }
 }

@@ -1,4 +1,7 @@
 # CHANGELOG
+## [2.0.3] 
+- Improve logs
+- Refactor
 ## [2.0.2] 
 - Fix reconnection 
 - Refactor
