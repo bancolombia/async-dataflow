@@ -12,6 +12,7 @@ describe('Exponential Retry Timer Tests', function()  {
         let counter = 0;
         let lastTime = Date.now();
         let times: number[] = [];
+        const maxRetries = 7;
 
         let retryProcess = new Promise(resolve => {
             timer = new RetryTimer(() => {
@@ -19,8 +20,8 @@ describe('Exponential Retry Timer Tests', function()  {
                 times.push(now - lastTime);
                 lastTime = now;
                 counter = counter + 1;
-                counter < 7 ? timer.schedule() : resolve(0);
-            }, 10, x => x );
+                counter < maxRetries ? timer.schedule() : resolve(0);
+            }, 10, x => x, maxRetries);
         });
 
         timer.schedule();

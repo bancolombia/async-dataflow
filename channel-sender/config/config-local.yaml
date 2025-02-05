@@ -12,7 +12,7 @@ channel_sender_ex:
   # initial time in seconds to wait before re-send a message not acked to a channel
   initial_redelivery_time: 900
 
-  # max time in seconds to wait the client to send the auth token
+  # max time in milliseconds to wait the client to send the auth token
   # before closing the channel
   socket_idle_timeout: 90000
 

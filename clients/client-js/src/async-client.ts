@@ -77,7 +77,6 @@ export class AsyncClient {
     private onSocketOpen(event) {
         this.selectSerializerForProtocol();
         this.isOpen = true;
-        this.reconnectTimer.reset();
         this.resetHeartbeat();
         this.socket.send(`Auth::${this.actualToken}`)
         this.stateCallbacks.open.forEach((callback) => callback(event));
@@ -91,7 +90,7 @@ export class AsyncClient {
         }
     }
 
-    private onSocketError(event) {
+    private onSocketError(_event) {
         // console.log('error', event)
     }
 
@@ -99,6 +98,7 @@ export class AsyncClient {
         const message = this.serializer.decode(event)
         if (!this.isActive && message.event == "AuthOk") {
             this.isActive = true;
+            this.reconnectTimer.reset();
             console.log('async-client. Auth OK');
         } else if (message.event == ":hb" && message.correlation_id == this.pendingHeartbeatRef) {
             this.pendingHeartbeatRef = null;
@@ -182,6 +182,7 @@ export class AsyncClient {
     }
 
     private onSocketClose(event) {
+        this.isActive = false;
         console.warn(`async-client. channel close: ${event.code} ${event.reason}`);
         clearInterval(this.heartbeatTimer)
         const reason = this.extractReason(event.reason);

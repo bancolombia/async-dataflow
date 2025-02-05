@@ -20,15 +20,17 @@ export class RetryTimer {
 
     public schedule(): void {
         if (typeof window !== 'undefined') {
-            const delayMS = this.delay();
-            console.log(`async-client. scheduling retry in ${delayMS} ms`);
-            this.timer = window.setTimeout(() => {
+            if (this.tries <= this.maxRetries) {
+                const delayMS = this.delay();
                 this.tries = this.tries + 1;
-                if (this.tries <= this.maxRetries) {
+                console.log(`async-client. scheduling retry in ${delayMS} ms`);
+                this.timer = window.setTimeout(() => {
                     console.log(`async-client. retrying ${this.tries} of ${this.maxRetries}`);
                     this.callback();
-                }
-            }, delayMS)
+                }, delayMS)
+            } else {
+                console.log(`async-client. max retries reached.`);
+            }
         } else {
             console.warn(`async-client. could not setup scheduler for rety: window is undefined.`);
         }
