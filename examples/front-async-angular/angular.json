@@ -32,6 +32,33 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/environments/environment.ts",
+                  "with": "src/app/environments/environment.prod.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kb",
+                  "maximumError": "1mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "2kb",
+                  "maximumError": "4kb"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "poc": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/environments/environment.ts",
+                  "with": "src/app/environments/environment.poc.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
@@ -62,6 +89,9 @@
             },
             "development": {
               "buildTarget": "front-async:build:development"
+            },
+            "poc": {
+              "buildTarget": "front-async:build:poc"
             }
           },
           "defaultConfiguration": "development"
