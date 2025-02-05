@@ -7,6 +7,7 @@ class AppConfig extends InheritedWidget {
     required this.businessUrl,
     required this.socketUrl,
     required this.heartbeatInterval,
+    required this.maxRetries,
     required this.logNotifier,
     required Widget child,
   }) : super(key: key, child: child);
@@ -14,6 +15,7 @@ class AppConfig extends InheritedWidget {
   final String businessUrl;
   final String socketUrl;
   final int heartbeatInterval;
+  final int maxRetries;
   final LogNotifier logNotifier;
 
   static AppConfig of(BuildContext context) =>

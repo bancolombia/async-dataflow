@@ -11,6 +11,11 @@ class ResponsesNotifier extends ChangeNotifier {
     responses.add(response);
     notifyListeners();
   }
+
+  void clean() {
+    responses.clear();
+    notifyListeners();
+  }
 }
 
 class AsyncClientService extends InheritedWidget {
@@ -29,7 +34,7 @@ class AsyncClientService extends InheritedWidget {
   late AsyncClient asyncClient;
   final AsyncClientGateway asyncClientGateway;
 
-  late final SharedPreferences prefs;
+  late SharedPreferences prefs;
   ResponsesNotifier responsesNotifier = ResponsesNotifier();
   final AppConfig appConfig;
 
@@ -54,7 +59,6 @@ class AsyncClientService extends InheritedWidget {
 
   Future<void> initAsyncClient() async {
     prefs = await SharedPreferences.getInstance();
-    await deleteChannelCreated();
     ChannelCredential? channelCredential = await _requestChannelCredentials();
     if (channelCredential != null) {
       final conf = AsyncConfig(
@@ -62,7 +66,8 @@ class AsyncClientService extends InheritedWidget {
           enableBinaryTransport: false,
           channelRef: channelCredential.channelRef,
           channelSecret: channelCredential.channelSecret,
-          heartbeatInterval: appConfig.heartbeatInterval);
+          heartbeatInterval: appConfig.heartbeatInterval,
+          maxRetries: appConfig.maxRetries);
 
       asyncClient = AsyncClient(conf).connect();
       asyncClient.subscribeTo(eventListen, (eventResult) {

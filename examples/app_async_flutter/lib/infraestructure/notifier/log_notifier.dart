@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class LogNotifier extends ChangeNotifier {
   List<String> logs = [];
   void setLog(log) {
-    logs.add(log);
+    logs.insert(0, log);
     notifyListeners();
   }
 

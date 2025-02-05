@@ -64,6 +64,11 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const SizedBox(height: 10),
             const Text("Response"),
+            const SizedBox(height: 10),
+            Button(
+                text: "Clean Logs",
+                onTap: () => asyncClientService.responsesNotifier.clean()),
+            const SizedBox(height: 10),
             Expanded(
               child: AnimatedBuilder(
                   animation: asyncClientService.responsesNotifier,
@@ -71,14 +76,20 @@ class _MyHomePageState extends State<MyHomePage> {
                     var data = asyncClientService.responsesNotifier.responses;
                     return ListView.builder(
                         itemCount: data.length,
-                        itemBuilder: (context, index) =>
-                            ListTile(title: Text(data[index])));
+                        itemBuilder: (context, index) => ListTile(
+                              title: Text(data[index]),
+                              textColor: data[index].contains("empty")
+                                  ? Colors.black45
+                                  : Colors.black,
+                            ));
                   }),
             ),
+            const SizedBox(width: 10),
             const Text("Captured Console Logs"),
             Button(
                 text: "Clean Logs",
                 onTap: () => AppConfig.of(context).logNotifier.clean()),
+            const SizedBox(height: 10),
             const Expanded(child: LogViewer()),
           ],
         ),

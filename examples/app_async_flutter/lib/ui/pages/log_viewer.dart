@@ -37,7 +37,7 @@ class _LogViewerState extends State<LogViewer> {
       separatorBuilder: (context, index) =>
           const SizedBox(height: 16), // Espacio entre elementos
       itemBuilder: (context, index) {
-        return Text(logNotifier?.logs[index] ?? '');
+        return SelectableText(logNotifier?.logs[index] ?? '');
       },
     );
   }
