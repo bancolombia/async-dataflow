@@ -1,6 +1,6 @@
 {
   "name": "@bancolombia/chanjs-client",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "AsycnDataflow websocket browser client. By Bancolombia",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -67,6 +67,12 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "lru-cache": "^10.0.1"
+    "event-source-plus": "^0.1.8",
+    "lru-cache": "^10.0.1",
+    "undici": "^7.3.0"
+  },
+  "overrides": {
+    "minimatch": "5.1.2",
+    "glob": "8.1.0"
   }
 }

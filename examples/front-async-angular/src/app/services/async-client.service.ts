@@ -33,11 +33,11 @@ export class AsyncClientService {
   private initChannel(channel_ref: string, channel_secret: string) {
     console.log('Opening web socket with channel_ref:', channel_ref);
     this.client = new AsyncClient({
-      socket_url: `ws://${environment.socket_url_async}`,
+      socket_url: `${environment.sse_url_async}`,
       channel_ref,
       channel_secret,
       heartbeat_interval: environment.heartbeat_interval,
-    });
+    }, null);
 
     this.client.connect();
     this.listenEvents(this.client);
@@ -45,6 +45,7 @@ export class AsyncClientService {
 
   private listenEvents(client: AsyncClient) {
     client.listenEvent('businessEvent', (message) => {
+      console.log('Event received:', message);
       this.getEventFromAsyncDataflow.next(message);
     });
   }

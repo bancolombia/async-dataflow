@@ -29,6 +29,11 @@ export class BinaryDecoder implements MessageDecoder {
 
         return new ChannelMessage(message_id, event, correlation_id, payload);
     }
+
+    public decode_sse(sse_event: any): ChannelMessage {
+        console.log('Binary Decoder. decoding sse not supported');
+        return null;
+    }
 }
 
 class Extractor {
