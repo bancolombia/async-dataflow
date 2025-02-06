@@ -1,4 +1,6 @@
 # CHANGELOG
+## [2.0.4] 
+- Fix reconnection with heartbeats issue
 ## [2.0.3] 
 - Improve logs
 - Refactor

@@ -8,7 +8,6 @@ import 'package:web_socket_channel/io.dart';
 import 'async_config.dart';
 import 'channel_message.dart';
 import 'retry_timer.dart';
-import 'status_codes.dart';
 import 'transport.dart';
 
 /// Async Data Flow Low Level Client
@@ -217,7 +216,7 @@ class AsyncClient {
   Future<bool> disconnect() async {
     _log.finer('async-client. disconnect() called');
 
-    await _transport?.close(StatusCodes.ok, 'Client disconnect');
+    await _transport?.close(1000, 'Client disconnect');
     _connectRetryTimer.reset();
     _log.finer('async-client. async-client. disconnect() called end');
 

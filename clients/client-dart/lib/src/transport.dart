@@ -8,7 +8,6 @@ import 'binary_decoder.dart';
 import 'channel_message.dart';
 import 'json_decoder.dart';
 import 'message_decoder.dart';
-import 'status_codes.dart';
 
 class Transport {
   MessageDecoder msgDecoder = JsonDecoder();
@@ -116,7 +115,7 @@ class Transport {
     }
 
     _signalSocketClose(
-      _webSocketCh.closeCode ?? StatusCodes.ok,
+      _webSocketCh.closeCode ?? 1000,
       _webSocketCh.closeReason ?? '',
     );
   }
@@ -152,7 +151,8 @@ class Transport {
   void _abnormalClose(reason) {
     _log.warning('async-client. Abnormal Close');
     _closeWasClean = false;
-    _webSocketCh.sink.close(StatusCodes.ok, reason);
+    const heartbeatCode = 3051;
+    _webSocketCh.sink.close(heartbeatCode, reason);
   }
 
   String _makeRef() {
