@@ -12,10 +12,10 @@ class ApiService implements AsyncClientGateway {
     urlBusinessService = AppConfig.of(context).businessUrl;
   }
   @override
-  Future<ChannelCredential?> getCredentials() async {
+  Future<ChannelCredential?> getCredentials(String userRef) async {
     ChannelCredential? channelCredential;
     return http
-        .get(Uri.parse("$urlBusinessService/credentials"))
+        .get(Uri.parse("$urlBusinessService/credentials?user_ref=$userRef"))
         .then((response) {
       try {
         print("response.body ${response.body}");
@@ -31,8 +31,8 @@ class ApiService implements AsyncClientGateway {
 
   @override
   Future<http.Response> callBusinessUseCase(
-      String channelRef, int delay) async {
+      String channelRef, String userRef, int delay) async {
     return http.get(Uri.parse(
-        "$urlBusinessService/business?channel_ref=$channelRef&delay=$delay"));
+        "$urlBusinessService/business?channel_ref=$channelRef&user_ref=$userRef&delay=$delay"));
   }
 }

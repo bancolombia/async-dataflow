@@ -1,11 +1,9 @@
-import 'package:app_async_flutter/async_client_service.dart';
-import 'package:app_async_flutter/ui/atoms/button.dart';
-import 'package:app_async_flutter/ui/atoms/delay_field.dart';
-import 'package:app_async_flutter/ui/helpers/home_helper.dart';
-import 'package:app_async_flutter/ui/pages/log_viewer.dart';
+import 'package:app_async_flutter/ui/pages/config_page.dart';
+import 'package:app_async_flutter/ui/pages/request_page.dart';
 import 'package:flutter/material.dart';
 
-import '../../application/app_config.dart';
+import '../../async_client_service.dart';
+import 'log_viewer_page.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
@@ -16,83 +14,52 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late AsyncClientService asyncClientService;
-  late HomeHelper homeHelper;
-  TextEditingController textEditingController = TextEditingController();
+  int _currentIndex = 0;
+  final List<Widget> _children = [
+    const RequestPage(),
+    const LogViewer(),
+    const ConfigPage(),
+  ];
+
+  void onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    asyncClientService = AsyncClientService.of(context)!;
-    homeHelper = HomeHelper(context);
-    textEditingController.text = "250";
-
-    asyncClientService.initAsyncClient();
-  }
-
-  @override
-  void dispose() {
-    asyncClientService.closeSession();
-    super.dispose();
+    AsyncClientService.of(context)!.initAsyncClient();
   }
 
   @override
   Widget build(BuildContext context) {
+    const items = [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.remove_from_queue_sharp),
+        label: 'Requests',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.list),
+        label: 'Logs',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.settings),
+        label: 'Config',
+      ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(40.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            DelayField(textEditingController: textEditingController),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Button(
-                    text: "Generate Request",
-                    onTap: () =>
-                        homeHelper.callAsyncBackend(textEditingController)),
-                const SizedBox(width: 10),
-                Button(text: "Re-Connect", onTap: () => homeHelper.connect()),
-                const SizedBox(width: 10),
-                Button(
-                    text: "Disconnect", onTap: () => homeHelper.disconnect()),
-              ],
-            ),
-            const SizedBox(height: 10),
-            const Text("Response"),
-            const SizedBox(height: 10),
-            Button(
-                text: "Clean Logs",
-                onTap: () => asyncClientService.responsesNotifier.clean()),
-            const SizedBox(height: 10),
-            Expanded(
-              child: AnimatedBuilder(
-                  animation: asyncClientService.responsesNotifier,
-                  builder: (context, _) {
-                    var data = asyncClientService.responsesNotifier.responses;
-                    return ListView.builder(
-                        itemCount: data.length,
-                        itemBuilder: (context, index) => ListTile(
-                              title: Text(data[index]),
-                              textColor: data[index].contains("empty")
-                                  ? Colors.black45
-                                  : Colors.black,
-                            ));
-                  }),
-            ),
-            const SizedBox(width: 10),
-            const Text("Captured Console Logs"),
-            Button(
-                text: "Clean Logs",
-                onTap: () => AppConfig.of(context).logNotifier.clean()),
-            const SizedBox(height: 10),
-            const Expanded(child: LogViewer()),
-          ],
-        ),
+      body: _children[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        items: items,
+        selectedItemColor: Colors.amber[800],
+        onTap: onTabTapped,
+        currentIndex: _currentIndex,
       ),
     );
   }

@@ -3,7 +3,9 @@ import 'package:app_async_flutter/domain/model/channel_credentials.dart';
 import 'package:app_async_flutter/domain/model/gateway/async_client_gateway.dart';
 import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 class ResponsesNotifier extends ChangeNotifier {
   List<String> responses = [];
@@ -33,21 +35,30 @@ class AsyncClientService extends InheritedWidget {
   final String eventListen;
   late AsyncClient asyncClient;
   final AsyncClientGateway asyncClientGateway;
+  final _log = Logger('AsyncClientService');
 
   late SharedPreferences prefs;
   ResponsesNotifier responsesNotifier = ResponsesNotifier();
   final AppConfig appConfig;
 
-  void _handleEvent(dynamic result) {
-    responsesNotifier.addResponse(
-        "Message from async dataflow, payload: ${result.payload} correlationId: ${result.correlationId}");
+  void _handleEvent(dynamic msg) {
+    if (msg.event == 'businessEvent') {
+      responsesNotifier.addResponse(
+          'Message from async dataflow, title: ${msg.payload['title']} detail: ${msg.payload['detail']}');
+    }
+
+    if (msg.event == 'ch-ms-async-callback.svp.reply') {
+      responsesNotifier.addResponse(
+          'Message from async dataflow, title: ${msg.payload['data']['reply']['messageData']['title']} detail: ${msg.payload['data']['reply']['messageData']['detail']}');
+    }
   }
 
   static AsyncClientService? of(BuildContext context) {
     return context.findAncestorWidgetOfExactType<AsyncClientService>();
   }
 
-  void closeSession() async {
+  Future<void> closeSession() async {
+    prefs = await SharedPreferences.getInstance();
     await deleteChannelCreated();
     asyncClient.disconnect();
   }
@@ -55,11 +66,39 @@ class AsyncClientService extends InheritedWidget {
   Future<void> deleteChannelCreated() async {
     await prefs.remove('channelRef');
     await prefs.remove('channelSecret');
+    await prefs.remove('userRef');
+  }
+
+  bool hasUserRef() {
+    return prefs.getString('userRef') != null;
+  }
+
+  Future<String> createUserRef() async {
+    if (hasUserRef()) {
+      return prefs.getString('userRef')!;
+    }
+    var uuid = const Uuid();
+    String ref = uuid.v4();
+    await prefs.setString('userRef', ref);
+    return ref;
+  }
+
+  Future<void> saveConfig() async {
+    prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString('socketUrl', appConfig.socketUrl);
+    await prefs.setString('apiBusiness', appConfig.businessUrl);
+    await prefs.setString(
+        'heartbeatInterval', appConfig.heartbeatInterval.toString());
+    await prefs.setString('maxRetries', appConfig.maxRetries.toString());
   }
 
   Future<void> initAsyncClient() async {
     prefs = await SharedPreferences.getInstance();
-    ChannelCredential? channelCredential = await _requestChannelCredentials();
+    var userRef = await createUserRef();
+    _log.info("userRef $userRef");
+    ChannelCredential? channelCredential =
+        await _requestChannelCredentials(userRef);
     if (channelCredential != null) {
       final conf = AsyncConfig(
           socketUrl: appConfig.socketUrl,
@@ -80,12 +119,12 @@ class AsyncClientService extends InheritedWidget {
     }
   }
 
-  Future<ChannelCredential?> _requestChannelCredentials() async {
+  Future<ChannelCredential?> _requestChannelCredentials(String userRef) async {
     ChannelCredential? channelCredential;
     if (hasChannelCreated()) {
       return getChannelCreated();
     }
-    channelCredential = await asyncClientGateway.getCredentials();
+    channelCredential = await asyncClientGateway.getCredentials(userRef);
     print(channelCredential!.channelRef);
     persistCredentials(channelCredential);
     return channelCredential;

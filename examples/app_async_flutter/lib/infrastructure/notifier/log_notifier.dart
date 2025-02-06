@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 
 class LogNotifier extends ChangeNotifier {
+  LogLevel level = LogLevel.all;
+
   List<String> logs = [];
   void setLog(log) {
     logs.insert(0, log);
+    notifyListeners();
+  }
+
+  void setLevel(newLevel) {
+    level = newLevel;
     notifyListeners();
   }
 
@@ -16,3 +23,5 @@ class LogNotifier extends ChangeNotifier {
     return logs;
   }
 }
+
+enum LogLevel { info, all }

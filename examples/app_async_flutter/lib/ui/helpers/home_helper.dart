@@ -2,26 +2,25 @@ import 'package:app_async_flutter/async_client_service.dart';
 import 'package:flutter/material.dart';
 
 class HomeHelper {
-  late final AsyncClientService asyncClientService;
-  HomeHelper(BuildContext context) {
-    asyncClientService = AsyncClientService.of(context)!;
-  }
+  final AsyncClientService asyncClientService;
+  HomeHelper(BuildContext context, this.asyncClientService);
   void callAsyncBackend(textEditingController) {
     int start = DateTime.now().millisecondsSinceEpoch;
 
     asyncClientService.asyncClientGateway
         .callBusinessUseCase(
             asyncClientService.prefs.getString("channelRef") ?? "",
+            asyncClientService.prefs.getString("userRef") ?? "",
             int.tryParse(textEditingController.text) ?? 100)
         .then((value) => asyncClientService.responsesNotifier.addResponse(
             "Get empty response after ${DateTime.now().millisecondsSinceEpoch - start} ms"));
   }
 
-  void disconnect() {
-    asyncClientService.closeSession();
+  Future<void> disconnect() async {
+    await asyncClientService.closeSession();
   }
 
-  void connect() {
-    asyncClientService.initAsyncClient();
+  Future<void> connect() async {
+    await asyncClientService.initAsyncClient();
   }
 }
