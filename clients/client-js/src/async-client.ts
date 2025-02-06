@@ -26,6 +26,8 @@ export class AsyncClient {
     private subProtocols: string[] = [Protocol.JSON]
     private cache: Cache;
 
+    private readonly HEARTBEAT_TIMEOUT = 3051;
+
     constructor(private config: AsyncConfig, private readonly transport: any = null) {
         const intWindow = typeof window !== "undefined" ? window : null;
         this.transport = transport || intWindow['WebSocket'];
@@ -131,7 +133,7 @@ export class AsyncClient {
     private abnormalClose(reason) {
         this.closeWasClean = false;
         console.warn(`async-client. Abnormal close: ${reason}`)
-        this.socket.close(1000, reason);
+        this.socket.close(this.HEARTBEAT_TIMEOUT, reason);
     }
 
     public disconnect(): void {

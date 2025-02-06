@@ -296,7 +296,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   defp handle_terminate(cause = {:remote, _code, _}, _req, state) do
     channel_ref = extract_ref(state)
-    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated normally. CAUSE: #{inspect(cause)}")
+    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated. CAUSE: #{inspect(cause)}")
     :ok
   end
 
