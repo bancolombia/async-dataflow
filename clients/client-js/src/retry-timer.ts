@@ -5,17 +5,20 @@ export class RetryTimer {
 
     private timer: number;
     private tries: number = 0;
+    private limitReachedNotified: boolean = false;
 
     constructor(
         private callback: () => void,
         private initial: number = 10,
         private jitterFn: (x: number) => number,
-        private maxRetries: number = 10) {
+        private maxRetries: number = 10,
+        private limitReachedCallback: () => void = () => { }) {
     }
 
     public reset(): void {
         clearTimeout(this.timer)
         this.tries = 0;
+        this.limitReachedNotified = false;
     }
 
     public schedule(): void {
@@ -29,6 +32,12 @@ export class RetryTimer {
                     this.callback();
                 }, delayMS)
             } else {
+                console.log(this.tries, this.maxRetries);
+                if (this.limitReachedCallback && !this.limitReachedNotified) {
+                    this.limitReachedNotified = true;
+                    console.log(`async-client. notifying limit reached.`);
+                    this.limitReachedCallback();
+                }
                 console.log(`async-client. max retries reached.`);
             }
         } else {

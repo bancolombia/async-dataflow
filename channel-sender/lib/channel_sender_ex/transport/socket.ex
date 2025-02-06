@@ -61,6 +61,8 @@ defmodule ChannelSenderEx.Transport.Socket do
     init_result = get_relevant_request_info(req)
       |> process_subprotocol_selection(req)
 
+      # :cowboy_req.reply(503, %{<<"x-error-code">> => "desc"}, req)
+
     case init_result do
       {:cowboy_websocket, _, _, _} = res ->
         res

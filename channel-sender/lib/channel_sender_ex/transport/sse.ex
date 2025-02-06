@@ -12,11 +12,11 @@ defmodule ChannelSenderEx.Transport.Sse do
   # bad request, invalid request received and data received is not valid
   @invalid_request_code "3006"
 
-  # bad request, invalid or unexistent channel reference
-  @invalid_channel_code "3007"
-
   # unauthorized, invalid secret code
   @invalid_secret_code "3008"
+
+  # bad request, invalid or unexistent channel reference
+  @invalid_channel_code "3050"
 
   @channel_key "channel"
   @channel_secret "authorization"

@@ -4,20 +4,18 @@ import { ChannelMessage } from "../channel-message";
 import { RetryTimer } from "../retry-timer";
 import { BinaryDecoder } from "../binary-decoder";
 import { Protocol } from "../protocol";
-import { Cache } from "../cache";
 import { Utils } from "../utils";
 import { AsyncConfig } from "../async-config";
 import { Transport } from "./transport";
+import { TransportError } from "./transport-error";
 import { SocketState } from "./socket-state";
 
 export class WsTransport implements Transport {
-
     private actualToken;
     private socket: WebSocket;
     public isOpen: boolean = false;
     public isActive: boolean = false;
     private stateCallbacks = { open: [], close: [], error: [], message: [] }
-    private bindings = [];
     private ref = 0;
     private pendingHeartbeatRef: string = null;
     private closeWasClean: boolean = false;
@@ -27,32 +25,27 @@ export class WsTransport implements Transport {
     private reconnectTimer: RetryTimer;
     private serializer: MessageDecoder;
     private subProtocols: string[] = [Protocol.JSON]
-    private cache: Cache;
 
     private readonly HEARTBEAT_TIMEOUT = 3051;
 
-    constructor(private config: AsyncConfig, private readonly transport: any = null) {
+    constructor(private config: AsyncConfig,
+        private handleMessage = (_message: ChannelMessage) => { },
+        private errorCallback = (_error: TransportError) => { },
+        private readonly transport: any = null) {
+
         const intWindow = typeof window !== "undefined" ? window : null;
         this.transport = transport || intWindow['WebSocket'];
         this.heartbeatIntervalMs = config.heartbeat_interval || 750;
         this.reconnectTimer = new RetryTimer(() => this.teardown(() => this.connect()),
             50,
-            (num) => Utils.jitter(num, 0.25), config.maxReconnectAttempts);
+            (num) => Utils.jitter(num, 0.25),
+            //config.maxReconnectAttempts,
+            2,
+            () => this.errorCallback({ code: 1, message: "Max retries reached" })
+        );
         this.actualToken = config.channel_secret;
         if (config.enable_binary_transport && typeof TextDecoder !== "undefined") {
             this.subProtocols.push(Protocol.BINARY)
-        }
-        if (!config.dedupCacheDisable) {
-            this.cache = new Cache(config.dedupCacheMaxSize, config.dedupCacheTtl);
-        } else {
-            this.cache = undefined;
-        }
-        if (intWindow && (config.checkConnectionOnFocus || config.checkConnectionOnFocus === undefined)) {
-            intWindow.addEventListener('focus', () => {
-                if (!this.closeWasClean) {
-                    this.connect();
-                }
-            });
         }
     }
 
@@ -71,9 +64,17 @@ export class WsTransport implements Transport {
         console.log(`async-client. Subprotocols: ${this.subProtocols}`);
     }
 
-    public listenEvent(eventName: string, callBack: (msg: any) => void) {
-        this.bindings.push({ eventName, callBack });
+    public disconnect(): void {
+        console.info('async-client. disconnect() called')
+        this.closeWasClean = true;
+        this.isActive = false;
+        clearInterval(this.heartbeatTimer);
+        this.reconnectTimer.reset();
+        this.socket.close(1000, "Client disconnect");
+        console.info('async-client. disconnect() called end')
     }
+
+    // internal functions
 
     public doOnSocketOpen(callback) {
         this.stateCallbacks.open.push(callback)
@@ -95,8 +96,8 @@ export class WsTransport implements Transport {
         }
     }
 
-    private onSocketError(_event) {
-        // console.log('error', event)
+    private onSocketError(event) {
+        console.log('error', event)
     }
 
     private onSocketMessage(event) {
@@ -139,45 +140,10 @@ export class WsTransport implements Transport {
         this.socket.close(this.HEARTBEAT_TIMEOUT, reason);
     }
 
-    public disconnect(): void {
-        console.info('async-client. disconnect() called')
-        this.closeWasClean = true;
-        this.isActive = false;
-        clearInterval(this.heartbeatTimer);
-        this.reconnectTimer.reset();
-        this.socket.close(1000, "Client disconnect");
-        console.info('async-client. disconnect() called end')
-    }
-
     private makeRef(): string {
         const newRef = this.ref + 1
         if (newRef === this.ref) { this.ref = 0 } else { this.ref = newRef }
         return this.ref.toString()
-    }
-
-    private handleMessage(message: ChannelMessage) {
-        this.bindings
-            .filter(handler => this.matchHandlerExpr(handler.eventName, message.event))
-            .filter(_handler => this.deDupFilter(message.message_id))
-            .forEach(handler => handler.callBack(message))
-    }
-
-    private matchHandlerExpr(eventExpr: string, actualEventName: string): boolean {
-        if (eventExpr === actualEventName) return true;
-        const regexString = '^' + eventExpr.replace(/\*/g, '([^.]+)').replace(/#/g, '([^.]+\\.?)+') + '$';
-        return actualEventName.search(regexString) !== -1;
-    }
-
-    private deDupFilter(message_id: string): boolean {
-        if (this.cache === undefined) {
-            return true;
-        } else if (this.cache.get(message_id) !== undefined) {
-            console.debug(`async-client. Dedup filtering for message_id: ${message_id} applied.`);
-            return false;
-        } else {
-            this.cache.save(message_id, '');
-            return true;
-        }
     }
 
     private ackMessage(message: ChannelMessage) {
@@ -190,7 +156,7 @@ export class WsTransport implements Transport {
         this.isActive = false;
         console.warn(`async-client. channel close: ${event.code} ${event.reason}`);
         clearInterval(this.heartbeatTimer)
-        const reason = this.extractReason(event.reason);
+        const reason = Utils.extractReason(event.reason);
         const shouldRetry = event.code > 1001 || (event.code == 1001 && reason >= 3050);
 
         if (!this.closeWasClean && shouldRetry && event.reason != 'Invalid token for channel') {
@@ -200,14 +166,6 @@ export class WsTransport implements Transport {
             this.stateCallbacks.close.forEach(callback => callback(event));
         }
 
-    }
-
-    private extractReason(reason): number {
-        const reasonNumber = parseInt(reason);
-        if (isNaN(reasonNumber)) {
-            return 0;
-        }
-        return reasonNumber;
     }
 
     private resetHeartbeat(): void {
@@ -226,7 +184,11 @@ export class WsTransport implements Transport {
     }
 
     private socketUrl(): string {
-        return `${this.config.socket_url}?channel=${this.config.channel_ref}`;
+        let url = this.config.socket_url;
+        if (url.startsWith('http')) {
+            url = url.replace('http', 'ws');
+        }
+        return `${url}/ext/socket?channel=${this.config.channel_ref}`;
     }
 
     private teardown(callback?: () => void): void {
