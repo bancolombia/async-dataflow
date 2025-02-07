@@ -91,6 +91,7 @@ class AsyncClientService extends InheritedWidget {
     await prefs.setString(
         'heartbeatInterval', appConfig.heartbeatInterval.toString());
     await prefs.setString('maxRetries', appConfig.maxRetries.toString());
+    await prefs.setStringList('transports', appConfig.transports);
   }
 
   Future<void> initAsyncClient() async {

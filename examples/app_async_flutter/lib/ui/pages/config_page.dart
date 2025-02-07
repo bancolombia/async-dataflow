@@ -19,6 +19,7 @@ class _ConfigPageState extends State<ConfigPage> {
   TextEditingController apiBusinessController = TextEditingController();
   TextEditingController socketController = TextEditingController();
   late AsyncClientService asyncClientService;
+  List<String> selectedTransports = [];
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _ConfigPageState extends State<ConfigPage> {
     maxRetriesController.text = AppConfig.of(context).maxRetries.toString();
     apiBusinessController.text = AppConfig.of(context).socketUrl;
     socketController.text = AppConfig.of(context).businessUrl;
+    selectedTransports = AppConfig.of(context).transports;
   }
 
   @override
@@ -61,6 +63,30 @@ class _ConfigPageState extends State<ConfigPage> {
               keyboardType: TextInputType.url,
               icon: Icons.api),
           const SizedBox(height: 20),
+          //create checkboxes
+          const Text('Transports'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              for (var transport in ['ws', 'sse'])
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: CheckboxListTile(
+                    title: Text(transport),
+                    value: selectedTransports.contains(transport),
+                    onChanged: (value) {
+                      if (value!) {
+                        selectedTransports.add(transport);
+                      } else {
+                        selectedTransports.remove(transport);
+                      }
+                      setState(() {});
+                    },
+                  ),
+                )
+            ],
+          ),
+          const SizedBox(height: 20),
           const Text('Show all logs'),
           Switch(
             value: AppConfig.of(context).logNotifier.level == LogLevel.all,
@@ -81,11 +107,22 @@ class _ConfigPageState extends State<ConfigPage> {
           const SizedBox(height: 40),
           Button(
               onTap: () {
+                if (selectedTransports.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Select at least one transport'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
                 AppConfig.of(context).updateConfig(
                     heartbeatInterval: int.parse(heartbeatController.text),
                     maxRetries: int.parse(maxRetriesController.text),
                     socketUrl: apiBusinessController.text,
-                    businessUrl: socketController.text);
+                    businessUrl: socketController.text,
+                    transports: selectedTransports);
+
                 asyncClientService.saveConfig();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
