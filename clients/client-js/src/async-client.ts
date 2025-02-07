@@ -33,6 +33,7 @@ export class AsyncClient {
 
     private getTransport(): Transport {
         const transport = this.transports[this.currentTransportIndex];
+        console.log('will instantiate transport: ', transport);
         if (transport === 'ws') {
             return new WsTransport(this.config,
                 (message: ChannelMessage) => this.handleMessage(message),
@@ -89,7 +90,7 @@ export class AsyncClient {
     }
 
     private handleTransportError(error: TransportError) {
-        if (error.code === 1) {
+        if (error.code === 1 && error.origin == this.currentTransport.name()) {
             this.retriesByTransport++;
             this.currentTransport.disconnect();
             this.currentTransportIndex = (this.currentTransportIndex + 1) % this.transports.length;
@@ -102,5 +103,4 @@ export class AsyncClient {
         }
     }
 }
-
 

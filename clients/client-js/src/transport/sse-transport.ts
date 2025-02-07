@@ -24,6 +24,10 @@ export class SseTransport implements Transport {
         this.actualToken = config.channel_secret;
     }
 
+    name(): string {
+        return 'sse';
+    }
+
     public connect() {
         if (this.eventSource) { // TODO: Verify conditions
             console.debug('async-client. sse already created and open');
@@ -59,14 +63,21 @@ export class SseTransport implements Transport {
             async onResponseError({ request, response, error }) {
                 self.errorCount++;
                 console.debug(`[Sse response error]`, request, response.status, error);
-                const body = await response.json();
+                const body = await response.text();
                 console.error('Sse response error:', body);
-                const reason = Utils.extractReason(body.error);
-                const stopRetries = response.status == 400 || response.status == 401 || (response.status == 428 && reason < 3050);
+                let parsed;
+                try {
+                    parsed = JSON.parse(body);
+                } catch (e) {
+                    console.error('Error parsing response:', e);
+                    parsed = { error: body };
+                }
+                const reason = Utils.extractReason(parsed.error);
+                const stopRetries = response.status == 400 || response.status == 404 || response.status == 401 || (response.status == 428 && reason < 3050);
                 if (stopRetries || self.errorCount > self.config.maxReconnectAttempts) {
                     console.log('async-client. sse stopping retries');
                     controller.abort();
-                    self.errorCallback({ code: 1, message: response.statusText + ' ' + body.error });
+                    self.errorCallback({ origin: 'sse', code: 1, message: response.statusText + ' ' + body });
                 }
             },
 

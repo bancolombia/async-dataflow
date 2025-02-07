@@ -41,12 +41,16 @@ export class WsTransport implements Transport {
             (num) => Utils.jitter(num, 0.25),
             //config.maxReconnectAttempts,
             2,
-            () => this.errorCallback({ code: 1, message: "Max retries reached" })
+            () => this.errorCallback({ origin: 'ws', code: 1, message: "Max retries reached" })
         );
         this.actualToken = config.channel_secret;
         if (config.enable_binary_transport && typeof TextDecoder !== "undefined") {
             this.subProtocols.push(Protocol.BINARY)
         }
+    }
+
+    name(): string {
+        return 'ws';
     }
 
     public connect() {
