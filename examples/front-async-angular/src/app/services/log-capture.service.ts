@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { Log } from '../models/log.interface';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LogCaptureService {
-  private logsSubject: BehaviorSubject<string[]> = new BehaviorSubject<string[]>([]);
-  private logs: string[] = [];
+  private logsSubject: BehaviorSubject<Log[]> = new BehaviorSubject<Log[]>([]);
+  private logs: Log[] = [];
 
   constructor() {
     // Wrap the console.log method
@@ -17,6 +18,11 @@ export class LogCaptureService {
     this.wrap('warn');
   }
 
+  public clearLogs() {
+    this.logs = [];
+    this.logsSubject.next(this.logs);
+  }
+
   private wrap(fn: any) {
     // Save the original console.log method
     const cons: any = console;
@@ -25,10 +31,11 @@ export class LogCaptureService {
     // Override console.log to capture logs
     cons[fn] = (...args: any[]) => {
       // Convert the arguments to a string (can also JSON.stringify if needed)
-      const logMessage = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+      const logMessage = (new Date().toISOString()) + ' -> ' + args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+      const log: Log = { type: fn, message: logMessage };
 
       // Push the log message to the logs array
-      this.logs.push(logMessage);
+      this.logs.unshift(log);
 
       // Emit the new logs array to the BehaviorSubject
       this.logsSubject.next(this.logs);

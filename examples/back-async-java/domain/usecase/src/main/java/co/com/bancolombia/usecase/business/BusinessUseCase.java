@@ -17,11 +17,11 @@ import java.util.UUID;
 public class BusinessUseCase {
     private final AsyncDataFlowGateway asyncDataFlowGateway;
 
-    public Mono<Credentials> generateCredentials(String user_identifier) {
-        return asyncDataFlowGateway.generateCredentials(user_identifier);
+    public Mono<Credentials> generateCredentials(String userIdentifier) {
+        return asyncDataFlowGateway.generateCredentials(userIdentifier);
     }
 
-    public Mono<Object> asyncBusinessFlow(String delay, String channelRef) {
+    public Mono<Object> asyncBusinessFlow(String delay, String channelRef, String userRef) {
         log.info("Delaying async flow message: " + channelRef);
         Mono.delay(Duration.ofMillis(Integer.parseInt(delay)))
                 .then(Mono.defer(() -> {
@@ -39,7 +39,7 @@ public class BusinessUseCase {
                             .eventName("businessEvent")
                             .build();
 
-                    return asyncDataFlowGateway.deliverMessage(channelRef, deliverMessage)
+                    return asyncDataFlowGateway.deliverMessage(channelRef, userRef, deliverMessage)
                             .doOnSuccess(ignored -> log.info("Async flow message delivered: " + channelRef));
 
                 }))

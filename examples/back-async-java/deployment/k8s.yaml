@@ -19,8 +19,12 @@ spec:
         - name: backend
           image: my-registry/my-backend:latest
           env:
+            - name: REPLY_MODE
+              value: BRIDGE
             - name: ADF_REST_ENDPOINT
               value: http://sender:8081/ext/channel
+            - name: BRIDGE_REST_ENDPOINT
+              value: http://bridge:8081/ext/channel
             - name: ALLOWED_CORS
               value: http://localhost:4200,http://localhost:8080,https://my-frontend.com
           ports:

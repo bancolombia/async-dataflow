@@ -1,0 +1,47 @@
+<div class="log-container">
+    <mat-card appearance="outlined">
+        <mat-card-header>
+            <mat-card-title>Customize Settings</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+            <mat-form-field *ngIf="settings">
+                <mat-label>Heartbeat delay in ms</mat-label>
+                <input matInput placeholder="Heartbeat delay in ms" type="number"
+                    [(ngModel)]="settings!.heartbeatDelay" />
+                <mat-icon matSuffix>timer</mat-icon>
+            </mat-form-field>
+            <mat-form-field *ngIf="settings">
+                <mat-label>Max retries</mat-label>
+                <input matInput placeholder="Max retry count" type="number" [(ngModel)]="settings!.maxRetries" />
+                <mat-icon matSuffix>build</mat-icon>
+            </mat-form-field>
+            <mat-form-field *ngIf="settings">
+                <mat-label>Default request delay in ms</mat-label>
+                <input matInput placeholder="Default request delay in ms" type="number"
+                    [(ngModel)]="settings!.defaultRequestDelay" />
+                <mat-icon matSuffix>timer</mat-icon>
+            </mat-form-field>
+            <mat-form-field *ngIf="settings">
+                <mat-label>Enabled transports</mat-label>
+                <mat-chip-grid #chipGrid aria-label="Enter transport">
+                    @for (transport of settings.transports; track transport) {
+                    <mat-chip-row (removed)="remove(transport)" [editable]="true" (edited)="edit(transport, $event)"
+                        [aria-description]="'press enter to edit ' + transport">
+                        {{transport}}
+                        <button matChipRemove [attr.aria-label]="'remove ' + transport">
+                            <mat-icon>cancel</mat-icon>
+                        </button>
+                    </mat-chip-row>
+                    }
+                    <input placeholder="New transport..." [matChipInputFor]="chipGrid"
+                        [matChipInputSeparatorKeyCodes]="separatorKeysCodes" [matChipInputAddOnBlur]="addOnBlur"
+                        (matChipInputTokenEnd)="add($event)" />
+                </mat-chip-grid>
+            </mat-form-field>
+        </mat-card-content>
+        <mat-card-actions>
+            <button mat-button (click)="save()"><mat-icon>save</mat-icon>
+                Save</button>
+        </mat-card-actions>
+    </mat-card>
+</div>

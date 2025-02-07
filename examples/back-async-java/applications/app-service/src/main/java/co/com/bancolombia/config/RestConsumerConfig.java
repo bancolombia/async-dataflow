@@ -10,9 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
-import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import static io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS;
@@ -22,18 +20,24 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 @Slf4j
 public class RestConsumerConfig {
 
+    public static final String BRIDGE = "BRIDGE";
     @Value("${adapter.restconsumer.url}")
     private String url;
+    @Value("${adapter.restconsumer.url-bridge}")
+    private String urlBridge;
     @Value("${adapter.restconsumer.timeout}")
     private int timeout;
+    @Value("${adapter.reply-mode}")
+    private String mode;
 
     @Bean
     public WebClient getWebClient() {
+        String resolvedUrl = BRIDGE.equals(mode) ? urlBridge : url;
         return WebClient.builder()
-            .baseUrl(url)
-            .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-            .clientConnector(getClientHttpConnector())
-            .build();
+                .baseUrl(resolvedUrl)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+                .clientConnector(getClientHttpConnector())
+                .build();
     }
 
     private ClientHttpConnector getClientHttpConnector() {

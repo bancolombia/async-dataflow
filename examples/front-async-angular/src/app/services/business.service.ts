@@ -7,12 +7,13 @@ import { AsyncClientService } from './async-client.service';
   providedIn: 'root',
 })
 export class BusinessService {
-  constructor(private http: HttpClient, private channel: AsyncClientService ) {}
+  constructor(private http: HttpClient, private channel: AsyncClientService) { }
 
-  public callBusinessUseCase(delay: number) {
+  public callBusinessUseCase(delay: number, user_ref: string) {
     const url = `${environment.api_business}/business`;
     let httpParams = new HttpParams()
       .set('channel_ref', this.channel.getRef())
+      .set('user_ref', user_ref)
       .set('delay', delay);
     return this.http.get(url, {
       params: httpParams,

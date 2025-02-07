@@ -20,7 +20,8 @@ public class Handler {
         return ServerResponse.accepted()
                 .body(
                         useCase.asyncBusinessFlow(serverRequest.queryParam("delay").orElse("5000"),
-                                serverRequest.queryParam("channel_ref").orElse("")),
+                                serverRequest.queryParam("channel_ref").orElse(""),
+                                serverRequest.queryParam("user_ref").toString()),
                         String.class);
     }
 
