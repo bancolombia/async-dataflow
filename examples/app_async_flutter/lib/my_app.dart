@@ -1,6 +1,6 @@
 import 'package:app_async_flutter/application/app_config.dart';
 import 'package:app_async_flutter/async_client_service.dart';
-import 'package:app_async_flutter/infraestructure/driven_adapter/api_service.dart';
+import 'package:app_async_flutter/infrastructure/driven_adapter/api_service.dart';
 import 'package:app_async_flutter/ui/pages/home_page.dart';
 import 'package:flutter/material.dart';
 
@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AsyncClientService(
-      eventListen: "businessEvent",
+      eventListen: "ch-ms-async-callback.svp.reply",
       asyncClientGateway: ApiService(context),
       appConfig: AppConfig.of(context),
       child: MaterialApp(

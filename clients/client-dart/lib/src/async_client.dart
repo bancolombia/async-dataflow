@@ -8,7 +8,6 @@ import 'package:web_socket_channel/io.dart';
 import 'async_config.dart';
 import 'channel_message.dart';
 import 'retry_timer.dart';
-import 'status_codes.dart';
 import 'transport.dart';
 
 /// Async Data Flow Low Level Client
@@ -51,13 +50,16 @@ class AsyncClient {
     // creates localstream
     _localStream = StreamController(onListen: _onListen);
 
-    _connectRetryTimer = RetryTimer(() async {
-      _openChannel();
-      _buildTransport();
-      _onListen();
+    _connectRetryTimer = RetryTimer(
+      () async {
+        _openChannel();
+        _buildTransport();
+        _onListen();
 
-      return 1;
-    });
+        return 1;
+      },
+      maxRetries: _config.maxRetries,
+    );
   }
 
   void dispose() {
@@ -67,8 +69,9 @@ class AsyncClient {
   // Opens up the connection and performs auth flow.
 
   AsyncClient connect() {
-    if (_transport != null && _transport!.isOpen()) {
-      _log.warning('Connect: Transport is already open');
+    var transport = _transport;
+    if (transport != null && transport.isOpen()) {
+      _log.info('async-client. socket already created');
 
       return this;
     }
@@ -107,7 +110,7 @@ class AsyncClient {
     // build transport object
     _buildTransport();
 
-    _log.finest('ADF connection');
+    _log.info('async-client. ADF connection');
     _broadCastStream = _broadCastStream.asBroadcastStream();
 
     return this;
@@ -141,29 +144,36 @@ class AsyncClient {
       throw ArgumentError('Invalid onData function');
     }
 
-    return _broadCastStream.listen((message) {
-      if (eventFilters.contains(message.event)) {
-        onData(message);
-      }
-    }, onError: (error, stacktrace) {
-      if (onError != null) {
-        onError(error);
-      }
-    }, onDone: () {
-      _log.warning('Subscription for "$eventFilters" terminated.');
-    });
+    return _broadCastStream.listen(
+      (message) {
+        if (eventFilters.contains(message.event)) {
+          onData(message);
+        }
+      },
+      onError: (error, stacktrace) {
+        if (onError != null) {
+          onError(error);
+        }
+      },
+      onDone: () {
+        _log.warning(
+          'async-client. Subscription for "$eventFilters" terminated.',
+        );
+      },
+    );
   }
 
   void _openChannel() {
     try {
+      var url = '${_config.socketUrl}?channel=${_config.channelRef}';
       _channel = IOWebSocketChannel.connect(
-        '${_config.socketUrl}?channel=${_config.channelRef}',
+        url,
         protocols: _subProtocols,
         headers: _buildHeaders(),
       );
-      _log.finest('New websocket connection');
+      _log.info('async-client. New websocket connection ${_config.channelRef}');
     } catch (e) {
-      _log.severe('Error creating websocket connection: $e');
+      _log.severe('async-client. Error creating websocket connection: $e');
     }
   }
 
@@ -174,11 +184,11 @@ class AsyncClient {
         _localStream,
         _onTransportClose,
         _onTransportError,
-        _config.heartbeatInterval,
+        _config.hbInterval,
       );
-      _log.finest('Transport configured');
+      _log.info('async-client. Transport configured');
     } catch (e) {
-      _log.severe('Error configuring transport: $e');
+      _log.severe('async-client. Error configuring transport: $e');
     }
   }
 
@@ -203,11 +213,12 @@ class AsyncClient {
     return base64Url.encode(values);
   }
 
-  // Disconnects client with ADF channel sender
   Future<bool> disconnect() async {
-    await _transport?.close(StatusCodes.ok, 'Client disconnect');
+    _log.finer('async-client. disconnect() called');
+
+    await _transport?.close(1000, 'Client disconnect');
     _connectRetryTimer.reset();
-    _log.finer('transport closed');
+    _log.finer('async-client. async-client. disconnect() called end');
 
     return true;
   }
@@ -237,44 +248,30 @@ class AsyncClient {
   }
 
   void _onTransportClose(int code, String reason) {
-    _log.fine('close code: $code');
-    bool wasClosedClean = _transport?.isClosedCleanly() ?? true;
-    cleanConnection();
-    if (!wasClosedClean) {
-      _log.severe(
-        'Transport not closed cleanly, Scheduling reconnect... code: $code',
-      );
+    _log.fine('async-client. channel close: $code $reason');
+    bool closeWasClean = _transport?.isClosedCleanly() ?? true;
+    int reasonCode = extractCode(reason);
+    bool shouldRetry = code > 1001 || (code == 1001 && reasonCode >= 3050);
 
+    if (!closeWasClean &&
+        shouldRetry &&
+        reason != 'Invalid token for channel') {
+      _log.info('async-client. Scheduling reconnect, clean: $closeWasClean');
       _connectRetryTimer.schedule();
-      return;
-    }
-    switch (code) {
-      case StatusCodes.ok:
-        {
-          _log.info('Transport closed by client, not reconnecting');
-        }
-        break;
-      case StatusCodes.credentials_error:
-        {
-          _log.severe(
-            'Transport closed due invalid credentials, not reconnecting!',
-          );
-        }
-        break;
-      default:
-        {
-          _log.severe(
-            '-- Transport closed cleanly, not reconnecting! code: $code',
-          );
-        }
+    } else {
+      cleanConnection();
     }
   }
 
+  int extractCode(String stringCode) {
+    return int.tryParse(stringCode) ?? 0;
+  }
+
   void _onTransportError(Object error) {
-    _log.severe('Transport error: $error');
+    _log.severe('async-client. Transport error: $error');
     if (!isOpen()) {
       _log.severe(
-        'Transport error and channel is not open, Scheduling reconnect...',
+        'async-client. Transport error and channel is not open, Scheduling reconnect...',
       );
 
       cleanConnection();
