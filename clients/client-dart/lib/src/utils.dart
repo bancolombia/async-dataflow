@@ -11,21 +11,18 @@ class Utils {
     return jitter.toInt();
   }
 
-  static int expBackoff(int initial, int max, int actualRetry,
-      [Function? jitterFn]) {
+  static int expBackoff(
+    int initial,
+    int max,
+    int actualRetry, [
+    Function? jitterFn,
+  ]) {
     Function curatedFn;
-    if (jitterFn == null) {
-      curatedFn = _defaultJitterFn;
-    } else {
-      curatedFn = jitterFn;
-    }
+    curatedFn = jitterFn ?? _defaultJitterFn;
     var base = initial * pow(2, actualRetry);
     var willWait = 0;
-    if (base > max) {
-      willWait = curatedFn(max);
-    } else {
-      willWait = curatedFn(base);
-    }
+    willWait = base > max ? curatedFn(max) : curatedFn(base);
+
     return willWait.toInt();
   }
 

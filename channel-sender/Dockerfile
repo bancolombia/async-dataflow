@@ -1,7 +1,7 @@
 #===============
 # Build Stage
 #===============
-FROM elixir:1.16.3-alpine as build
+FROM elixir:1.17.3-alpine as build
 
 ARG BUILD_ENV=prod
 

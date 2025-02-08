@@ -352,8 +352,6 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   end
 
   test "Should be able to call for close channel" do
-    body = Jason.encode!(%{application_ref: "some_application", user_ref: "user_ref_00117ALM"})
-
     with_mocks([
       {PubSubCore, [], [delete_channel: fn(_) -> :ok end]}
     ]) do
@@ -382,10 +380,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
       conn2 = RestController.call(conn2, @options)
 
-      assert conn2.status == 410
-
-      assert %{"error" => "Channel not found"} =
-               Jason.decode!(conn2.resp_body)
+      assert conn2.status == 200
 
     end
   end

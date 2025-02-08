@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono;
 public interface AsyncDataFlowGateway {
     Mono<Credentials> generateCredentials(String user_identifier);
 
-    Mono<Void> deliverMessage(String channelRef, DeliverMessage message);
+    Mono<Void> deliverMessage(String channelRef, String userRef, DeliverMessage message);
 }

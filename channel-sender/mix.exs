@@ -21,8 +21,13 @@ defmodule ChannelSenderEx.MixProject do
 
   # Run "mix help compile.app" to learn about applications.
   def application do
+    extra_apps = if Mix.env() == :dev do
+      [:logger, :telemetry, :observer, :wx, :runtime_tools]
+    else
+      [:logger, :telemetry]
+    end
     [
-      extra_applications: [:logger],
+      extra_applications: extra_apps,
       mod: {ChannelSenderEx.Application, []}
     ]
   end
@@ -39,12 +44,12 @@ defmodule ChannelSenderEx.MixProject do
       {:gen_state_machine, "~> 3.0"},
       {:jason, "~> 1.2"},
       {:cors_plug, "~> 3.0"},
-      {:horde, "~> 0.8.7"},
+      {:horde, "~> 0.9.0"},
       {:hackney, "~> 1.20.1", only: :test},
       {:plug_crypto, "~> 2.1"},
       {:stream_data, "~> 0.4", only: [:test]},
       {:gun, "~> 1.3", only: [:test, :benchee]},
-      {:libcluster, "~> 3.3"},
+      {:libcluster, "~> 3.4.1"},
       {:vapor, "~> 0.10.0"},
       {:mock, "~> 0.3.0", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
