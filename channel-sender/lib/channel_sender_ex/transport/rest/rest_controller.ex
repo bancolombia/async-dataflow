@@ -84,17 +84,15 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp route_close(channel, conn) do
-    case PubSubCore.delete_channel(channel) do
-      :ok ->
-        conn
-        |> put_resp_header("content-type", "application/json")
-        |> send_resp(200, Jason.encode!(%{result: "Ok"}))
 
-      :noproc ->
-        conn
-        |> put_resp_header("content-type", "application/json")
-        |> send_resp(410, Jason.encode!(%{error: "Channel not found"}))
-    end
+    Task.start(fn ->
+      PubSubCore.delete_channel(channel)
+    end)
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(%{result: "Ok"}))
+
   end
 
   defp deliver_message(conn) do

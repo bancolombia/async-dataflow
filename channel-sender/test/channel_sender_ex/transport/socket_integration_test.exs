@@ -124,7 +124,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     Helper.compile(:channel_sender_ex, socket_idle_timeout: 500)
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
 
-    refute_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
+    refute_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
     assert_receive {:gun_ws, ^conn, ^stream, {:close, 1000, _reason}}, 1000
 
     :gun.close(conn)
@@ -220,7 +220,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     #   data
     # end
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {_type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
     ch_pid = ChannelRegistry.lookup_channel_addr(channel)
@@ -230,7 +230,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     Process.sleep(1200)
 
     {message_id, data} = deliver_message(channel)
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {type, _string}}
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {_type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
     :gun.close(conn)
@@ -244,9 +244,9 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     encoded_data
   end
 
-  defp assert_stop_redelivery(protocol, %{port: port, channel: channel, secret: secret}) do
+  defp assert_stop_redelivery(_protocol, %{port: port, channel: channel, secret: secret}) do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
-    {message_id, data} = deliver_message(channel, "45")
+    {_message_id, _data} = deliver_message(channel, "45")
     assert_receive {:gun_ws, ^conn, ^stream, encoded_data}
     message_id = decode_message(encoded_data) |> ProtocolMessage.message_id()
     :gun.ws_send(conn, {:text, "Ack::" <> message_id})
@@ -328,7 +328,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   defp authenticate(conn, secret), do: :gun.ws_send(conn, {:text, "Auth::#{secret}"})
 
-  defp assert_connect(port, channel, secret, sub_protocol \\ nil) do
+  defp assert_connect(port, channel, _secret, sub_protocol \\ nil) do
     conn =
       case sub_protocol do
         nil -> connect(port, channel)
@@ -339,7 +339,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {conn, stream}
   end
 
-  defp assert_reject(port, channel, secret, sub_protocol \\ nil) do
+  defp assert_reject(port, channel, _secret, sub_protocol \\ nil) do
     conn =
       case sub_protocol do
         nil -> connect(port, channel)
