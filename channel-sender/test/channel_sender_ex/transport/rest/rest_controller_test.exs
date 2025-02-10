@@ -361,7 +361,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
       conn2 = RestController.call(conn2, @options)
 
-      assert conn2.status == 200
+      assert conn2.status == 202
 
       assert %{"result" => "Ok"} =
                Jason.decode!(conn2.resp_body)
@@ -380,7 +380,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
       conn2 = RestController.call(conn2, @options)
 
-      assert conn2.status == 200
+      assert conn2.status == 202
 
     end
   end

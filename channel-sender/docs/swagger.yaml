@@ -114,8 +114,8 @@ paths:
             type: string
             example: beec634503c238f5b84f737275bfd4ba.855b8193bb6f419381eac6cc087aea3f
       responses:
-        "200":
-          description: If the operation is performed succesfully.
+        "202":
+          description: If the operation is received and the channel will be signaled to stop
           content:
             application/json:
               schema:
