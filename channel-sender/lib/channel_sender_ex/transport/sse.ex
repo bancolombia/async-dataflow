@@ -1,25 +1,16 @@
 defmodule ChannelSenderEx.Transport.Sse do
+  @moduledoc false
+
   @behaviour :cowboy_handler
 
   require Logger
 
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.ChannelRegistry
+  alias ChannelSenderEx.Core.RulesProvider
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.JsonEncoder
-  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
-
-  # bad request, invalid request received and data received is not valid
-  @invalid_request_code "3006"
-
-  # unauthorized, invalid secret code
-  @invalid_secret_code "3008"
-
-  # bad request, invalid or unexistent channel reference
-  @invalid_channel_code "3050"
-
-  @channel_key "channel"
-  @channel_secret "authorization"
+  alias ChannelSenderEx.Transport.TransportSpec
+  use TransportSpec, option: :sse
 
   def init(req, state) do
     case :cowboy_req.method(req) do
@@ -27,7 +18,6 @@ defmodule ChannelSenderEx.Transport.Sse do
       "GET" ->
         Logger.debug("Sse init #{inspect(self())}, REQ: #{inspect(req)}")
         result = get_relevant_request_info(req)
-        |> lookup_channel_addr()
         |> authorize()
         case result do
           {:error, @invalid_request_code} ->
@@ -55,9 +45,6 @@ defmodule ChannelSenderEx.Transport.Sse do
 
             # Send initial response (200 OK with SSE headers)
             req = :cowboy_req.stream_reply(200, headers, req)
-
-            # Start sending events asynchronously
-            # spawn(fn -> stream_events(req) end)
 
             {:cowboy_loop, req, state}
         end
@@ -89,24 +76,19 @@ defmodule ChannelSenderEx.Transport.Sse do
   end
 
   def info(:terminate_socket, req, state) do
-    # ! check if we need to do something with the new_socket_pid
+    # check if we need to do something with the new_socket_pid
     Logger.info("Sse for channel xxxxxx : received terminate_socket message")
     {:ok, req, state}
   end
 
   defp send_event(req, message) do
     sse_data = "data: #{message}\n\n"
-    Logger.debug("Sse send_event: #{sse_data}")
-    case :cowboy_req.stream_body(sse_data, :nofin, req) do
-      :ok -> :ok
-      {:error, _} = error -> error  # Handle closed connection
-    end
+    :cowboy_req.stream_body(sse_data, :nofin, req)
   end
 
   defp get_relevant_request_info(req) do
-    :cowboy_req.read_body(req)
-    with {@channel_key, channel} <- extract_channel_ref(req),
-        {@channel_secret, secret} <- extract_secret(req) do
+    with {@channel_key, channel} <- get_channel_from_qs(req),
+        {@channel_secret, secret} <- get_token_from_header(req) do
         {channel, secret}
     else
       {:error, code} = e ->
@@ -115,78 +97,24 @@ defmodule ChannelSenderEx.Transport.Sse do
     end
   end
 
-  defp extract_channel_ref(req) do
-    case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
-      {@channel_key, channel} = resp ->
-        IO.inspect(resp, label: "extract_channel_ref 1")
-        resp
-      x ->
-        IO.inspect(x, label: "extract_channel_ref")
-        Logger.error("SSe Invalid request, channel_ref not found")
-        {:error, @invalid_request_code}
-    end
-  end
-
-  defp extract_secret(req) do
-    case Map.get(:cowboy_req.headers(req), "authorization") do
-      nil ->
-        Logger.error("SSe Invalid request, authorization header not found")
-        {:error, @invalid_secret_code}
-      value -> {@channel_secret, List.last(String.split(value))}
-    end
-  end
-
   defp authorize(res = {:error, _code}) do
     res
   end
 
   defp authorize({channel, secret}) do
-    case ChannelAuthenticator.authorize_channel(channel, secret) do
-      {:ok, _application, _user_ref} ->
-        _monitor_ref = notify_connected(channel)
-        :ok
-
+    with {:ok, channel_pid} <- lookup_channel_addr(channel),
+         {:ok, _application, _user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret) do
+          _monitor_ref = notify_connected(channel_pid)
+          :ok
+    else
       :unauthorized ->
-        Logger.error("LongPoll unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}")
+        Logger.error("Sse unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}")
         {:error, @invalid_secret_code}
+
+      {:error, _} = e ->
+        Logger.error("Sse unable to authorize connection. Error: #{inspect(e)}")
+        e
     end
-  end
-
-  defp notify_connected(channel) do
-    Logger.debug("Long poll for channel #{channel} will be connected")
-    socket_event_bus = get_param(:socket_event_bus, nil)
-    ch_pid = socket_event_bus.notify_event({:connected, channel}, self())
-    Process.monitor(ch_pid)
-  end
-
-  defp lookup_channel_addr(e = {:error, _code}) do
-    e
-  end
-
-  defp lookup_channel_addr(req = {channel_ref, _secret}) do
-    action_fn = fn _ -> check_channel_registered(req) end
-    # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
-    # with a backoff strategy of 100ms initial delay and max of 500ms delay.
-    execute(100, 500, 3, action_fn, fn ->
-      Logger.error("Long poll unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
-      {:error, @invalid_channel_code}
-    end)
-  end
-
-  defp check_channel_registered(req = {channel_ref, _secret}) do
-    case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      :noproc ->
-        Logger.warning("LongPoll, channel #{channel_ref} not found, retrying...")
-        :retry
-      _ ->
-        req
-    end
-  end
-
-  defp get_param(param, def) do
-    RulesProvider.get(param)
-  rescue
-    _e -> def
   end
 
   @compile {:inline, invalid_request: 3}

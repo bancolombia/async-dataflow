@@ -1,25 +1,17 @@
 defmodule ChannelSenderEx.Transport.LongPoll do
+  @moduledoc false
+
   @behaviour :cowboy_handler
 
   require Logger
 
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.ChannelRegistry
+  alias ChannelSenderEx.Core.RulesProvider
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.JsonEncoder
-  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
+  alias ChannelSenderEx.Transport.TransportSpec
 
-  # bad request, invalid request received and data received is not valid
-  @invalid_request_code "3006"
-
-  # bad request, invalid or unexistent channel reference
-  @invalid_channel_code "3007"
-
-  # unauthorized, invalid secret code
-  @invalid_secret_code "3008"
-
-  @channel_key "channel"
-  @channel_secret "authorization"
+  use TransportSpec, option: :long_poll
 
   def init(req, state) do
     case :cowboy_req.method(req) do
@@ -27,7 +19,6 @@ defmodule ChannelSenderEx.Transport.LongPoll do
       "POST" ->
         Logger.debug("LongPoll init #{inspect(self())}, REQ: #{inspect(req)}")
         result = get_relevant_request_info(req)
-        |> lookup_channel_addr()
         |> authorize()
         case result do
           {:error, @invalid_request_code} ->
@@ -81,32 +72,13 @@ defmodule ChannelSenderEx.Transport.LongPoll do
   end
 
   defp get_relevant_request_info(req) do
-
-    :cowboy_req.read_body(req)
-
-    with {@channel_key, channel} <- extract_channel_ref(req),
-        {@channel_secret, secret} <- extract_secret(req) do
+    with {@channel_key, channel} <- get_channel_from_qs(req),
+        {@channel_secret, secret} <- get_token_from_header(req) do
         {channel, secret}
     else
       {:error, code} = e ->
-        Logger.error("e: #{inspect(e)}")
+        Logger.error("LongPoll not valid data at request: #{inspect(e)}")
         {:error, code}
-    end
-  end
-
-  defp extract_channel_ref(req) do
-    case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
-      {@channel_key, channel} = resp when byte_size(channel) > 10 ->
-        resp
-      _ ->
-        {:error, @invalid_request_code}
-    end
-  end
-
-  defp extract_secret(req) do
-    case Map.get(:cowboy_req.headers(req), "authorization") do
-      nil -> {:error, @invalid_secret_code}
-      value -> {@channel_secret, List.last(String.split(value))}
     end
   end
 
@@ -115,52 +87,19 @@ defmodule ChannelSenderEx.Transport.LongPoll do
   end
 
   defp authorize({channel, secret}) do
-    case ChannelAuthenticator.authorize_channel(channel, secret) do
-      {:ok, _application, _user_ref} ->
-        _monitor_ref = notify_connected(channel)
-        :ok
-
+    with {:ok, channel_pid} <- lookup_channel_addr(channel),
+         {:ok, _application, _user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret) do
+          _monitor_ref = notify_connected(channel_pid)
+          :ok
+    else
       :unauthorized ->
         Logger.error("LongPoll unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}")
         {:error, @invalid_secret_code}
+
+      {:error, _} = e ->
+        Logger.error("LongPoll unable to authorize connection. Error: #{inspect(e)}")
+        e
     end
-  end
-
-  defp notify_connected(channel) do
-    Logger.debug("Long poll for channel #{channel} will be connected")
-    socket_event_bus = get_param(:socket_event_bus, nil)
-    ch_pid = socket_event_bus.notify_event({:connected, channel}, self())
-    Process.monitor(ch_pid)
-  end
-
-  defp lookup_channel_addr(e = {:error, _code}) do
-    e
-  end
-
-  defp lookup_channel_addr(req = {channel_ref, _secret}) do
-    action_fn = fn _ -> check_channel_registered(req) end
-    # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
-    # with a backoff strategy of 100ms initial delay and max of 500ms delay.
-    execute(100, 500, 3, action_fn, fn ->
-      Logger.error("Long poll unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
-      {:error, @invalid_channel_code}
-    end)
-  end
-
-  defp check_channel_registered(req = {channel_ref, _secret}) do
-    case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      :noproc ->
-        Logger.warning("LongPoll, channel #{channel_ref} not found, retrying...")
-        :retry
-      _ ->
-        req
-    end
-  end
-
-  defp get_param(param, def) do
-    RulesProvider.get(param)
-  rescue
-    _e -> def
   end
 
   @compile {:inline, invalid_request: 3}
