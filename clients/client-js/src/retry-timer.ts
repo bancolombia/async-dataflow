@@ -23,7 +23,7 @@ export class RetryTimer {
 
     public schedule(): void {
         if (typeof window !== 'undefined') {
-            if (this.tries <= this.maxRetries) {
+            if (this.tries < this.maxRetries) {
                 const delayMS = this.delay();
                 this.tries = this.tries + 1;
                 console.log(`async-client. scheduling retry in ${delayMS} ms`);
@@ -32,7 +32,6 @@ export class RetryTimer {
                     this.callback();
                 }, delayMS)
             } else {
-                console.log(this.tries, this.maxRetries);
                 if (this.limitReachedCallback && !this.limitReachedNotified) {
                     this.limitReachedNotified = true;
                     console.log(`async-client. notifying limit reached.`);

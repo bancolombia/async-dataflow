@@ -13,6 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCardModule } from '@angular/material/card';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { SettingsService } from '../../services/settings.service';
 import { Settings } from '../../models/settings.interface';
 
@@ -20,7 +21,7 @@ import { Settings } from '../../models/settings.interface';
 @Component({
   selector: 'app-requests',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule, MatListModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatCardModule],
+  imports: [CommonModule, FormsModule, HttpClientModule, MatListModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatCardModule, MatSnackBarModule],
   templateUrl: './requests.component.html',
   styleUrl: './requests.component.css'
 })
@@ -35,7 +36,8 @@ export class RequestsComponent implements OnInit, OnDestroy {
   constructor(
     private asyncClientService: AsyncClientService,
     private businessService: BusinessService,
-    private settingsProvider: SettingsService
+    private settingsProvider: SettingsService,
+    private snackbar: MatSnackBar
   ) {
     this.user_ref = v4();
   }
@@ -67,6 +69,10 @@ export class RequestsComponent implements OnInit, OnDestroy {
     this.asyncClientService.closeChannel();
   }
 
+  connected() {
+    return this.asyncClientService.connected();
+  }
+
   cleanRequests() {
     this.results = [];
   }
@@ -78,6 +84,11 @@ export class RequestsComponent implements OnInit, OnDestroy {
       .subscribe((_res: any) => {
         this.results.unshift({ message: `${this.dateNow()} Get empty response after ${performance.now() - start} ms`, type: 'out' });
       });
+  }
+
+  copyToClipboard() {
+    navigator.clipboard.writeText(JSON.stringify(this.results));
+    this.snackbar.open('Requests copied to clipboard', 'Close', { duration: 2000 });
   }
 
   private listenEvents() {

@@ -2,43 +2,47 @@ import { LRUCache } from 'lru-cache'
 
 export class Cache {
 
-    private cacheImpl: LRUCache<string, string, any>; 
+    private cacheImpl: LRUCache<string, string, any>;
 
-    constructor(
-        private maxElementsSize: number = 500,
-        private maxElementTtl: number = 10) {
+    private static readonly MAX_SIZE = 100;
+    private static readonly DEFAULT_MAX_ELEMENTS = 500;
+    private static readonly DEFAULT_TTL_MINUTES = 10;
+    private static readonly MINUTE_IN_MILLIS = 60_000;
+
+    /**
+     * 
+     * @param maxElementsSize count of max elements in cache
+     * @param maxElementTtl 
+     */
+    constructor(maxElementsSize: number = Cache.DEFAULT_MAX_ELEMENTS, maxElementTtl: number = Cache.DEFAULT_TTL_MINUTES) {
 
         const options = {
             max: maxElementsSize,
-        
-            // for use with tracking overall storage size
-            maxSize: 100,
-            sizeCalculation: (value, key) => {
+
+            // a safe limit on the maximum storage consumed
+            maxSize: Cache.MAX_SIZE,
+            sizeCalculation: (_value, _key) => {
                 return 1
             },
-        
+
             // for use when you need to clean up something when objects
             // are evicted from the cache
-            dispose: (value, key) => {},
-        
+            dispose: (_value, _key) => { },
+
             // how long to live in ms
-            ttl: 1000 * 60 * maxElementTtl,
-    
+            ttl: Cache.MINUTE_IN_MILLIS * maxElementTtl,
+
             // return stale items before removing from cache?
             allowStale: false,
             noUpdateTTL: true,
             updateAgeOnGet: false,
             updateAgeOnHas: false,
-        
+
             // async method to use for cache.fetch(), for
-            // stale-while-revalidate type of behavior
-            fetchMethod: async (
-                key,
-                staleValue,
-                { options, signal, context }
-            ) => {},
+            // stale-while-revalidate type of behavior _other -> { options, signal, context }
+            fetchMethod: async (_key, _staleValue, _other) => { },
         }
-        
+
         this.cacheImpl = new LRUCache(options);
     }
 
@@ -47,6 +51,6 @@ export class Cache {
     }
 
     public get(key: string): any {
-        return this.cacheImpl.get(key, {updateAgeOnGet: false, allowStale: false})
+        return this.cacheImpl.get(key, { updateAgeOnGet: false, allowStale: false })
     }
 }

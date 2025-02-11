@@ -1,20 +1,19 @@
 import * as chai from 'chai';
 
-import {ChannelMessage} from "../src/channel-message";
-import {MessageDecoder} from "../src/serializer";
-import {BinaryDecoder} from "../src/binary-decoder";
+import { ChannelMessage } from "../../src/channel-message";
+import { MessageDecoder, BinaryDecoder } from "../../src/decoder";
 import "fast-text-encoding"
 
 const assert = chai.assert;
-describe('Binary Serializer Tests', function()  {
+describe('Binary Serializer Tests', function () {
 
     const serializer: MessageDecoder = new BinaryDecoder();
 
-    it('Should decode basic binary payload' , () => {
+    it('Should decode basic binary payload', () => {
 
         const data: ArrayBuffer = binaryData();
-        const event  = new MessageEvent('test', {
-            data : data
+        const event = new MessageEvent('test', {
+            data: data
         });
 
         const message = serializer.decode(event);
@@ -22,11 +21,11 @@ describe('Binary Serializer Tests', function()  {
         assert.deepEqual(message, new ChannelMessage("message_id2", "event_name2", "correlation_id2", "message_data1"));
     });
 
-    it('Should decode basic Auth Frame' , () => {
+    it('Should decode basic Auth Frame', () => {
 
         const data: ArrayBuffer = simpleAuthOkFrame();
-        const event  = new MessageEvent('test', {
-            data : data
+        const event = new MessageEvent('test', {
+            data: data
         });
 
         const message = serializer.decode(event);
@@ -34,11 +33,11 @@ describe('Binary Serializer Tests', function()  {
         assert.deepEqual(message, new ChannelMessage("", "AuthOk", "", ""));
     });
 
-    it('Should decode UTF-8 with special characters binary payload' , () => {
+    it('Should decode UTF-8 with special characters binary payload', () => {
         const plainPayload = "{\"strange_message: \"áéíóú@ñ&%$#!especíalç\", \"strange_message: \"áéíóú@ñ&%$#!especíal2ç\"}";
         const data: ArrayBuffer = specialBinaryData();
-        const event  = new MessageEvent('test', {
-            data : data
+        const event = new MessageEvent('test', {
+            data: data
         });
 
         const message = serializer.decode(event);
@@ -54,7 +53,7 @@ describe('Binary Serializer Tests', function()  {
   message_data: "message_data1",
   event_name: "event_name2"
 */
-function binaryData() : ArrayBuffer {
+function binaryData(): ArrayBuffer {
     const rawData = [255, 11, 15, 11, 109, 101, 115, 115, 97, 103, 101, 95, 105, 100, 50, 99, 111,
         114, 114, 101, 108, 97, 116, 105, 111, 110, 95, 105, 100, 50, 101, 118, 101,
         110, 116, 95, 110, 97, 109, 101, 50, 109, 101, 115, 115, 97, 103, 101, 95,
@@ -75,7 +74,7 @@ function simpleAuthOkFrame() {
     return byteArray.buffer;
 }
 
-function specialBinaryData() : ArrayBuffer {
+function specialBinaryData(): ArrayBuffer {
     const rawData = [255, 11, 15, 11, 109, 101, 115, 115, 97, 103, 101, 95, 105, 100, 50, 99, 111,
         114, 114, 101, 108, 97, 116, 105, 111, 110, 95, 105, 100, 50, 101, 118, 101,
         110, 116, 95, 110, 97, 109, 101, 50, 123, 34, 115, 116, 114, 97, 110, 103,

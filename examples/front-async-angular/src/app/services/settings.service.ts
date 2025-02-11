@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Settings } from '../models/settings.interface';
 import { BehaviorSubject } from 'rxjs';
+import { environment } from '../environments/environment';
 
 const SETTINGS = 'settings';
 @Injectable({
@@ -17,7 +18,7 @@ export class SettingsService {
     const settings = localStorage.getItem(SETTINGS);
     if (settings) {
       const parsed = JSON.parse(settings);
-      if (parsed.heartbeatDelay && parsed.maxRetries && parsed.defaultRequestDelay && parsed.transports) {
+      if (parsed.heartbeatDelay && parsed.maxRetries && parsed.defaultRequestDelay && parsed.transports && parsed.server) {
         return parsed;
       }
     }
@@ -25,11 +26,14 @@ export class SettingsService {
       heartbeatDelay: 5000,
       maxRetries: 10,
       defaultRequestDelay: 1000,
-      transports: ['ws', 'sse']
+      transports: ['ws', 'sse'],
+      server: Object.keys(environment.servers)[0]
     };
   }
 
   public save(settings: Settings) {
+    console.log('Saving settings', settings);
+    localStorage.removeItem('redirected');
     localStorage.setItem(SETTINGS, JSON.stringify(settings));
     this.settingsSubject.next(settings);
   }

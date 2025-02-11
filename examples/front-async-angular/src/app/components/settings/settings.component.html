@@ -34,9 +34,16 @@
                     </mat-chip-row>
                     }
                     <input placeholder="New transport..." [matChipInputFor]="chipGrid"
-                        [matChipInputSeparatorKeyCodes]="separatorKeysCodes" [matChipInputAddOnBlur]="addOnBlur"
-                        (matChipInputTokenEnd)="add($event)" />
+                        [matChipInputSeparatorKeyCodes]="separatorKeysCodes" (matChipInputTokenEnd)="add($event)" />
                 </mat-chip-grid>
+            </mat-form-field>
+            <mat-form-field *ngIf="settings">
+                <mat-label>Server</mat-label>
+                <mat-select [(value)]="settings!.server">
+                    @for (server of servers; track server) {
+                    <mat-option [value]="server">{{server}}</mat-option>
+                    }
+                </mat-select>
             </mat-form-field>
         </mat-card-content>
         <mat-card-actions>
