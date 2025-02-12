@@ -1,0 +1,30 @@
+name: Build Async DataFlow Cliente JS
+on:
+  pull_request:
+    paths:
+      - 'clients/client-js/**' 
+    branches:
+      - master
+jobs:
+  build:
+    defaults:
+      run:
+        working-directory: clients/client-js
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    # Setup .npmrc file to publish to npm
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        registry-url: 'https://registry.npmjs.org'
+    - run: npm install
+      name: Install dependencies
+    - run: npm run build
+      name: Build
+    - run: npm run test
+      name: Test
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@v4
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_CLIENT_JS }}
