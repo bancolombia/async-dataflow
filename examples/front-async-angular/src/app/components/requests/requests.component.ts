@@ -79,10 +79,11 @@ export class RequestsComponent implements OnInit, OnDestroy {
 
   generateRequest() {
     let start = performance.now();
+    let correlationId = v4();
     this.businessService
-      .callBusinessUseCase(this.delay, this.user_ref)
+      .callBusinessUseCase(this.delay, this.user_ref, correlationId)
       .subscribe((_res: any) => {
-        this.results.unshift({ message: `${this.dateNow()} Get empty response after ${performance.now() - start} ms`, type: 'out' });
+        this.results.unshift({ message: `${this.dateNow()} id: ${correlationId} Get empty response after ${performance.now() - start} ms`, type: 'out' });
       });
   }
 

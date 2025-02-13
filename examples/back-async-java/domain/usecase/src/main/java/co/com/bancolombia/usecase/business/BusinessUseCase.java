@@ -21,18 +21,18 @@ public class BusinessUseCase {
         return asyncDataFlowGateway.generateCredentials(userIdentifier);
     }
 
-    public Mono<Object> asyncBusinessFlow(String delay, String channelRef, String userRef) {
+    public Mono<Object> asyncBusinessFlow(String delay, String channelRef, String userRef, String correlationId) {
         log.info("Delaying async flow message: " + channelRef);
         Mono.delay(Duration.ofMillis(Integer.parseInt(delay)))
                 .then(Mono.defer(() -> {
                     log.info("Delivering async flow message: " + channelRef);
                     DeliverMessage deliverMessage = DeliverMessage.builder()
                             .messageId(UUID.randomUUID().toString())
-                            .CorrelationId(UUID.randomUUID().toString())
+                            .CorrelationId(correlationId)
                             .messageData(Message.builder()
                                     .code("100")
                                     .title("process after " + delay)
-                                    .detail("some detail " + UUID.randomUUID())
+                                    .detail("response for id:" + correlationId)
                                     .severity("INFO")
                                     .build())
                             .channelRef(channelRef)
