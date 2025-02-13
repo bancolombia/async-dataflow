@@ -25,5 +25,7 @@ jobs:
       name: Test
     - name: SonarQube Scan
       uses: SonarSource/sonarqube-scan-action@v4
+      with:
+        projectBaseDir: clients/client-js
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_CLIENT_JS }}
