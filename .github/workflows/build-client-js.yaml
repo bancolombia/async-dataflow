@@ -1,4 +1,4 @@
-name: Build Async DataFlow Cliente JS
+name: client-js-build
 on:
   pull_request:
     paths:
@@ -14,10 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     # Setup .npmrc file to publish to npm
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version: '20.18.1'
-    - run: npm install
+    - run: npm install --verbose
       name: Install dependencies
     - run: npm run build
       name: Build
