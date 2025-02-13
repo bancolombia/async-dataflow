@@ -2,7 +2,7 @@ import { LRUCache } from 'lru-cache'
 
 export class Cache {
 
-    private cacheImpl: LRUCache<string, string, any>;
+    private readonly cacheImpl: LRUCache<string, string, any>;
 
     private static readonly MAX_SIZE = 100;
     private static readonly DEFAULT_MAX_ELEMENTS = 500;

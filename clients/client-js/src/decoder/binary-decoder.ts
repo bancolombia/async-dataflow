@@ -6,7 +6,7 @@ import { MessageDecoder } from "./message-decoder";
 
 export class BinaryDecoder implements MessageDecoder {
 
-    private textDecoder: TextDecoder;
+    private readonly textDecoder: TextDecoder;
 
     constructor() {
         this.textDecoder = new TextDecoder();

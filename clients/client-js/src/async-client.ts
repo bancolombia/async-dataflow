@@ -5,12 +5,12 @@ import { ChannelMessage } from "./channel-message";
 export class AsyncClient {
     private currentTransport: Transport;
     private currentTransportIndex: number = 0;
-    private bindings = [];
-    private cache: Cache = undefined;
+    private readonly bindings = [];
+    private readonly cache: Cache = undefined;
     private closeWasClean: boolean = false;
     private retriesByTransport = 0;
 
-    constructor(private config: AsyncConfig, private transports: Array<string> | null, private mockTransport: any = null) {
+    constructor(private readonly config: AsyncConfig, private readonly transports: Array<string> | null, private readonly mockTransport: any = null) {
         if (!config.dedupCacheDisable) {
             this.cache = new Cache(config.dedupCacheMaxSize, config.dedupCacheTtl);
         }

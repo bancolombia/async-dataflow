@@ -13,16 +13,16 @@ export class WsTransport implements Transport {
     private socket: WebSocket;
     public isOpen: boolean = false;
     public isActive: boolean = false;
-    private stateCallbacks = { open: [], close: [], error: [], message: [] }
+    private readonly stateCallbacks = { open: [], close: [], error: [], message: [] }
     private ref = 0;
     private pendingHeartbeatRef: string = null;
     private closeWasClean: boolean = false;
     private heartbeatTimer = null;
     private readonly heartbeatIntervalMs: number;
     private tearingDown: boolean = false;
-    private reconnectTimer: RetryTimer;
+    private readonly reconnectTimer: RetryTimer;
     private serializer: MessageDecoder;
-    private subProtocols: string[] = [Protocol.JSON]
+    private readonly subProtocols: string[] = [Protocol.JSON]
 
     private readonly HEARTBEAT_TIMEOUT = 3051;
 
@@ -34,9 +34,9 @@ export class WsTransport implements Transport {
         return new WsTransport(config, handleMessage, errorCallback, transport);
     }
 
-    private constructor(private config: AsyncConfig,
-        private handleMessage: (_message: ChannelMessage) => void,
-        private errorCallback: (_error: TransportError) => void,
+    private constructor(private readonly config: AsyncConfig,
+        private readonly handleMessage: (_message: ChannelMessage) => void,
+        private readonly errorCallback: (_error: TransportError) => void,
         private readonly transport: any = null) {
 
         const intWindow = typeof window !== "undefined" ? window : null;

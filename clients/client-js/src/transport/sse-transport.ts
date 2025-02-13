@@ -10,7 +10,7 @@ export class SseTransport implements Transport {
 
     private actualToken;
     private eventSource: EventSourcePlus;
-    private serializer: MessageDecoder;
+    private readonly serializer: MessageDecoder;
     private errorCount = 0;
     private controller: EventSourceController;
     private tokenUpdated: boolean = false;
@@ -25,9 +25,9 @@ export class SseTransport implements Transport {
         return new SseTransport(config, handleMessage, errorCallback, transport);
     }
 
-    private constructor(private config: AsyncConfig,
-        private handleMessage: (_message: ChannelMessage) => void,
-        private errorCallback: (_error: TransportError) => void,
+    private constructor(private readonly config: AsyncConfig,
+        private readonly handleMessage: (_message: ChannelMessage) => void,
+        private readonly errorCallback: (_error: TransportError) => void,
         private readonly transport: typeof EventSourcePlus) {
         this.serializer = new JsonDecoder();
         this.actualToken = config.channel_secret;
