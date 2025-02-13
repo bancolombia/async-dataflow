@@ -3,53 +3,19 @@ defmodule ChannelSenderEx.Transport.Socket do
   Implements real time socket communications with cowboy
   """
   @behaviour :cowboy_websocket
-  @channel_key "channel"
-
-  @normal_close_code "3000"
-
-  ## ---------------------
-  ## Non-Retryable errors
-  ## ---------------------
-
-  # Error code to indicate a generic bad request.
-  @invalid_request_code "3006"
-
-  # Error to indicate the shared secret for the channel is invalid
-  @invalid_secret_code "3008"
-
-  # Error code to indicate that the channel is already connected
-  # and a new socket process is trying to connect to it.
-  @invalid_already_stablished "3009"
-
-  ## -----------------
-  ## Retryable errors
-  ## -----------------
-
-  # Error code to indicate bad request, specifically when
-  # not providing a valid channel reference, or when clustered
-  # the reference its yet visible among all replicas.
-  # This error code and up, may be retried by the client.
-  @invalid_channel_code "3050"
 
   require Logger
 
-  alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
-  alias alias ChannelSenderEx.Utils.CustomTelemetry
-  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
+  alias ChannelSenderEx.Transport.TransportSpec
+  alias ChannelSenderEx.Utils.CustomTelemetry
 
-  @type channel_ref() :: String.t()
-  @type application_ref() :: String.t()
-  @type user_ref() :: String.t()
-  @type ch_ref() :: reference()
-  @type pending_bag() :: %{String.t() => {pid(), reference()}}
-  @type context_data() :: {application_ref(), user_ref(), ch_ref()}
-  @type protocol_encoder() :: atom()
+  use TransportSpec, option: :ws
 
   @type pre_operative_state ::
           {channel_ref(), :pre_auth, protocol_encoder()} | {channel_ref(), :unauthorized}
@@ -61,7 +27,6 @@ defmodule ChannelSenderEx.Transport.Socket do
   def init(req = %{method: "GET"}, opts) do
     init_result = get_relevant_request_info(req)
       |> process_subprotocol_selection(req)
-
     case init_result do
       {:cowboy_websocket, _, _, _} = res ->
         res
@@ -72,22 +37,11 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def websocket_init(state) do
+  def websocket_init(state = {ref, _, _}) do
     Logger.debug("Socket init with pid: #{inspect(self())} starting... #{inspect(state)}")
-    {ref, _, _} = state
-    proc = lookup_channel_addr({"channel", ref})
-    case proc do
-      {:ok, pid} ->
-        case validate_channel_is_waiting(pid) do
-          {:error, desc, data} ->
-            Logger.warning("""
-            Socket init with pid: #{inspect(self())} will not continue for #{ref}.
-            Error: #{desc}. There is a socket already connected = #{inspect(data.socket)}
-            """)
-            {_commands = [{:close, 1001, desc}], state}
-          _ ->
-            {_commands = [], state}
-        end
+    case lookup_channel_addr(ref) do
+      {:ok, _pid} ->
+        {_commands = [], state}
       {:error, desc} ->
         {_commands = [{:close, 1001, desc}], state}
     end
@@ -162,21 +116,12 @@ defmodule ChannelSenderEx.Transport.Socket do
     end
   end
 
-  # @impl :cowboy_websocket
-  # def websocket_info({:DOWN, ref, :process, _pid, cause}, state = {channel_ref, :connected, _, {_, _, ref}, _}) do
-  #   case cause do
-  #     :normal ->
-  #       Logger.info("Socket for channel #{channel_ref}. Related process #{inspect(ref)} down normally")
-  #       {_commands = [{:close, @normal_close_code, "close"}], state}
-  #   _ ->
-  #       Logger.warning("""
-  #         Socket for channel #{channel_ref}. Related Process #{inspect(ref)}
-  #         down with cause #{inspect(cause)}. Spawning process for re-conection
-  #       """)
-  #       spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
-  #       {_commands = [], state}
-  #   end
-  # end
+  @impl :cowboy_websocket
+  def websocket_info(:terminate_socket, state = {channel_ref, _, _, _, _}) do
+    # ! check if we need to do something with the new_socket_pid
+    Logger.info("Socket for channel #{channel_ref} : received terminate_socket message")
+    {_commands = [{:close, 1001, <<@socket_replaced>>}], state}
+  end
 
   @impl :cowboy_websocket
   def websocket_info({:DOWN, ref, proc, pid, cause}, state = {channel_ref, _, _, _, _}) do
@@ -213,24 +158,11 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def terminate(reason, partial_req, state) do
-
     Logger.debug("Socket terminate with pid: #{inspect(self())}. REASON: #{inspect(reason)}. REQ: #{inspect(partial_req)}, STATE: #{inspect(state)}")
 
     CustomTelemetry.execute_custom_event([:adf, :socket, :disconnection], %{count: 1})
 
     handle_terminate(reason, partial_req, state)
-
-    # level = if reason == :normal, do: :info, else: :warning
-    # case state do
-    #   { channel_ref, _, _, _, _} ->
-    #     level = if reason == :normal, do: :info, else: :warning
-    #     Logger.log(level, "Socket for channel #{channel_ref} terminated with reason: #{inspect(reason)}")
-    #     post_terminate(reason, channel_ref)
-    #     :ok
-    #   _ ->
-    #     Logger.log(level, "Socket terminated with reason: #{reason}. State: #{inspect(state)}")
-    #     :ok
-    # end
   end
 
   #############################
@@ -241,57 +173,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   defp get_relevant_request_info(req) do
     # extracts the channel key from the request query string
-    case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
-      {@channel_key, channel} = resp when byte_size(channel) > 10 ->
-        resp
-      _ ->
-        Logger.error("Socket unable to start. channel_ref not found in query string request.")
-        {:error, @invalid_request_code}
-    end
-  end
-
-  defp lookup_channel_addr(channel_ref) do
-    action_fn = fn _ -> check_channel_registered(channel_ref) end
-    # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
-    # with a backoff strategy of 100ms initial delay and max of 500ms delay.
-    result = execute(50, 300, 3, action_fn, fn ->
-      Logger.error("Socket unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
-      {:error, <<@invalid_channel_code>>}
-    end)
-
-    case result do
-      {:error, _desc} = e ->
-        e
-      {pid, _res} ->
-        {:ok, pid}
-    end
-  end
-
-  defp check_channel_registered(res = {@channel_key, channel_ref}) do
-    case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      :noproc ->
-        Logger.warning("Socket: #{channel_ref} not found, retrying query...")
-        :retry
-      pid ->
-        {pid, res}
-    end
-  end
-
-  # defp check_channel_registered({:error, _desc}) do
-  #   :retry
-  # end
-
-  defp validate_channel_is_waiting(pid) when is_pid(pid)  do
-    {status, data} = Channel.info(pid)
-    case status do
-      :waiting ->
-        # process can continue, and socket process will be linked to the channel process
-        {:ok, data}
-      _ ->
-        # channel is already in a connected state, and a previous socket process
-        # was already linked to it.
-        {:error, <<@invalid_already_stablished>>, data}
-    end
+    get_channel_from_qs(req)
   end
 
   defp process_subprotocol_selection({@channel_key, channel}, req) do
@@ -324,13 +206,6 @@ defmodule ChannelSenderEx.Transport.Socket do
     err
   end
 
-  @compile {:inline, notify_connected: 1}
-  defp notify_connected(channel) do
-    socket_event_bus = get_param(:socket_event_bus, nil)
-    ch_pid = socket_event_bus.notify_event({:connected, channel}, self())
-    Process.monitor(ch_pid)
-  end
-
   @compile {:inline, set_pending: 2}
   defp set_pending(state, new_pending), do: :erlang.setelement(5, state, new_pending)
 
@@ -353,36 +228,25 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   defp handle_terminate(cause = {:remote, _code, _}, _req, state) do
-    {channel_ref, _, _, _, _} = state
-    Logger.info("Socket with pid: #{inspect(self())}, for ref #{channel_ref} terminated normally. CAUSE: #{inspect(cause)}")
+    channel_ref = extract_ref(state)
+    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated. CAUSE: #{inspect(cause)}")
     :ok
   end
 
   defp handle_terminate(:stop, _req, state) do
-    channel_ref = case state do
-      {ref, _, _} -> ref
-      {ref, _unauthorized_atom} -> ref
-      _ -> state
-    end
-    Logger.info("Socket with pid: #{inspect(self())}, for ref #{channel_ref} terminated with :stop. STATE: #{inspect(state)}")
+    channel_ref = extract_ref(state)
+    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :stop. STATE: #{inspect(state)}")
     :ok
   end
 
   defp handle_terminate(:timeout, _req, state) do
-    channel_ref = case state do
-      {ref, _, _} -> ref
-      {ref, _, _, _, _} -> ref
-      _ -> state
-    end
+    channel_ref = extract_ref(state)
     Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :timeout. STATE: #{inspect(state)}")
     :ok
   end
 
   defp handle_terminate({:error, :closed}, _req, state) do
-    channel_ref = case state do
-      {ref, _, _} -> ref
-      _ -> state
-    end
+    channel_ref = extract_ref(state)
     Logger.warning("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} was closed without receiving closing frame first")
     :ok
   end
@@ -394,6 +258,11 @@ defmodule ChannelSenderEx.Transport.Socket do
     Logger.info("Socket with pid: #{inspect(self())}, terminated with reason: #{inspect(reason)}. STATE: #{inspect(state)}")
     :ok
   end
+
+  defp extract_ref(state) when is_tuple(state) do
+    elem(state, 0)
+  end
+  defp extract_ref(state), do: state
 
   @compile {:inline, auth_ok_frame: 1}
   defp auth_ok_frame(encoder) do
@@ -416,9 +285,5 @@ defmodule ChannelSenderEx.Transport.Socket do
       req_filter: fn %{qs: qs, peer: peer} -> {qs, peer} end
     }
   end
-  defp get_param(param, def) do
-    RulesProvider.get(param)
-  rescue
-    _e -> def
-  end
+
 end

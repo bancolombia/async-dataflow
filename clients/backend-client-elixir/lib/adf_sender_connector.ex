@@ -3,167 +3,58 @@ defmodule AdfSenderConnector do
   Client for ADF Channel Sender
   """
 
-  use DynamicSupervisor
-  require Logger
+  alias AdfSenderConnector.{Channel, Message, Router}
 
-  alias AdfSenderConnector.{Credentials, Router, Message}
+  @type application_ref() :: binary()
+  @type user_ref() :: binary()
 
-  @typedoc """
-  Channel sender base URL
-  """
-  @type sender_url :: String.t()
+  @type channel_ref() :: binary()
+  @type message_id() :: binary()
+  @type correlation_id() :: binary()
+  @type event_name() :: binary()
+  @type message :: Message.t()
+  @type message_data() :: iodata()
 
-  @typedoc """
-  Application reference
-  """
-  @type application_ref :: String.t()
-
-  @typedoc """
-  User reference
-  """
-  @type user_ref :: String.t()
-
-  @typedoc """
-  Channel reference
-  """
-  @type channel_ref :: String.t()
-
-  @typedoc """
-  Event name
-  """
-  @type event_name :: String.t()
-
-  @typedoc """
-  Event payload as a Message struct
-  """
-  @type message :: %Message{}
-
-
-  @typedoc """
-  Event payload as a Map
-  """
-  @type message_data :: map()
-
-  @default_local "http://localhost:8081"
-
-
-  @doc """
-  starts the process
-  """
-  # @spec start_link() :: {atom, pid}
-  def start_link(init_args, _opts \\ []) do
-    HTTPoison.start
-    DynamicSupervisor.start_link(__MODULE__, [init_args], name: __MODULE__)
-  end
-
-  def start_link() do
-    HTTPoison.start
-    Logger.warning("No sender endpoint provided. Using default endpoint https://localhost:8081")
-    DynamicSupervisor.start_link(__MODULE__, [sender_url: @default_local], name: __MODULE__)
-  end
-
-  @spec init(any) ::
-          {:ok,
-           %{
-             extra_arguments: list,
-             intensity: non_neg_integer,
-             max_children: :infinity | non_neg_integer,
-             period: pos_integer,
-             strategy: :one_for_one
-           }}
-  @doc false
-  def init(options \\ []) do
-    DynamicSupervisor.init(strategy: :one_for_one, extra_arguments: options)
-  end
-
-  def spec(args \\ []) do
+  def http_client_spec do
     %{
-      id: AdfSenderConnector,
-      start: {AdfSenderConnector, :start_link, args}
+      id: Finch,
+      start: {Finch, :start_link, [[name: SenderHttpClient, pools: %{default: [size: 50, count: 4]}]]}
     }
   end
 
-  def registry_spec do
-    %{
-      id: Registry.ADFSenderConnector,
-      start: {Registry, :start_link, [[keys: :unique, name: Registry.ADFSenderConnector]]}
-    }
-  end
-
-  @spec channel_registration(application_ref(), user_ref(), list()) :: {:ok, map()} | {:error, any()}
   @doc """
   Request a channel registration
   """
-  def channel_registration(application_ref, user_ref, options \\ []) do
-    case find_creds_process(application_ref <> "." <> user_ref) do
-      :noproc ->
-        {:ok, pid} = start_creds_proc(application_ref, user_ref, options)
-        Credentials.exchange_credentials(pid)
-      pid ->
-        Credentials.exchange_credentials(pid)
-    end
-  end
-
-  defp start_creds_proc(application_ref, user_ref, options) do
-    DynamicSupervisor.start_child(__MODULE__,
-      Credentials.child_spec([
-        app_ref: application_ref,
-        user_ref: user_ref,
-        name: application_ref <> "." <> user_ref] ++ options))
-  end
-
-  defp find_creds_process(name) do
-    case Registry.lookup(Registry.ADFSenderConnector, name) do
-      [{pid, _}] ->
-        pid
-      [] ->
-        :noproc
-    end
+  @spec channel_registration(application_ref(), user_ref()) :: {:ok, map()} | {:error, any()}
+  def channel_registration(application_ref, user_ref) do
+    Channel.exchange_credentials(application_ref, user_ref)
   end
 
   @doc """
-  Starts a process to deliver messages.
+  Request a channel close
   """
-  @spec start_router_process(channel_ref(), list()) :: :ok | {:error, any()}
-  def start_router_process(channel_ref, options \\ []) do
-    new_options = Keyword.delete(options, :name)
-    Logger.debug("Starting routing process: #{inspect(channel_ref)}")
-    DynamicSupervisor.start_child(__MODULE__, Router.child_spec([name: channel_ref] ++ new_options))
+  @spec channel_close(channel_ref()) :: {:ok, map()} | {:error, any()}
+  def channel_close(channel_ref) do
+    Channel.close_channel(channel_ref)
   end
 
-  @doc """
-  Stops a routing process.
-  """
-  @spec stop_router_process(channel_ref()) :: :ok | {:error, any()}
-  def stop_router_process(channel_ref) do
-    Logger.debug("Stopping routing process: #{inspect(channel_ref)}")
-    DynamicSupervisor.stop(__MODULE__, channel_ref)
-  end
-
-  @spec route_message(channel_ref(), event_name(), message() | message_data(), any()) :: {:ok, map()} | {:error, any()}
   @doc """
   Request a message delivery by creating a protocol message with the data provided
   """
-  def route_message(channel_ref, event_name, message, options \\ []) do
-    case Registry.lookup(Registry.ADFSenderConnector, channel_ref) do
-      [{pid, _}] ->
-        if is_struct(message, AdfSenderConnector.Message) do
-          if options[:cast] do
-            Router.cast_route_message(pid, message)
-          else
-            Router.route_message(pid, message)
-          end
-        else
-          if options[:cast] do
-            Router.cast_route_message(pid, event_name, message)
-          else
-            Router.route_message(pid, event_name, message)
-          end
-        end
-      [] ->
-        Logger.warning(":unknown_channel_reference #{inspect(channel_ref)}")
-        {:error, :unknown_channel_reference}
-    end
+  @spec route_message(channel_ref(), message_id(), correlation_id(),
+          message() | message_data(), event_name()) :: {:ok, map()} | {:error, any()}
+  def route_message(channel_ref, event_id, correlation_id, data, event_name) do
+    Router.route_message({channel_ref, event_id, correlation_id, data, event_name})
+  end
+
+  @spec route_message(message()) :: {:ok, map()} | {:error, any()}
+  def route_message(message) do
+    Router.route_message(message)
+  end
+
+  @spec route_batch(message()) :: {:ok, map()} | {:error, any()}
+  def route_batch(messages) do
+    Router.route_batch(messages)
   end
 
 end

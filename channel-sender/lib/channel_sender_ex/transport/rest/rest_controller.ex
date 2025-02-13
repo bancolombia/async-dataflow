@@ -8,6 +8,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias Plug.Conn.Query
 
   use Plug.Router
+  use Plug.ErrorHandler
+
   require Logger
 
   @metadata_headers_max 3
@@ -82,17 +84,15 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp route_close(channel, conn) do
-    case PubSubCore.delete_channel(channel) do
-      :ok ->
-        conn
-        |> put_resp_header("content-type", "application/json")
-        |> send_resp(200, Jason.encode!(%{result: "Ok"}))
 
-      :noproc ->
-        conn
-        |> put_resp_header("content-type", "application/json")
-        |> send_resp(410, Jason.encode!(%{error: "Channel not found"}))
-    end
+    Task.start(fn ->
+      PubSubCore.delete_channel(channel)
+    end)
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(202, Jason.encode!(%{result: "Ok"}))
+
   end
 
   defp deliver_message(conn) do
@@ -302,6 +302,22 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     conn
     |> put_resp_header("content-type", "application/json")
     |> send_resp(400, Jason.encode!(%{error: "Invalid request", request: invalid_body}))
+  end
+
+  @impl Plug.ErrorHandler
+  def handle_errors(conn, %{kind: _kind, reason: reason, stack: _stack}) do
+    response = case conn.status do
+      400 ->
+        Jason.encode!(%{error: "Invalid or malformed request body"})
+      500 ->
+        Jason.encode!(%{error: "Internal server error"})
+      _ ->
+        Jason.encode!(%{error: "Unknown error"})
+    end
+    Logger.error("Error detected in request: #{inspect(reason)}, response will be: #{response}")
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(conn.status, response)
   end
 
 end

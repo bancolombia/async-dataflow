@@ -9,5 +9,4 @@ public class DTOCredentials {
     String channelRef;
     @JsonAlias("channel_secret")
     String channelSecret;
-
 }

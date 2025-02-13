@@ -1,19 +1,19 @@
 import * as chai from 'chai';
 
-import {Utils} from "../src/utils";
+import { Utils } from "../src/utils";
 
 const assert = chai.assert;
-describe('Utils Tests', function()  {
+describe('Utils Tests', function () {
 
-    it('Should generate random jitter' , () => {
-        for (let i = 0; i<100; i++){
+    it('Should generate random jitter', () => {
+        for (let i = 0; i < 100; i++) {
             let result = Utils.jitter(1000, 0.25)
             assert.isAbove(result, 749);
             assert.isBelow(result, 1000);
         }
     });
 
-    it('Should generate Exp Backoff no Jitter' , () => {
+    it('Should generate Exp Backoff no Jitter', () => {
         const expected = [
             [0, 10],
             [1, 20],
@@ -29,11 +29,11 @@ describe('Utils Tests', function()  {
             [11, 6000],
         ];
 
-        const results = [0,1,2,3,4,5,6,7,8,9,10,11].map(x => [x, Utils.expBackoff(10, 6000, x, (x) => x)]);
+        const results = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(x => [x, Utils.expBackoff(10, 6000, x, (x) => x)]);
         assert.deepEqual(expected, results);
     });
 
-    it('Should generate Exp Backoff with Jitter' , () => {
+    it('Should generate Exp Backoff with Jitter', () => {
         const expected = [
             [0, 10],
             [1, 20],
@@ -54,10 +54,14 @@ describe('Utils Tests', function()  {
 
         expected.forEach(x => {
             let result = Utils.expBackoff(10, 6000, x[0], jitterFn);
-            assert.isAbove(result, (x[1]*(1-jitterFactor))-1);
+            assert.isAbove(result, (x[1] * (1 - jitterFactor)) - 1);
             assert.isBelow(result, x[1]);
         });
     });
 
+    it('Should extract reason number', () => {
+        assert.equal(Utils.extractReason('123'), 123);
+        assert.equal(Utils.extractReason('abc'), 0);
+    });
 
 });

@@ -1,0 +1,31 @@
+name: client-js-build
+on:
+  pull_request:
+    paths:
+      - 'clients/client-js/**' 
+    branches:
+      - master
+jobs:
+  build:
+    defaults:
+      run:
+        working-directory: clients/client-js
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    # Setup .npmrc file to publish to npm
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20.18.1'
+    - run: npm install
+      name: Install dependencies
+    - run: npm run build
+      name: Build
+    - run: npm run test
+      name: Test
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@v4
+      with:
+        projectBaseDir: clients/client-js
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_CLIENT_JS }}

@@ -5,8 +5,6 @@ defmodule AdfSenderConnector.MessageTest do
 
   alias AdfSenderConnector.Message
 
-  @moduletag :capture_log
-
   test "should create new message - minimal data" do
     message = Message.new("ref", %{"hello" => "world"}, "user.created")
     assert "ref" == message.channel_ref
@@ -23,6 +21,23 @@ defmodule AdfSenderConnector.MessageTest do
     assert "user.created" == message.event_name
     assert %{"hello" => "world"} == message.message_data
     assert "id1" == message.message_id
+  end
+
+  test "should assert if required data is present" do
+    message = Message.new("ref", "id1", "co1", %{"hello" => "world"}, "user.created")
+    assert {:ok, _} = Message.assert_valid(message)
+
+    message = Message.new("", "id1", "co1", %{"hello" => "world"}, "user.created")
+    assert {:error, :invalid_message} = Message.assert_valid(message)
+  end
+
+  test "should process validation of a list of messages" do
+    messages = [Message.new("ref", "id1", "co1", %{"hello" => "world"}, "user.created"),
+                Message.new("", "id1", "co1", %{"hello" => "world"}, "user.created")]
+
+    validated_messages = Message.validate(messages)
+
+    assert length(validated_messages) == 1
   end
 
 end

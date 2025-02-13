@@ -1,10 +1,12 @@
 defmodule AdfSenderConnector.Message do
-  @derive Jason.Encoder
-  defstruct ~w[channel_ref message_id correlation_id message_data event_name]a
-
   @moduledoc """
   Notification message representation
   """
+
+  @derive Jason.Encoder
+  defstruct ~w[channel_ref message_id correlation_id message_data event_name]a
+
+  require Logger
 
   @type channel_ref() :: String.t()
   @type message_id() :: String.t()
@@ -41,4 +43,42 @@ defmodule AdfSenderConnector.Message do
     }
   end
 
+  @spec assert_valid(t()) :: {:ok, t()} | {:error, :invalid_message}
+  def assert_valid(message) do
+    # Check if minimal fields are present and not nil
+    result = message
+            |> Map.from_struct
+            |> Enum.all?(fn {key, value} ->
+      case key do
+        :message_data ->
+          not is_nil(value)
+        :correlation_id ->
+          true
+        _ ->
+          is_binary(value) and value != ""
+      end
+    end)
+
+    case result do
+      true ->
+        {:ok, message}
+      false ->
+        {:error, :invalid_message}
+    end
+  end
+
+  @spec validate([map()]) :: [map()]
+  def validate(messages) do
+    Stream.take(messages, 10)
+    |> Stream.filter(fn msg ->
+      case assert_valid(msg) do
+        {:ok, _} -> true
+        {:error, _reason} ->
+          Logger.warning("Discarding invalid message: #{inspect(Map.from_struct(msg))}")
+          false
+      end
+    end)
+    |> Stream.map(&Map.from_struct/1)
+    |> Enum.to_list()
+  end
 end
