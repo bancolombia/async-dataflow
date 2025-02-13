@@ -36,7 +36,6 @@ defmodule ChannelSenderEx.MixProject do
   defp deps do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
-      {:benchee, "~> 0.13", only: [:dev, :benchee]},
       {:cowboy, "~> 2.8"},
       {:cowlib, "~> 2.9", override: true},
       {:plug_cowboy, "~> 2.0"},
@@ -45,20 +44,28 @@ defmodule ChannelSenderEx.MixProject do
       {:jason, "~> 1.2"},
       {:cors_plug, "~> 3.0"},
       {:horde, "~> 0.9.0"},
-      {:hackney, "~> 1.20.1", only: :test},
       {:plug_crypto, "~> 2.1"},
-      {:stream_data, "~> 0.4", only: [:test]},
-      {:gun, "~> 1.3", only: [:test, :benchee]},
       {:libcluster, "~> 3.4.1"},
       {:vapor, "~> 0.10.0"},
-      {:mock, "~> 0.3.0", only: :test},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
+      {:ex_aws, "~> 2.5"},
+      {:ex_aws_sts, "~> 2.3"},
+      {:ex_aws_secretsmanager, "~> 2.0"},
+      {:sweet_xml, "~> 0.7.0"},
+      {:configparser_ex, "~> 4.0"},
+      {:redix, "~> 1.5"},
       # for metrics
       {:telemetry_metrics_prometheus, "~> 1.1"},
       {:telemetry_poller, "~> 1.1"},
       {:cowboy_telemetry, "~> 0.4.0"},
-      {:telemetry, "~> 1.3"}
+      {:telemetry, "~> 1.3"},
+      # for testing
+      {:hackney, "~> 1.20.1", only: :test},
+      {:stream_data, "~> 0.4", only: [:test]},
+      {:benchee, "~> 0.13", only: [:dev, :benchee]},
+      {:gun, "~> 1.3", only: [:test, :benchee]},
+      {:mock, "~> 0.3.0", only: :test},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end

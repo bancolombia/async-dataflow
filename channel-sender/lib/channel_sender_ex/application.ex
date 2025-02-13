@@ -9,6 +9,7 @@ defmodule ChannelSenderEx.Application do
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Utils.ClusterUtils
   alias ChannelSenderEx.Utils.CustomTelemetry
+  alias ChannelSenderEx.Persistence.ChannelPersistence
 
   use Application
   require Logger
@@ -42,8 +43,8 @@ defmodule ChannelSenderEx.Application do
             port: Application.get_env(:channel_sender_ex, :rest_port),
           ]},
           {TelemetryMetricsPrometheus, [metrics: CustomTelemetry.metrics()]},
-          # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()}
-        ]
+          # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()},
+        ] ++  ChannelPersistence.child_spec()
       true ->
         []
     end

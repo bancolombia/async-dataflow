@@ -35,6 +35,8 @@ defmodule ChannelSenderEx.Core.Channel do
             meta: String.t()
           }
 
+    # :pending_ack, :pending_sending,
+    @derive {Jason.Encoder, only: [:channel, :application, :user_ref, :meta]}
     defstruct channel: "",
               application: "",
               socket: nil,
@@ -112,6 +114,7 @@ defmodule ChannelSenderEx.Core.Channel do
   ### waiting state callbacks definitions ####
   def waiting(:enter, _old_state, data) do
     # time to wait for the socket to be open (or re-opened) and authenticated
+    # ChannelSenderEx.Persistence.RedisChannelPersistence.save_channel_data(data) # TODO: save data to redis
     waiting_timeout = round(estimate_process_wait_time(data) * 1000)
     case waiting_timeout do
       0 ->

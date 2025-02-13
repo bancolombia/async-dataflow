@@ -8,7 +8,7 @@ channel_sender_ex:
     # this parameter is also used to hold the channel genstatemachine in wainting state
     # before it is closed
     max_age: 900
-  
+
   # initial time in seconds to wait before re-send a message not acked to a channel
   initial_redelivery_time: 900
 
@@ -16,8 +16,8 @@ channel_sender_ex:
   # before closing the channel
   socket_idle_timeout: 90000
 
-  # Specifies the maximum time (in milliseconds) that the Elixir supervisor waits 
-  # for child channel processes to terminate after sending it an exit signal 
+  # Specifies the maximum time (in milliseconds) that the Elixir supervisor waits
+  # for child channel processes to terminate after sending it an exit signal
   # (:shutdown). This time is used by all gen_statem processes to perform clean up
   # operations before shutting down.
   channel_shutdown_tolerance: 10000
@@ -39,7 +39,7 @@ channel_sender_ex:
 
   # Allowed max number of retries to re-send unack'ed message to a channel
   max_unacknowledged_retries: 10
-  
+
   # Allowed max number of messages pending to be sent to a channel
   # received by sender while on waiting state (no socket connection)
   max_pending_queue: 100
@@ -48,15 +48,15 @@ channel_sender_ex:
   # after a socket disconnection, in case the client re-connects. The disconection can be
   # clean or unclean. The channel process will wait for the client to re-connect before
   #
-  # on_clean_close: time in seconds to wait before shutting down the channel process when a 
+  # on_clean_close: time in seconds to wait before shutting down the channel process when a
   # client explicitlly ends the socket connection (clean close). A value of 0, will
   # terminate the channel process immediately. This value should never be greater than max_age.
   #
   # on_disconnection: time in seconds to wait before shutting down the channel process when the
-  # connectin between the client and server accidentally or unintendedlly is interrupted. 
-  # A value of 0, will terminate the channel process immediately. This value should never 
+  # connectin between the client and server accidentally or unintendedlly is interrupted.
+  # A value of 0, will terminate the channel process immediately. This value should never
   # be greater than max_age.
-  channel_shutdown_socket_disconnect: 
+  channel_shutdown_socket_disconnect:
     on_clean_close: 300
     on_disconnection: 900
 
@@ -65,7 +65,7 @@ channel_sender_ex:
     strategy: Elixir.Cluster.Strategy.Gossip # for local development
 
     # strategy: Elixir.Cluster.Strategy.Kubernetes # topology for kubernetes
-    # config: 
+    # config:
     #   mode: :hostname
     #   kubernetes_ip_lookup_mode: :pods
     #   kubernetes_service_name: "adfsender-headless"
@@ -77,8 +77,18 @@ channel_sender_ex:
     # see https://github.com/bancolombia/async-dataflow/tree/master/channel-sender/deploy_samples/k8s
     # for more information about the kubernetes configuration with libcluser
 
+  persistence:
+    enabled: true # Indicates if the persistence layer is enabled
+    type: :redis # Indicates the type of persistence layer
+    # config:
+    #   ssl: false # Indicates if the connection to the persistence layer is encrypted
+    #   host: "localhost" # Host of the persistence layer
+    #   hostread: "localhost" # Host of the persistence layer for read operations
+    #   port: 6379 # Port of the persistence layer
+    #   username: nil # Username to connect to the persistence layer
+    #   password: nil # Password to connect to the persistence layer
+      # secret: "redis-secret" # Secret to connect to the persistence layer secret can be json like: {"username": "", "password": "", "host": "", "hostread", "port": 0, "ssl": false}
+      # if secret is provided, the other fields can be overwritten by the secret but only if there are present in the secret
+
 logger:
   level: debug
-
-
-
