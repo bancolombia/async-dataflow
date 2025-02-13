@@ -45,7 +45,7 @@ describe('SseTransport Tests', function () {
         const managed = managedObservable();
         const resolveMessage = promiseFromObservable(managed.observableMsg);
         // Act
-        client = SseTransport.create(config, managed.onMessage, managed.onError);
+        client = SseTransport.create(config, managed.onMessage, managed.onError) as SseTransport;
         await new Promise((resolve) => {
             client.connect(() => resolve(true));
         });
@@ -80,7 +80,7 @@ describe('SseTransport Tests', function () {
         const response = await new Promise((resolve) => {
             client = SseTransport.create(config, managed.onMessage, (err) => {
                 resolve(err);
-            });
+            }) as SseTransport;
             client.connect();
         });
         // Override mock to simulate connection success
@@ -123,7 +123,7 @@ describe('SseTransport Tests', function () {
         // Create subscription
         const messagePromise = promiseFromObservable(managed.observableMsg, 2);
         // Act
-        client = SseTransport.create(config, managed.onMessage, managed.onError);
+        client = SseTransport.create(config, managed.onMessage, managed.onError) as SseTransport;
         const connected = await new Promise((resolve) => {
             client.connect(() => resolve(true));
         });

@@ -26,7 +26,7 @@ describe('WsTransport Tests', function () {
     beforeEach(() => {
         managed = managedObservable();
         mockServer = new Server(`${config.socket_url}/ext/socket`);
-        client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket);
+        client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
     })
 
     afterEach((done) => {
@@ -114,7 +114,7 @@ describe('WsTransport url tests', function () {
             channel_ref: "ab771f3434aaghjgr",
             channel_secret: "secret234342432dsfghjikujyg1221",
         };
-        const client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket);
+        const client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
 
         client.connect();
         assert.equal(client.rawSocket().url, `ws://host.local/ext/socket?channel=ab771f3434aaghjgr`);
@@ -127,7 +127,7 @@ describe('WsTransport url tests', function () {
             channel_ref: "ab771f3434aaghjgr",
             channel_secret: "secret234342432dsfghjikujyg1221",
         };
-        const client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket);
+        const client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
 
         client.connect();
         assert.equal(client.rawSocket().url, `wss://host.local/ext/socket?channel=ab771f3434aaghjgr`);
@@ -146,7 +146,7 @@ describe('Async Reconnection Tests', () => {
         };
         let mockServer = new Server(`${config.socket_url}/ext/socket`);
         let managed = managedObservable();
-        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket);
+        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
 
         let firstSocket;
         mockServer.on('connection', socket => {
@@ -192,7 +192,7 @@ describe('Async Reconnection Tests', () => {
         };
         let mockServer = new Server(`${config.socket_url}/ext/socket`);
         let managed = managedObservable();
-        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket);
+        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
         let respondBeat = false;
         let connectCount = 0;
 
@@ -251,7 +251,7 @@ describe('Refresh token Tests', () => {
     it('Should ReConnect with new token', async () => {
         let mockServer = new Server(`${config.socket_url}/ext/socket`);
         let managed = managedObservable();
-        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket);
+        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
         const secondToken = "new_token_secret12243";
 
         let firstSocket;
@@ -314,7 +314,7 @@ describe('Protocol negotiation Tests', function () {
 
     let connectAndGetDecoderSelected = async (config) => {
         const managed = managedObservable();
-        client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket);
+        client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
         const connected = new Promise<boolean>(resolve => client.doOnSocketOpen(() => resolve(true)));
         client.connect();
         const result = await waitFor(connected);
