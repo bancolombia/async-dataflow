@@ -1,6 +1,6 @@
 channel_sender_ex:
-  rest_port: 8081
-  socket_port: 8082
+  rest_port: 8083
+  socket_port: 8084
   secret_generator:
     base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
     salt: "socket auth"
@@ -56,7 +56,7 @@ channel_sender_ex:
   # connectin between the client and server accidentally or unintendedlly is interrupted.
   # A value of 0, will terminate the channel process immediately. This value should never
   # be greater than max_age.
-  channel_shutdown_socket_disconnect: 
+  channel_shutdown_socket_disconnect:
     on_clean_close: 300
     on_disconnection: 900
 

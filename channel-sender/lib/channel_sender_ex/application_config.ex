@@ -111,7 +111,9 @@ defmodule ChannelSenderEx.ApplicationConfig do
 
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
-    Application.put_env(:channel_sender_ex, :persistence, parse_persistence(config))
+    persistence_cfg = parse_persistence(config)
+    Application.put_env(:channel_sender_ex, :persistence, persistence_cfg)
+    Application.put_env(:channel_sender_ex, :persistence_ttl, persistence_cfg[:ttl] || 900)
 
     if config == %{} do
       Logger.warning("No valid configuration found!!!, Loading pre-defined default values : #{inspect(Application.get_all_env(:channel_sender_ex))}")
@@ -123,7 +125,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
   end
 
   defp parse_persistence(config) do
-    persistence = get_in(config, [:channel_sender_ex, "persistence"])
+    persistence = fetch(config, :channel_sender_ex, "persistence")
     [
       enabled: Map.get(persistence, "enabled", false),
       type: process_param(Map.get(persistence, "type", ":none")),

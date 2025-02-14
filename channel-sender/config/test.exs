@@ -12,4 +12,8 @@ config :channel_sender_ex,
   rest_port: 8081,
   topology: [
     strategy: Cluster.Strategy.Gossip
+  ],
+  persistence: [
+    enabled: false,
+    type: :noop
   ]

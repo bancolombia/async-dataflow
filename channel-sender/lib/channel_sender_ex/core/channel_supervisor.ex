@@ -46,6 +46,8 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     end)
   end
 
+  # TODO: Implement start_channel checking process persistence for socket connection and for deliver message
+
   @spec channel_child_spec(channel_init_args()) :: any()
   @compile {:inline, channel_child_spec: 1}
   def channel_child_spec(channel_args = {channel_ref, application, user_ref, _meta}) do

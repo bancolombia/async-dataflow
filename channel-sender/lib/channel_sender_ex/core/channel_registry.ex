@@ -25,7 +25,7 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
   def lookup_channel_addr(channel_ref) do
     case Horde.Registry.lookup(via_tuple(channel_ref)) do
       [{pid, _}] -> pid
-      [] -> :noproc
+      [] -> :noproc # check redis -> start_channel
     end
   end
 

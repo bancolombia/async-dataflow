@@ -1,4 +1,5 @@
 import Config
 
 config :channel_sender_ex,
-  config_file: "./config/config-local.yaml"
+  config_file: "./config/config-local.yaml",
+  prometheus_port: 9568
