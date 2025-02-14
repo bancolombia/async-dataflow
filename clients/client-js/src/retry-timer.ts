@@ -8,11 +8,11 @@ export class RetryTimer {
     private limitReachedNotified: boolean = false;
 
     constructor(
-        private callback: () => void,
-        private initial: number = 10,
-        private jitterFn: (x: number) => number,
-        private maxRetries: number = 10,
-        private limitReachedCallback: () => void = () => { }) {
+        private readonly callback: () => void,
+        private readonly initial: number = 10,
+        private readonly jitterFn: (x: number) => number,
+        private readonly maxRetries: number = 10,
+        private readonly limitReachedCallback: () => void = () => { }) {
     }
 
     public reset(): void {
