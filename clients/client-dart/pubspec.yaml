@@ -15,7 +15,9 @@ dependencies:
   build_runner: ^2.2.0
   # flutter_client_sse: ^2.0.3
   flutter_client_sse:
-    path: /Users/sagarci/Documents/development/open-source/flutter_client_sse
+    git: 
+      url: https://github.com/santitigaga/flutter_client_sse
+      ref: feat/retry
 
 dependency_overrides:
   http: ^1.1.0 
