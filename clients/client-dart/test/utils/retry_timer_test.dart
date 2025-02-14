@@ -15,8 +15,12 @@ void main() {
         Logger.root.info('Dummy function called');
         throw ArgumentError('Some error');
       };
+      var doSomethingElse = () async {
+        Logger.root.info('Dummy function called');
+        throw ArgumentError('Some error');
+      };
 
-      var retyTimer = RetryTimer(doSomething);
+      var retyTimer = RetryTimer(doSomething, doSomethingElse);
 
       retyTimer.schedule();
       await Future.delayed(const Duration(milliseconds: 2000));
@@ -35,8 +39,12 @@ void main() {
       var customJitter = (int num) {
         return 1;
       };
+      var doSomethingElse = () async {
+        Logger.root.info('Dummy function called');
+        throw ArgumentError('Some error');
+      };
 
-      var retyTimer = RetryTimer(doSomething,
+      var retyTimer = RetryTimer(doSomething, doSomethingElse,
           initialWait: 100, maxWait: 300, jitterFn: customJitter);
 
       retyTimer.schedule();
@@ -52,8 +60,12 @@ void main() {
         Logger.root.info('Dummy function called');
         throw ArgumentError('Some error');
       };
+      var doSomethingElse = () async {
+        Logger.root.info('Dummy function called');
+        throw ArgumentError('Some error');
+      };
 
-      var retyTimer = RetryTimer(doSomething);
+      var retyTimer = RetryTimer(doSomething, doSomethingElse);
 
       retyTimer.schedule();
       await Future.delayed(const Duration(milliseconds: 500));

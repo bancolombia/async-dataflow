@@ -160,7 +160,6 @@ class WSTransport implements Transport {
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
-    //verify if the socket is open before closing
     if (!isOpen()) {
       return;
     }
@@ -347,7 +346,7 @@ class WSTransport implements Transport {
   }
 
   void _onListen() {
-    _socketStreamSub = subscribe(cancelOnErrorFlag: true);
+    _socketStreamSub ??= subscribe(cancelOnErrorFlag: true);
     send('Auth::$currentToken');
   }
 
