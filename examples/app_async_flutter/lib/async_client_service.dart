@@ -85,7 +85,7 @@ class AsyncClientService extends InheritedWidget {
 
   Future<void> saveConfig() async {
     prefs = await SharedPreferences.getInstance();
-
+    print(appConfig.transports.join(","));
     await prefs.setString('socketUrl', appConfig.socketUrl);
     await prefs.setString('apiBusiness', appConfig.businessUrl);
     await prefs.setString(
@@ -107,9 +107,13 @@ class AsyncClientService extends InheritedWidget {
           channelRef: channelCredential.channelRef,
           channelSecret: channelCredential.channelSecret,
           heartbeatInterval: appConfig.heartbeatInterval,
-          maxRetries: appConfig.maxRetries);
+          maxRetries: appConfig.maxRetries,
+          transportsProvider: appConfig.transports.map((e) {
+            return transportFromString(e);
+          }).toList());
 
-      asyncClient = AsyncClient(conf).connect();
+      asyncClient = AsyncClient(conf);
+      asyncClient.connect();
       asyncClient.subscribeTo(eventListen, (eventResult) {
         _handleEvent(eventResult);
       }, onError: (err) {

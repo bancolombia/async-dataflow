@@ -45,7 +45,8 @@ void main() {
           enableBinaryTransport: false,
           heartbeatInterval: 1000);
 
-      var client = AsyncClient(conf).connect();
+      AsyncClient client = AsyncClient(conf);
+      client.connect();
 
       log.finest('------ Done connecting -------');
 
@@ -57,7 +58,7 @@ void main() {
 
       await Future.delayed(const Duration(seconds: 2));
 
-      await subscriber.cancel();
+      await subscriber?.cancel();
       await client.disconnect();
     });
   });

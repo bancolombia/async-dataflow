@@ -1,4 +1,4 @@
-import 'package:channel_sender_client/src/retry_timer.dart';
+import 'package:channel_sender_client/src/utils/retry_timer.dart';
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 

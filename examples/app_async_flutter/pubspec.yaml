@@ -18,6 +18,8 @@ dependencies:
   flutter_dotenv: ^5.0.2
   logging: ^1.2.0
   uuid: ^3.0.7
+dependency_overrides:
+  http: ^1.0.0
 
 dev_dependencies:
   flutter_test:

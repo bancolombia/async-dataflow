@@ -1,17 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:channel_sender_client/src/channel_message.dart';
-import 'package:channel_sender_client/src/transport.dart';
+import 'package:channel_sender_client/channel_sender_client.dart';
+import 'package:channel_sender_client/src/transport/ws_transport.dart';
 import 'package:logging/logging.dart';
-import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
 import 'package:web_socket_channel/io.dart';
 
-class MockStream extends Mock implements Stream {}
-
 void main() {
-  group('Transport Tests', () {
+  group('WS Transport Tests', () {
     HttpServer server;
 
     Logger.root.level = Level.ALL;
@@ -22,13 +19,14 @@ void main() {
       );
     });
 
-    final log = Logger('TransportTest');
+    final log = Logger('WS TransportTest');
 
     test('Should send/receive auth and heartbeat', () async {
-      server = await HttpServer.bind('localhost', 0);
+      server = await HttpServer.bind('localhost', 8686);
       addTearDown(server.close);
       server.transform(WebSocketTransformer()).listen((WebSocket webSocket) {
         final channel = IOWebSocketChannel(webSocket);
+
         channel.stream.listen((request) {
           log.finest('--> server received: $request');
           if (request == 'Auth::SFMy') {
@@ -63,12 +61,14 @@ void main() {
       var signalSocketErrorFn = (error) {
         log.severe('socket error');
       };
+      AsyncConfig config = AsyncConfig(
+          socketUrl: 'ws://localhost:8082',
+          channelRef: 'channelRef',
+          channelSecret: 'channelSecret',
+          heartbeatInterval: 1000);
 
-      var transport = Transport(
-          channel, localStream, signalSocketCloseFn, signalSocketErrorFn, 1000);
-
-      expect(transport, isNotNull);
-      expect(transport.isOpen(), true);
+      var transport =
+          WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
       String? hbCounter;
 
       localStream.stream.listen((message) {
@@ -84,17 +84,77 @@ void main() {
       }, onDone: () {
         log.warning('Subscription for "xxxx" terminated.');
       });
+      transport.webSocketCh = channel;
+      transport.localStream = localStream;
+
+      expect(transport, isNotNull);
+      expect(transport.isOpen(), true);
 
       var sub1 = transport.subscribe(cancelOnErrorFlag: false);
 
       transport.send('Auth::SFMy');
 
       await Future.delayed(const Duration(seconds: 3));
-
       expect(hbCounter, equals('2'));
-      await channel.sink.close();
-      await sub1.cancel();
-      await webSocket.close();
+
+      await transport.disconnect();
+    });
+
+    test('Should handle new token', () async {
+      server = await HttpServer.bind(
+        'localhost',
+        8686,
+      );
+      addTearDown(server.close);
+      server.transform(WebSocketTransformer()).listen((WebSocket webSocket) {
+        final channel = IOWebSocketChannel(webSocket);
+
+        channel.stream.listen((request) {
+          log.finest('--> server received: $request');
+          if (request == 'newToken') {
+            channel.sink.add('["", "", ":n_token", "abc123"]');
+          } else {
+            var parts = request.split('::');
+            channel.sink.add('["", "${parts[1]}", ":hb", ""]');
+          }
+        });
+      });
+
+      var headers = <String, dynamic>{};
+      headers['Connection'] = 'upgrade';
+      headers['Upgrade'] = 'websocket';
+      headers['sec-websocket-version'] = '13';
+      headers['sec-websocket-protocol'] = 'json_flow';
+      headers['sec-websocket-key'] = 'x3JJHMbDL1EzLkh9GBhXDw==';
+
+      var signalSocketCloseFn = (int code, String reason) {
+        log.finest('socket closed');
+      };
+      var signalSocketErrorFn = (error) {
+        log.severe('socket error');
+      };
+      AsyncConfig config = AsyncConfig(
+          socketUrl: 'ws://localhost:8686',
+          channelRef: 'channelRef',
+          channelSecret: 'channelSecret',
+          heartbeatInterval: 1000);
+
+      var transport =
+          WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
+      transport.connect();
+      transport.stream.listen(
+        (event) {},
+      );
+
+      expect(transport, isNotNull);
+
+      transport.send('newToken');
+
+      await Future.delayed(const Duration(seconds: 1));
+
+      expect(transport.currentToken, equals('abc123'));
+
+      await transport.disconnect();
     });
   });
 }

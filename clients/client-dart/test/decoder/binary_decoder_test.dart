@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:channel_sender_client/src/binary_decoder.dart';
+import 'package:channel_sender_client/src/decoder/binary_decoder.dart';
 import 'package:test/test.dart';
 
 void main() {

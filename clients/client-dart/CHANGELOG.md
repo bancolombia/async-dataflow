@@ -1,4 +1,6 @@
 # CHANGELOG
+## [3.0.0] 
+- Support SSE protocol
 ## [2.0.3] 
 - Fix reconnection with heartbeats issue
 - Improve logs

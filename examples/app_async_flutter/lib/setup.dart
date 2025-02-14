@@ -59,7 +59,7 @@ class Setup {
     Logger.root.onRecord.listen((record) {
       var log = '${record.level.name}: ${record.time}: ${record.message}';
       logNotifier.setLog(log);
-      // debugPrint(log);
+      print(log);
     });
     return logNotifier;
   }
