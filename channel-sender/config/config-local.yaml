@@ -56,7 +56,7 @@ channel_sender_ex:
   # connectin between the client and server accidentally or unintendedlly is interrupted.
   # A value of 0, will terminate the channel process immediately. This value should never
   # be greater than max_age.
-  channel_shutdown_socket_disconnect:
+  channel_shutdown_socket_disconnect: 
     on_clean_close: 300
     on_disconnection: 900
 
