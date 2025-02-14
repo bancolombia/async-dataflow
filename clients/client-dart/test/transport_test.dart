@@ -92,9 +92,7 @@ void main() {
       await Future.delayed(const Duration(seconds: 3));
 
       expect(hbCounter, equals('2'));
-      await channel.sink.close();
       await sub1.cancel();
-      await webSocket.close();
     });
   });
 }
