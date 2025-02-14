@@ -1,19 +1,16 @@
-import { SseTransport } from "./transport/sse-transport";
-import { WsTransport } from "./transport/ws-transport";
-import { Transport } from "./transport/transport";
+import { Transport, SseTransport, WsTransport, TransportError } from "./transport";
 import { AsyncConfig } from "./async-config";
 import { Cache } from "./cache";
-import { TransportError } from "./transport/transport-error";
 import { ChannelMessage } from "./channel-message";
 export class AsyncClient {
     private currentTransport: Transport;
     private currentTransportIndex: number = 0;
-    private bindings = [];
-    private cache: Cache = undefined;
+    private readonly bindings = [];
+    private readonly cache: Cache = undefined;
     private closeWasClean: boolean = false;
     private retriesByTransport = 0;
 
-    constructor(private config: AsyncConfig, private transports: Array<string> | null) {
+    constructor(private readonly config: AsyncConfig, private readonly transports: Array<string> | null, private readonly mockTransport: any = null) {
         if (!config.dedupCacheDisable) {
             this.cache = new Cache(config.dedupCacheMaxSize, config.dedupCacheTtl);
         }
@@ -35,13 +32,15 @@ export class AsyncClient {
         const transport = this.transports[this.currentTransportIndex];
         console.log('will instantiate transport: ', transport);
         if (transport === 'ws') {
-            return new WsTransport(this.config,
+            return WsTransport.create(this.config,
                 (message: ChannelMessage) => this.handleMessage(message),
-                (error: TransportError) => this.handleTransportError(error));
+                (error: TransportError) => this.handleTransportError(error),
+                this.mockTransport);
         } else if (transport === 'sse') {
-            return new SseTransport(this.config,
+            return SseTransport.create(this.config,
                 (message: ChannelMessage) => this.handleMessage(message),
-                (error: TransportError) => this.handleTransportError(error));
+                (error: TransportError) => this.handleTransportError(error),
+                this.mockTransport);
         }
         throw new Error('No transport available: ' + transport);
     }
@@ -60,9 +59,14 @@ export class AsyncClient {
         this.currentTransport.disconnect();
     }
 
+    public connected(): boolean {
+        return this.currentTransport.connected();
+    }
+
     // internal methods
     private handleMessage(message: ChannelMessage) {
         if (message.event == ":n_token") {
+            console.debug('async-client. received new token');
             this.config.channel_secret = message.payload;
         }
         this.bindings

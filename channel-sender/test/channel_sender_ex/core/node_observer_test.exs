@@ -14,7 +14,10 @@ defmodule ChannelSenderEx.Core.NodeObserverTest do
 
     {:ok, _} = Application.ensure_all_started(:telemetry)
 
-    {:ok, _pid_registry} = Horde.Registry.start_link(name: ChannelRegistry, keys: :unique)
+    case Horde.Registry.start_link(name: ChannelRegistry, keys: :unique) do
+      {:ok, _pid_registry} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+    end
 
     Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
 

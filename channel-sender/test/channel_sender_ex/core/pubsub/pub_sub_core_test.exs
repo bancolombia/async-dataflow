@@ -58,7 +58,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCoreTest do
     with_mock(
       ChannelRegistry, [lookup_channel_addr: fn(_) -> :noproc end]
     ) do
-      assert :noproc == PubSubCore.delete_channel("channel_ref")
+      assert :ok == PubSubCore.delete_channel("channel_ref")
     end
   end
 

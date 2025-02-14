@@ -3,4 +3,5 @@ export interface Settings {
     maxRetries: number;
     defaultRequestDelay: number;
     transports: Array<string>;
+    server: string;
 }

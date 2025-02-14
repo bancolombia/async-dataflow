@@ -5,6 +5,7 @@ import { Subject } from 'rxjs';
 import { Message } from '../models/message.inteface';
 import { environment } from '../environments/environment';
 import { SettingsService } from './settings.service';
+import { U } from '@angular/cdk/keycodes';
 
 @Injectable({
   providedIn: 'root',
@@ -17,7 +18,13 @@ export class AsyncClientService {
   constructor(private http: HttpClient, private settingsProvider: SettingsService) { }
 
   public getCredentials(user_ref: string) {
-    const url = `${environment.api_business}/credentials`;
+    const settings = this.settingsProvider.load();
+    let url = `${environment.servers[settings.server].api_business}/credentials`;
+    if (location.protocol === 'https:') {
+      console.log('Try using secure protocol to generate credentials');
+      url = url.replace('http://', 'https://');
+      url = url.replace('ws://', 'wss://');
+    }
 
     this.http
       .get(url, { params: { user_ref: user_ref } })
@@ -27,6 +34,10 @@ export class AsyncClientService {
       });
   }
 
+  public connected(): boolean {
+    return this.client?.connected() || false;
+  }
+
   private createChannel(res: any) {
     this.initChannel(res.channelRef, res.channelSecret);
   }
@@ -34,8 +45,15 @@ export class AsyncClientService {
   private initChannel(channel_ref: string, channel_secret: string) {
     console.log('Opening web socket with channel_ref:', channel_ref);
     const settings = this.settingsProvider.load();
+    let url = environment.servers[settings.server].socket_url_async;
+    if (location.protocol === 'https:') {
+      console.log('Try using secure protocol to open channel');
+      url = url.replace('http://', 'https://');
+      url = url.replace('ws://', 'wss://');
+    }
+
     this.client = new AsyncClient({
-      socket_url: `${environment.socket_url_async}`,
+      socket_url: url,
       channel_ref,
       channel_secret,
       heartbeat_interval: settings.heartbeatDelay,

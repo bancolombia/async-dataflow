@@ -3,8 +3,8 @@ defmodule ChannelSenderEx.Transport.EntryPoint do
   Configure application web entry points
   """
   alias ChannelSenderEx.Transport.CowboyStarter
-  alias ChannelSenderEx.Transport.Socket
   alias ChannelSenderEx.Transport.LongPoll
+  alias ChannelSenderEx.Transport.Socket
   alias ChannelSenderEx.Transport.Sse
 
   def start(port \\ ext_port()) do
@@ -16,7 +16,7 @@ defmodule ChannelSenderEx.Transport.EntryPoint do
       {:external_server, port,
        [
          {"/ext/socket", Socket, []},
-         {"/ext/longpoll/:session/:ran/xhr", LongPoll, []},
+         {"/ext/longpoll/:ran/xhr", LongPoll, []},
          {"/ext/sse", Sse, []},
          #Enable below line for load testing purposes
          {:_, Plug.Cowboy.Handler, {ChannelSenderEx.Transport.Rest.RestController, []}}

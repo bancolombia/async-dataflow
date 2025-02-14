@@ -3,33 +3,6 @@ defmodule ChannelSenderEx.Transport.Socket do
   Implements real time socket communications with cowboy
   """
   @behaviour :cowboy_websocket
-  @channel_key "channel"
-
-  @normal_close_code "3000"
-
-  ## ---------------------
-  ## Non-Retryable errors
-  ## ---------------------
-
-  # Error code to indicate a generic bad request.
-  @invalid_request_code "3006"
-
-  # Error to indicate the shared secret for the channel is invalid
-  @invalid_secret_code "3008"
-
-  # Error code to indicate that the channel is already connected
-  # and a new socket process is trying to connect to it.
-  @socket_replaced "3009"
-
-  ## -----------------
-  ## Retryable errors
-  ## -----------------
-
-  # Error code to indicate bad request, specifically when
-  # not providing a valid channel reference, or when clustered
-  # the reference its yet visible among all replicas.
-  # This error code and up, may be retried by the client.
-  @invalid_channel_code "3050"
 
   require Logger
 
@@ -39,16 +12,10 @@ defmodule ChannelSenderEx.Transport.Socket do
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
-  alias alias ChannelSenderEx.Utils.CustomTelemetry
-  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
+  alias ChannelSenderEx.Transport.TransportSpec
+  alias ChannelSenderEx.Utils.CustomTelemetry
 
-  @type channel_ref() :: String.t()
-  @type application_ref() :: String.t()
-  @type user_ref() :: String.t()
-  @type ch_ref() :: reference()
-  @type pending_bag() :: %{String.t() => {pid(), reference()}}
-  @type context_data() :: {application_ref(), user_ref(), ch_ref()}
-  @type protocol_encoder() :: atom()
+  use TransportSpec, option: :ws
 
   @type pre_operative_state ::
           {channel_ref(), :pre_auth, protocol_encoder()} | {channel_ref(), :unauthorized}
@@ -60,9 +27,6 @@ defmodule ChannelSenderEx.Transport.Socket do
   def init(req = %{method: "GET"}, opts) do
     init_result = get_relevant_request_info(req)
       |> process_subprotocol_selection(req)
-
-      # :cowboy_req.reply(503, %{<<"x-error-code">> => "desc"}, req)
-
     case init_result do
       {:cowboy_websocket, _, _, _} = res ->
         res
@@ -75,7 +39,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   @impl :cowboy_websocket
   def websocket_init(state = {ref, _, _}) do
     Logger.debug("Socket init with pid: #{inspect(self())} starting... #{inspect(state)}")
-    case lookup_channel_addr({"channel", ref}) do
+    case lookup_channel_addr(ref) do
       {:ok, _pid} ->
         {_commands = [], state}
       {:error, desc} ->
@@ -209,33 +173,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   defp get_relevant_request_info(req) do
     # extracts the channel key from the request query string
-    case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
-      {@channel_key, channel} = resp when byte_size(channel) > 10 ->
-        resp
-      _ ->
-        Logger.error("Socket unable to start. channel_ref not found in query string request.")
-        {:error, @invalid_request_code}
-    end
-  end
-
-  defp lookup_channel_addr(channel_ref) do
-    action_fn = fn _ -> check_channel_registered(channel_ref) end
-    # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
-    # with a backoff strategy of 100ms initial delay and max of 500ms delay.
-    execute(100, 500, 3, action_fn, fn ->
-      Logger.error("Socket unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
-      {:error, <<@invalid_channel_code>>}
-    end)
-  end
-
-  defp check_channel_registered({@channel_key, channel_ref}) do
-    case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      :noproc ->
-        Logger.warning("Channel #{channel_ref} not found, retrying query...")
-        :retry
-      pid ->
-        {:ok, pid}
-    end
+    get_channel_from_qs(req)
   end
 
   defp process_subprotocol_selection({@channel_key, channel}, req) do
@@ -266,13 +204,6 @@ defmodule ChannelSenderEx.Transport.Socket do
   defp process_subprotocol_selection(err = {:error, _}, req) do
     Logger.error("Socket unable to start. Error: #{inspect(err)}. Request: #{inspect(req)}")
     err
-  end
-
-  @compile {:inline, notify_connected: 1}
-  defp notify_connected(channel) do
-    socket_event_bus = get_param(:socket_event_bus, nil)
-    ch_pid = socket_event_bus.notify_event({:connected, channel}, self())
-    Process.monitor(ch_pid)
   end
 
   @compile {:inline, set_pending: 2}
@@ -333,6 +264,11 @@ defmodule ChannelSenderEx.Transport.Socket do
     :ok
   end
 
+  defp extract_ref(state) when is_tuple(state) do
+    elem(state, 0)
+  end
+  defp extract_ref(state), do: state
+
   @compile {:inline, auth_ok_frame: 1}
   defp auth_ok_frame(encoder) do
     encoder.simple_frame("AuthOk")
@@ -354,9 +290,5 @@ defmodule ChannelSenderEx.Transport.Socket do
       req_filter: fn %{qs: qs, peer: peer} -> {qs, peer} end
     }
   end
-  defp get_param(param, def) do
-    RulesProvider.get(param)
-  rescue
-    _e -> def
-  end
+
 end

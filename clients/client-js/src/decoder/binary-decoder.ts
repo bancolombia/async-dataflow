@@ -1,12 +1,12 @@
 /* The Binary serializer for encoding and decoding messages */
 
 
-import {ChannelMessage} from "./channel-message";
-import {MessageDecoder} from "./serializer";
+import { ChannelMessage } from "../channel-message";
+import { MessageDecoder } from "./message-decoder";
 
 export class BinaryDecoder implements MessageDecoder {
 
-    private textDecoder : TextDecoder;
+    private readonly textDecoder: TextDecoder;
 
     constructor() {
         this.textDecoder = new TextDecoder();
@@ -17,7 +17,7 @@ export class BinaryDecoder implements MessageDecoder {
         const view = new DataView(buffer)
 
         const control = view.getUint8(0);
-        if (control != 255){
+        if (control != 255) {
             throw new Error('Invalid binary data; no control byte match')
         }
 
@@ -37,12 +37,12 @@ export class BinaryDecoder implements MessageDecoder {
 }
 
 class Extractor {
-    constructor(private readonly textDecoder : TextDecoder,
-                private readonly buffer: ArrayBuffer,
-                private offset: number) {
+    constructor(private readonly textDecoder: TextDecoder,
+        private readonly buffer: ArrayBuffer,
+        private offset: number) {
     }
 
-    public decodeChunk(size: number) : string {
+    public decodeChunk(size: number): string {
         if (size === 0) {
             return "";
         }

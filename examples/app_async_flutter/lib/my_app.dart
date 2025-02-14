@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AsyncClientService(
-      eventListen: "businessEvent",
+      eventListen: "ch-ms-async-callback.svp.reply",
       asyncClientGateway: ApiService(context),
       appConfig: AppConfig.of(context),
       child: MaterialApp(

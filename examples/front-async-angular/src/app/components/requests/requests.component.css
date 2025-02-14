@@ -9,3 +9,29 @@
 .mat-mdc-raised-button {
     margin: 8px 8px 8px 0;
 }
+
+/* Basic styling for the circular indicator */
+.indicator {
+    margin: 10px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    /* Makes it circular */
+    transition: background-color 0.3s ease;
+    /* Smooth color transition */
+}
+
+/* When the state is true (active), the circle will be green */
+.indicator.active {
+    background-color: green;
+}
+
+/* When the state is false (inactive), the circle will be red */
+.indicator.inactive {
+    background-color: red;
+}
+
+/* Optional: Add hover effect for better interaction */
+.indicator:hover {
+    opacity: 0.8;
+}

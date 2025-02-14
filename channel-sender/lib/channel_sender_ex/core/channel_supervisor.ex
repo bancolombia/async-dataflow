@@ -27,7 +27,8 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   end
 
   defp members do
-    Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
+    [Node.self() | Node.list()]
+    |> Enum.map(fn node -> {__MODULE__, node} end)
   end
 
   @type channel_ref :: String.t()
@@ -70,7 +71,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
         {:ok, pid}
 
       {:error, reason} ->
-        Logger.warning("Error starting channel #{channel_ref}: #{inspect(reason)}")
+        Logger.warning("Error starting channel #{channel_ref}: #{inspect(reason)}, operation will be retried")
         :retry
     end
   end
