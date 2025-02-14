@@ -5,11 +5,11 @@ defmodule ChannelSenderEx.Application do
 
   alias ChannelSenderEx.ApplicationConfig
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Persistence.ChannelPersistence
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Utils.ClusterUtils
   alias ChannelSenderEx.Utils.CustomTelemetry
-  alias ChannelSenderEx.Persistence.ChannelPersistence
 
   use Application
   require Logger
@@ -32,9 +32,9 @@ defmodule ChannelSenderEx.Application do
     Supervisor.start_link(children(no_start_param), opts)
   end
 
-  defp children(no_start_param = true), do: []
+  defp children(_no_start_param = true), do: []
 
-  defp children(no_start_param = false) do
+  defp children(_no_start_param = false) do
     prometheus_port = Application.get_env(:channel_sender_ex, :prometheus_ports, @default_prometheus_port)
 
     [

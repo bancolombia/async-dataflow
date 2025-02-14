@@ -2,8 +2,8 @@ defmodule ChannelSenderEx.Persistence.RedisSupervisorTest do
   use ExUnit.Case, async: true
   import Mock
 
-  alias ChannelSenderEx.Persistence.RedisSupervisor
   alias ChannelSenderEx.Persistence.RedisConnectionProps
+  alias ChannelSenderEx.Persistence.RedisSupervisor
 
   setup do
     :ok

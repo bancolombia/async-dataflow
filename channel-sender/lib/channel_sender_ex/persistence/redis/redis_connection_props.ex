@@ -25,7 +25,6 @@ defmodule ChannelSenderEx.Persistence.RedisConnectionProps do
     |> case do
       {:ok, %{"SecretString" => secret_string}} -> Jason.decode(secret_string)
       {code, rs} -> {code, rs}
-      no_expected -> {:error, no_expected}
     end
   end
 

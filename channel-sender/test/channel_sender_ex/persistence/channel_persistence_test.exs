@@ -1,8 +1,9 @@
 defmodule ChannelSenderEx.Persistence.ChannelPersistenceTest do
+  @moduledoc false
   use ExUnit.Case, async: true
 
-  alias ChannelSenderEx.Persistence.ChannelPersistence
   alias ChannelSenderEx.Core.Channel.Data
+  alias ChannelSenderEx.Persistence.ChannelPersistence
 
   test "save_channel_data/1 delegates to the implementation module" do
     data = %Data{channel: "channel_1"}

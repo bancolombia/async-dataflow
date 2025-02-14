@@ -1,4 +1,5 @@
 defmodule ChannelSenderEx.Persistence.NoopChannelPersistence do
+  @moduledoc false
   @behaviour ChannelSenderEx.Persistence.ChannelPersistenceBehavior
 
   alias ChannelSenderEx.Core.Channel.Data
@@ -16,6 +17,6 @@ defmodule ChannelSenderEx.Persistence.NoopChannelPersistence do
   def get_channel_data(_channel_id), do: {:error, :not_found}
 
   @impl true
-  @spec child_spec() :: [Supervisor.child_spec()] | []
-  def child_spec(), do: []
+  @spec child_spec :: [Supervisor.child_spec()] | []
+  def child_spec, do: []
 end

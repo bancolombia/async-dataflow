@@ -8,8 +8,8 @@ defmodule ChannelSenderEx.Core.Channel do
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
-  alias ChannelSenderEx.Utils.CustomTelemetry
   alias ChannelSenderEx.Persistence.ChannelPersistence
+  alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [exp_back_off: 4]
 
   @on_connected_channel_reply_timeout 2000
@@ -321,7 +321,8 @@ defmodule ChannelSenderEx.Core.Channel do
         output = send(socket_pid, create_output_message(message, ref))
 
         # reschedule the timer to keep retrying to deliver the message
-        next_delay = round(exp_back_off(get_param(:initial_redelivery_time, @default_timeout_seconds), 3_000, retries, 0.2))
+        initial_redelivery_time = get_param(:initial_redelivery_time, @default_timeout_seconds)
+        next_delay = round(exp_back_off(initial_redelivery_time, 3_000, retries, 0.2))
         Logger.debug("Channel #{data.channel} redelivering message in #{next_delay} ms (retry #{retries})")
         actions = [
           _timeout =

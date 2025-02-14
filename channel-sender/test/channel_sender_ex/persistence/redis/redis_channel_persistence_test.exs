@@ -2,8 +2,8 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
   use ExUnit.Case, async: true
   import Mock
 
-  alias ChannelSenderEx.Persistence.RedisChannelPersistence
   alias ChannelSenderEx.Core.Channel.Data
+  alias ChannelSenderEx.Persistence.RedisChannelPersistence
 
   test "save_channel_data/1 saves data to Redis" do
     data = %Data{channel: "channel_1", application: "value"}

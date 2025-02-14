@@ -24,7 +24,7 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
   end
 
   @spec child_spec() :: [Supervisor.child_spec()] | []
-  def child_spec() do
+  def child_spec do
     Application.put_env(
       :channel_sender_ex,
       :persistence_module,
@@ -34,7 +34,7 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
     imp().child_spec()
   end
 
-  defp imp() do
+  defp imp do
     case Application.get_env(:channel_sender_ex, :persistence_module) do
       nil -> NoopChannelPersistence
       module -> module
@@ -46,12 +46,12 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
   defp resolve_module(:redis), do: RedisChannelPersistence
   defp resolve_module(:noop), do: NoopChannelPersistence
 
-  defp enabled?() do
+  defp enabled? do
     Application.get_env(:channel_sender_ex, :persistence, [])
     |> Keyword.get(:enabled, false)
   end
 
-  defp get_type() do
+  defp get_type do
     Application.get_env(:channel_sender_ex, :persistence, [])
     |> Keyword.get(:type, :noop)
   end

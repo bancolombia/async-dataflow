@@ -1,8 +1,9 @@
 defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
+  @moduledoc false
   @behaviour ChannelSenderEx.Persistence.ChannelPersistenceBehavior
 
-  alias ChannelSenderEx.Persistence.RedisSupervisor
   alias ChannelSenderEx.Core.Channel.Data
+  alias ChannelSenderEx.Persistence.RedisSupervisor
   require Logger
 
   @impl true
@@ -43,13 +44,13 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
   @impl true
   @spec child_spec() :: [Supervisor.child_spec()] | []
-  def child_spec() do
+  def child_spec do
     cfg = Application.get_env(:channel_sender_ex, :persistence)
     Logger.info("RedisChannelPersistence enabled with ttl: #{inspect(get_channel_data_ttl())}")
     [RedisSupervisor.spec(Keyword.get(cfg, :config, []))]
   end
 
-  defp get_channel_data_ttl() do
+  defp get_channel_data_ttl do
     Application.get_env(:channel_sender_ex, :persistence_ttl)
   end
 
