@@ -32,7 +32,7 @@ class AsyncClientService extends InheritedWidget {
   @override
   final Widget child;
 
-  final String eventListen;
+  final List<String> eventListen;
   late AsyncClient asyncClient;
   final AsyncClientGateway asyncClientGateway;
   final _log = Logger('AsyncClientService');
@@ -85,11 +85,14 @@ class AsyncClientService extends InheritedWidget {
 
   Future<void> saveConfig() async {
     prefs = await SharedPreferences.getInstance();
+    print(appConfig.transports.join(","));
+
     await prefs.setString('socketUrl', appConfig.socketUrl);
     await prefs.setString('apiBusiness', appConfig.businessUrl);
     await prefs.setString(
         'heartbeatInterval', appConfig.heartbeatInterval.toString());
     await prefs.setString('maxRetries', appConfig.maxRetries.toString());
+    await prefs.setStringList('transports', appConfig.transports);
   }
 
   Future<void> initAsyncClient() async {
@@ -105,11 +108,14 @@ class AsyncClientService extends InheritedWidget {
           channelRef: channelCredential.channelRef,
           channelSecret: channelCredential.channelSecret,
           heartbeatInterval: appConfig.heartbeatInterval,
-          maxRetries: appConfig.maxRetries);
+          maxRetries: appConfig.maxRetries,
+          transportsProvider: appConfig.transports.map((e) {
+            return transportFromString(e);
+          }).toList());
 
       asyncClient = AsyncClient(conf);
       asyncClient.connect();
-      asyncClient.subscribeTo(eventListen, (eventResult) {
+      asyncClient.subscribeToMany(eventListen, (eventResult) {
         _handleEvent(eventResult);
       }, onError: (err) {
         _handleEvent(err);

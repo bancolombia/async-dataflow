@@ -18,12 +18,14 @@ class RetryTimer {
   }
 
   int _tries = 0;
-  late Future Function() _function;
+  late Future Function() _callback;
+  late Future Function() _limitReachedCallback;
 
   Timer? _timer;
 
   RetryTimer(
-    Future Function() function, {
+    Future Function() callback,
+    Future Function() limitReachedCallback, {
     int? initialWait,
     int? maxWait,
     Function? jitterFn,
@@ -33,7 +35,8 @@ class RetryTimer {
     _maxWait = maxWait ?? _maxWait;
     _maxRetries = maxRetries ?? _maxRetries;
     _jitterFn = jitterFn ?? _defaultJitterFn;
-    _function = function;
+    _callback = callback;
+    _limitReachedCallback = limitReachedCallback;
   }
 
   void reset() {
@@ -50,7 +53,12 @@ class RetryTimer {
       try {
         if (_tries <= _maxRetries) {
           _log.info('async-client. retrying $_tries of $_maxRetries');
-          await _function();
+          await _callback();
+        } else {
+          _log.info('async-client. notifying limit reached.');
+          await _limitReachedCallback();
+
+          _log.severe('async-client. max retries reached.');
         }
       } catch (e) {
         _log.severe('Captured error calling delayed function: $e');

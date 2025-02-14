@@ -7,7 +7,6 @@ import 'package:logging/logging.dart';
 import '../../channel_sender_client.dart';
 import '../decoder/json_decoder.dart';
 import '../decoder/message_decoder.dart';
-import '../utils/retry_timer.dart';
 import 'transport.dart';
 
 class SSETransport implements Transport {
@@ -23,7 +22,6 @@ class SSETransport implements Transport {
   final AsyncConfig _config;
 
   late String currentToken;
-  late RetryTimer _connectRetryTimer;
   Stream<SSEModel>? _eventSource;
   late StreamController<ChannelMessage> _localStream;
   StreamSubscription<dynamic>? _streamSub;
@@ -37,14 +35,6 @@ class SSETransport implements Transport {
     this._config,
   ) {
     currentToken = _config.channelSecret;
-    _connectRetryTimer = RetryTimer(
-      () async {
-        connect();
-
-        return 1;
-      },
-      maxRetries: _config.maxRetries,
-    );
   }
   @override
   TransportType name() {
@@ -67,7 +57,13 @@ class SSETransport implements Transport {
       header: {
         'Authorization': 'Bearer $currentToken',
       },
+      maxRetryTime: 5000,
+      minRetryTime: 50,
       maxRetry: _config.maxRetries ?? 5,
+      limitReachedCallback: () async {
+        _onResponseError(
+            Exception('async-client. SSE limit reached'), StackTrace.current);
+      },
     );
 
     _localStream = StreamController(onListen: _onListen);
@@ -117,10 +113,8 @@ class SSETransport implements Transport {
     );
   }
 
-  Future<void> _onResponseError(error, stackTrace) async {
-    _log.finest('async-client. [Sse response error] $error, $stackTrace');
-
-    _log.info('async-client. sse stopping retries');
+  void _onResponseError(error, stackTrace) {
+    _log.finest('async-client. [Sse response error] $error');
     _signalSSEError({'origin': 'sse', 'code': 1, 'message': error});
   }
 
@@ -138,9 +132,11 @@ class SSETransport implements Transport {
   String sseUrl() {
     String url = _config.socketUrl;
     if (url.startsWith('ws')) {
-      url = url.replaceFirstMapped('ws', (match) => 'http');
+      url = url
+          .replaceFirstMapped('ws', (match) => 'http')
+          .replaceFirstMapped('socket', (match) => 'sse');
     }
-    url = '$url/ext/sse?channel=${_config.channelRef}';
+    url = '$url?channel=${_config.channelRef}';
 
     return url;
   }
@@ -149,7 +145,6 @@ class SSETransport implements Transport {
   bool isOpen() => false;
 
   @override
-  // TODO: implement stream
   Stream<ChannelMessage> get stream => _broadCastStream;
 
   @override

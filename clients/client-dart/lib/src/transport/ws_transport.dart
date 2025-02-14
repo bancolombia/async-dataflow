@@ -4,7 +4,6 @@ import 'dart:math';
 
 import 'package:logging/logging.dart';
 import 'package:web_socket_channel/io.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../channel_sender_client.dart';
 import '../decoder/binary_decoder.dart';
@@ -68,9 +67,11 @@ class WSTransport implements Transport {
     _connectRetryTimer = RetryTimer(
       () async {
         connect();
-        _onListen();
 
         return 1;
+      },
+      () async {
+        _onSocketError(Exception('Max retries reached'), StackTrace.current);
       },
       maxRetries: _config.maxRetries,
     );
@@ -94,7 +95,7 @@ class WSTransport implements Transport {
     _log.info('async-client. New websocket connection ${_config.channelRef}');
     _broadCastStream = _localStream.stream
         .map((message) {
-          _log.finest('async-clientttt. Received message: $message');
+          _log.finest('async-client. Received message: $message');
           var kind = EVENT_KIND_SYSTEM;
           if (message.event == RESPONSE_AUTH_OK) {
             _handleAuthResponse();
@@ -122,6 +123,7 @@ class WSTransport implements Transport {
 
     _log.info('async-client. ADF connection');
     _broadCastStream = _broadCastStream.asBroadcastStream();
+    _onListen();
   }
 
   @override
@@ -143,7 +145,7 @@ class WSTransport implements Transport {
     var readyState = 0;
 
     if (_webSocketCh.innerWebSocket != null) {
-      readyState = _webSocketCh.innerWebSocket!.readyState;
+      readyState = _webSocketCh.innerWebSocket?.readyState ?? 0;
     }
 
     return readyState;
@@ -158,7 +160,10 @@ class WSTransport implements Transport {
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
-
+    //verify if the socket is open before closing
+    if (!isOpen()) {
+      return;
+    }
     return await _webSocketCh.sink.close(code, reason);
   }
 
@@ -195,8 +200,8 @@ class WSTransport implements Transport {
     _localStream.add(decoded);
   }
 
-  void _onSocketError(WebSocketChannelException error, StackTrace stackTrace) {
-    _log.severe('async-client. onSocketError: $error $stackTrace');
+  void _onSocketError(Exception error, StackTrace stackTrace) {
+    _log.severe('async-client. onSocketError: $error');
 
     var heartbeatTimer = _heartbeatTimer;
     if (heartbeatTimer != null) {

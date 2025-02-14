@@ -139,7 +139,7 @@ class AsyncClient {
 
     if (!isOpen()) {
       _log.severe(
-        'async-client. Transport error and channel is not open, Scheduling reconnect...',
+        'async-client. Transport error and channel is not open, Scheduling reconnect $_retriesByTransport of ${_config.maxRetries}...',
       );
       if (_retriesByTransport <= (_config.maxRetries ?? 10)) {
         _currentTransport = getTransport();
