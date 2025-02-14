@@ -10,6 +10,8 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import co.com.bancolombia.usecase.business.BusinessUseCase;
 
+import java.util.UUID;
+
 @Component
 @RequiredArgsConstructor
 public class Handler {
@@ -20,7 +22,9 @@ public class Handler {
         return ServerResponse.accepted()
                 .body(
                         useCase.asyncBusinessFlow(serverRequest.queryParam("delay").orElse("5000"),
-                                serverRequest.queryParam("channel_ref").orElse("")),
+                                serverRequest.queryParam("channel_ref").orElse(""),
+                                serverRequest.queryParam("user_ref").toString(),
+                                serverRequest.queryParam("correlationId").orElse(UUID.randomUUID().toString())),
                         String.class);
     }
 

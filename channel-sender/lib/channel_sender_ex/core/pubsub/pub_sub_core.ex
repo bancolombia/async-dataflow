@@ -66,11 +66,18 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   end
 
   def delete_channel(channel_ref) do
+    action_fn = fn _ -> do_delete_channel(channel_ref) end
+    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
+      Logger.warning("Could not delete channel #{channel_ref} after #{@max_retries} retries")
+      :ok
+    end)
+  end
+
+  def do_delete_channel(channel_ref) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      pid when is_pid(pid) ->
-        Channel.stop(pid)
+      pid when is_pid(pid) -> Channel.stop(pid)
       :noproc ->
-        :noproc
+        :retry
     end
   end
 end

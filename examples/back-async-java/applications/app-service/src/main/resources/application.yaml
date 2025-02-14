@@ -10,11 +10,16 @@ spring:
       enabled: true
       path: "/h2"
   profiles:
-    include: null
+    include: local
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
 adapter:
+  reply-mode: ${REPLY_MODE:DIRECT} # DIRECT | BRIDGE
   restconsumer:
     timeout: 5000
-    url: "http://localhost:8081"
+    url: "${ADF_REST_ENDPOINT:http://localhost:8081/ext/channel}"
+    url-bridge: "${BRIDGE_REST_ENDPOINT:http://localhost:8081/ext/channel}"
 management:
   endpoints:
     web:
@@ -28,7 +33,7 @@ management:
     circuitbreakers:
       enabled: true
 cors:
-  allowed-origins: "http://localhost:4200,http://localhost:8080"
+  allowed-origins: "${ALLOWED_CORS:http://localhost:4200,http://localhost:8080}"
 resilience4j:
   circuitbreaker:
     instances:

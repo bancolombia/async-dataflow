@@ -4,8 +4,8 @@ defmodule AdfSenderConnector.MixProject do
   def project do
     [
       app: :adf_sender_connector,
-      version: "0.3.0",
-      elixir: "~> 1.13",
+      version: "0.4.0",
+      elixir: "~> 1.16",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -42,9 +42,8 @@ defmodule AdfSenderConnector.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:nimble_options, "~> 0.3.0"},
       {:jason, "~> 1.2"},
-      {:httpoison, "~> 1.8"},
+      {:finch, "~> 0.19"},
       {:uuid, "~> 1.1"},
       ## testing deps
       {:mock, "~> 0.3.0", only: :test},
@@ -54,6 +53,7 @@ defmodule AdfSenderConnector.MixProject do
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_unit_sonarqube, "~> 0.1", only: :test},
       {:benchee, "~> 1.1", only: [:dev, :benchee]},
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
     ]
   end
 

@@ -40,10 +40,15 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
       event_name: "event.example"
     }
 
-    {:ok, pid_registry} = Horde.Registry.start_link(name: ChannelRegistry, keys: :unique)
+    pid_registry = case Horde.Registry.start_link(name: ChannelRegistry, keys: :unique) do
+      {:ok, pid_registry} -> pid_registry
+      {:error, {:already_started, pid_registry}} -> pid_registry
+    end
 
-    {:ok, pid_supervisor} =
-      Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+    pid_supervisor = case Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one) do
+      {:ok, pid_supervisor} -> pid_supervisor
+      {:error, {:already_started, pid_supervisor}} -> pid_supervisor
+    end
 
     on_exit(fn ->
       true = Process.exit(pid_registry, :normal)
@@ -89,7 +94,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   } do
 
     # start socket connection and authenticate
-    {conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
+    {_conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
 
     # call for stop
     channel_pid = ChannelRegistry.lookup_channel_addr(channel)
@@ -102,9 +107,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   end
 
   test "Should just connect and allow to call close, even when no socket and channel process waiting", %{
-    port: port,
     channel: channel,
-    secret: secret
   } do
 
     # call for stop
@@ -223,16 +226,17 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert Map.get(pending_msg, "82") == msg2
   end
 
-  test "Should not allow multiple socket to one channel process", %{
+  test "Should allow new socket to one channel process", %{
     port: port,
     channel: channel,
     secret: secret
   } do
-    {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
+    {conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
 
     # try to open a new socket connection and link it to the same channel
-    conn2 = connect(port, channel)
-    assert_receive {:gun_ws, _, _, {:close, 1001, "3009"}}, 500
+    {conn2, _stream2} = assert_connect_and_authenticate(port, channel, secret)
+
+    assert conn != conn2
 
     :gun.close(conn2)
   end

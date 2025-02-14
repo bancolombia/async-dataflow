@@ -69,20 +69,6 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   @doc """
-  operation to notify this server the reason why the socket was disconnected
-  """
-  def socket_disconnect_reason(server, reason, timeout \\ @on_connected_channel_reply_timeout) do
-    GenStateMachine.call(server, {:socket_disconnected_reason, reason}, timeout)
-  end
-
-  @doc """
-  get information about this channel
-  """
-  def info(server, timeout \\ @on_connected_channel_reply_timeout) do
-    GenStateMachine.call(server, :info, timeout)
-  end
-
-  @doc """
   operation to mark a message as acknowledged
   """
   def notify_ack(server, ref, message_id) do
@@ -138,13 +124,6 @@ defmodule ChannelSenderEx.Core.Channel do
     end
   end
 
-  def waiting({:call, from}, :info, data) do
-    actions = [
-      _reply = {:reply, from, {:waiting, data}}
-    ]
-    {:keep_state_and_data, actions}
-  end
-
   def waiting({:call, from}, :stop, data) do
     actions = [
       _reply = {:reply, from, :ok}
@@ -161,6 +140,7 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   def waiting({:call, from}, {:socket_connected, socket_pid}, data) do
+    Logger.debug("Channel #{data.channel} received socket connected notification. Socket pid: #{inspect(socket_pid)}")
     socket_ref = Process.monitor(socket_pid)
     new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
 
@@ -200,6 +180,7 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
+    Logger.warning("Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
@@ -235,33 +216,17 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
   end
 
-  def connected({:call, from}, :info, data) do
-    actions = [
-      _reply = {:reply, from, {:connected, data}}
-    ]
-    {:keep_state_and_data, actions}
-  end
-
-  def connected({:call, from}, {:socket_connected, socket_pid}, data) do
+  def connected({:call, from}, {:socket_connected, socket_pid}, data = %{socket: {old_socket_pid, old_socket_ref}}) do
+    Process.demonitor(old_socket_ref)
+    send(old_socket_pid, :terminate_socket)
     socket_ref = Process.monitor(socket_pid)
     new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
 
     actions = [
       _reply = {:reply, from, :ok}
     ]
-    Logger.debug("Channel #{data.channel} overwritting socket pid.")
-    {:keep_state, new_data, actions}
-  end
 
-  # this method will be called when the socket is disconnected
-  # to inform this process about the disconnection reason
-  # this will be later used to define if this process will go back to the waiting state
-  # or if it will stop with a specific cause
-  def connected({:call, from}, {:socket_disconnected_reason, reason}, data) do
-    new_data = %{data | socket_stop_cause: reason}
-    actions = [
-      _reply = {:reply, from, :ok}
-    ]
+    Logger.debug("Channel #{data.channel} overwritting socket pid.")
     {:keep_state, new_data, actions}
   end
 
@@ -364,7 +329,7 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
-    Logger.error("Channel #{data.channel} stopping, reason: #{inspect(:name_conflict)}")
+        Logger.warning("Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}")
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
@@ -516,9 +481,5 @@ defmodule ChannelSenderEx.Core.Channel do
   rescue
     _e -> def
   end
-  # 1. Build init
-  # 2. Build start_link with distributed capabilities ? or configurable registry
-  # 3. Draf Main states
 
-  # {from = {pid, ref}, message = [message_id, _, _, _]}
 end

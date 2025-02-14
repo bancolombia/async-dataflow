@@ -16,8 +16,10 @@ void main() {
 
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((record) {
+      // ignore: avoid_print
       print(
-          '${record.level.name}: (${record.loggerName}) ${record.time}: ${record.message}');
+        '${record.level.name}: (${record.loggerName}) ${record.time}: ${record.message}',
+      );
     });
 
     final log = Logger('TransportTest');
@@ -35,7 +37,6 @@ void main() {
             var parts = request.split('::');
             channel.sink.add('["", "${parts[1]}", ":hb", ""]');
           }
-          // channel.sink.close(5678, 'raisin');
         });
       });
 

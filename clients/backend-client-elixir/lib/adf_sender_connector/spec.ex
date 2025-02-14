@@ -16,113 +16,68 @@ defmodule AdfSenderConnector.Spec do
 
       require Logger
 
-      @args_definition [
-        sender_url: [
-          type: :string,
-          required: true
-        ],
-        http_opts: [
-          type: :keyword_list,
-          required: false
-        ],
-        name: [
-          type: :string,
-          required: true
-        ],
-        app_ref: [
-          type: :string,
-          required: false
-        ],
-        user_ref: [
-          type: :string,
-          required: false
-        ]
-      ]
+      @default_local "http://localhost:8081"
 
-      @type application_ref() :: String.t()
-      @type user_ref() :: String.t()
-      @type channel_ref() :: String.t()
-      @type message_id() :: String.t()
-      @type correlation_id() :: String.t()
-      @type event_name() :: String.t()
+      @type application_ref() :: binary()
+      @type user_ref() :: binary()
+      @type channel_ref() :: binary()
+      @type message_id() :: binary()
+      @type correlation_id() :: binary()
+      @type event_name() :: binary()
       @type message_data() :: iodata()
-
-      # inherit server
-      use GenServer
-
-      @doc false
-      def start_link(args, opts \\ []) do
-        {:sender_url, url} = args
-        new_opts = [sender_url: url] ++ opts
-        GenServer.start_link(__MODULE__, new_opts, name: via_tuple(Keyword.fetch!(new_opts, :name)))
-      end
-
-      @doc false
-      def init(args) do
-        {:ok, args}
-      end
-
-      def child_spec(args) do
-        %{
-          id: __MODULE__,
-          start: {__MODULE__, :start_link, [args]},
-        }
-      end
-
-      defp via_tuple(process_alias) do
-       {:via, Registry, {Registry.ADFSenderConnector, process_alias}}
-      end
-
-      # allow overriding of init
-      defoverridable [init: 1, child_spec: 1]
 
       #################
       # Configuration #
       #################
+      def send_post_request(body, sender_url) do
+        base_url = Application.get_env(:adf_sender_connector, :base_path, @default_local)
+
+        response = Finch.build(:post, base_url <> sender_url, headers(), body)
+                   |> Finch.request(SenderHttpClient)
+
+        case response do
+          {:ok, %Finch.Response{status: status, body: response_body}} ->
+            {status, response_body}
+          {:error, %Mint.TransportError{reason: reason} = detail} ->
+            Logger.error("Error sending request: #{inspect(detail)}")
+            {:error, reason}
+        end
+      end
+
+      def send_delete_request(sender_url) do
+        base_url = Application.get_env(:adf_sender_connector, :base_path, @default_local)
+
+        response = Finch.build(:delete, base_url <> sender_url, [{"accept", "application/json"}], nil)
+                   |> Finch.request(SenderHttpClient)
+
+        case response do
+          {:ok, %Finch.Response{status: status, body: response_body}} ->
+            {status, response_body}
+          {:error, %Mint.TransportError{reason: reason} = detail} ->
+            Logger.error("Error sending request: #{inspect(detail)}")
+            {:error, reason}
+        end
+      end
+
+      defp headers do
+        [{"content-type", "application/json"}, {"accept", "application/json"}]
+      end
 
       @doc false
-      defp decode_response({:ok, adf_result} = _response) do
-        case adf_result.status_code do
+      def decode_response({status_code, body} = _response) do
+        case status_code do
           x when x in [200, 202] ->
             {:ok,
-              adf_result
-              |> Map.get(:body)
-              |> Jason.decode!()
-              # |> Enum.map(fn {key, val} -> {String.to_atom(key), val} end)
-              # |> Enum.into(%{})
-            }
+              body
+              |> Jason.decode!()}
 
           400 ->
-
-            Logger.error("Channel Sender returned status 400: #{inspect(adf_result)}")
-            {:error, :channel_sender_bad_request}
-
-          _ ->
-
-            Logger.error("Channel Sender unknown error: #{inspect(adf_result)}")
-            {:error, :channel_sender_unknown_error}
-        end
-      end
-
-      @doc false
-      defp decode_response({:error, http_error} = _response) do
-        Logger.error("Channel Sender returned error: #{inspect(http_error)}")
-
-        case http_error.reason do
-          :econnrefused ->
-            {:error, :channel_sender_econnrefused}
+            Logger.error("status 400: #{inspect(body)}")
+            {:error, :bad_request}
 
           _ ->
-            {:error, :channel_sender_unknown_error}
-        end
-      end
-
-      defp parse_http_opts(opts) do
-        case Keyword.fetch(opts, :http_opts) do
-          {:ok, http_opts} ->
-            http_opts
-          :error ->
-            [timeout: 7_000, recv_timeout: 7_000, max_connections: 2000]
+            Logger.error("unknown error: #{inspect(body)}")
+            {:error, :unknown_error}
         end
       end
 
