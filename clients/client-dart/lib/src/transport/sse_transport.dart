@@ -146,10 +146,7 @@ class SSETransport implements Transport {
   }
 
   @override
-  bool isOpen() {
-    // TODO: implement isOpen
-    throw UnimplementedError();
-  }
+  bool isOpen() => false;
 
   @override
   // TODO: implement stream
