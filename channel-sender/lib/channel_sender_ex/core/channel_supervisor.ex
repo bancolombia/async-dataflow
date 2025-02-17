@@ -14,7 +14,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
   def start_link(_) do
     opts = [strategy: :one_for_one, shutdown: 1000]
-    result = Horde.DynamicSupervisor.start_link(__MODULE__, opts, name: __MODULE__)
+    result = Horde.DynamicSupervisor.start_link(__MODULE__, opts, [name: __MODULE__, strategy: :one_for_one])
 
     Logger.debug("ChannelSupervisor: #{inspect(result)}")
     result
@@ -34,7 +34,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @type channel_ref :: String.t()
   @type application :: String.t()
   @type user_ref :: String.t()
-  @type meta :: list()
+  @type meta :: map()
   @type channel_init_args :: {channel_ref(), application(), user_ref(), meta()}
 
   @spec start_channel(channel_init_args()) :: any()

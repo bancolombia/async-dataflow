@@ -1,12 +1,13 @@
 defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import Mock
 
+  alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.Channel.Data
   alias ChannelSenderEx.Persistence.RedisChannelPersistence
 
   test "save_channel_data/1 saves data to Redis" do
-    data = %Data{channel: "channel_1", application: "value"}
+    data = %Data{channel: "channel_1", application: "value", pending_ack: BoundedMap.new, pending_sending: BoundedMap.new}
     Application.put_env(:channel_sender_ex, :persistence_ttl, 50)
 
     with_mock Redix,
@@ -15,9 +16,19 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
     end
   end
 
+  test "save_channel_data/1 handles error saving" do
+    data = %Data{channel: "channel_1", application: "value", pending_ack: BoundedMap.new, pending_sending: BoundedMap.new}
+    Application.put_env(:channel_sender_ex, :persistence_ttl, 50)
+
+    with_mock BoundedMap,
+      to_map: fn _ -> raise "Dummy exeption" end do
+      assert :ok == RedisChannelPersistence.save_channel_data(data)
+    end
+  end
+
   test "get_channel_data/1 retrieves data from Redis" do
-    encoded_data = Jason.encode!(%Data{channel: "channel_1", application: "value", pending_ack: %{keys: []}, pending_sending: %{keys: []}})
-    data = %Data{channel: "channel_1", application: "value", pending_ack: {%{}, []}, pending_sending: {%{}, []}}
+    data = %Data{channel: "channel_1", application: "value", pending_ack: BoundedMap.new, pending_sending: BoundedMap.new}
+    encoded_data = "{\"channel\":\"channel_1\",\"application\":\"value\",\"pending_ack\":{},\"pending_sending\":{},\"user_ref\":\"\",\"meta\":null}"
 
     with_mock Redix, command: fn :redix_read, ["GET", "channel_1"] -> {:ok, encoded_data} end do
       assert {:ok, ^data} = RedisChannelPersistence.get_channel_data("channel_1")
@@ -27,6 +38,24 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
   test "get_channel_data/1 returns :not_found when data is not in Redis" do
     with_mock Redix, command: fn :redix_read, ["GET", "channel_1"] -> {:ok, nil} end do
       assert {:error, :not_found} == RedisChannelPersistence.get_channel_data("channel_1")
+    end
+  end
+
+  test "get_channel_data/1 handles unexpected error" do
+    with_mock Redix, command: fn _, _ -> raise "Dummy exception" end do
+      assert {:error, :not_found} = RedisChannelPersistence.get_channel_data("channel_1")
+    end
+  end
+
+  test "delete_channel_data/1 data deleted in Redis" do
+    with_mock Redix, noreply_command: fn :redix_write, ["DEL", "channel_1"] -> :ok end do
+      assert :ok == RedisChannelPersistence.delete_channel_data("channel_1")
+    end
+  end
+
+  test "delete_channel_data/1 handle unexpected error" do
+    with_mock Redix, noreply_command: fn _, _ -> raise "Dummy Exception" end do
+      assert :ok == RedisChannelPersistence.delete_channel_data("channel_1")
     end
   end
 

@@ -75,6 +75,48 @@ defmodule ChannelSenderEx.Core.BoundedMapTest do
     assert Map.has_key?(new_map, "key2")
   end
 
+  test "should parse BoundedMap data to map" do
+
+    data = %ChannelSenderEx.Core.Channel.Data{
+      channel: "xxxxxxxxxx",
+      application: "app1",
+      socket: nil,
+      pending_ack: BoundedMap.new(),
+      pending_sending: BoundedMap.new()
+        |> BoundedMap.put("d290f1ee-6c54-4b01-90e6-d701748f0852",
+            {"d290f1ee-6c54-4b01-90e6-d701748f0852",
+            "d290f1ee-6c54-4b01-90e6-d701748f0852",
+            "event.productCreated",
+            "hello", 1_739_649_854_675}),
+      stop_cause: nil,
+      socket_stop_cause: nil,
+      user_ref: "user_ref",
+      meta: []
+    }
+
+    assert %{
+      "d290f1ee-6c54-4b01-90e6-d701748f0852" => ["d290f1ee-6c54-4b01-90e6-d701748f0852",
+       "d290f1ee-6c54-4b01-90e6-d701748f0852", "event.productCreated", "hello",
+       1_739_649_854_675]
+    } = BoundedMap.to_map(data.pending_sending)
+
+  end
+
+  test "should parse map to BoundedMap" do
+
+    data = %{
+      "d290f1ee-6c54-4b01-90e6-d701748f0852" => ["d290f1ee-6c54-4b01-90e6-d701748f0852",
+       "d290f1ee-6c54-4b01-90e6-d701748f0852", "event.productCreated", "hello",
+       1_739_649_854_675]
+    }
+
+    assert {
+      %{"d290f1ee-6c54-4b01-90e6-d701748f0852" =>
+        {"d290f1ee-6c54-4b01-90e6-d701748f0852", "d290f1ee-6c54-4b01-90e6-d701748f0852",
+        "event.productCreated", "hello", 1_739_649_854_675}},
+          ["d290f1ee-6c54-4b01-90e6-d701748f0852"]} == BoundedMap.from_map(data)
+  end
+
   test "should allow merge" do
     map = BoundedMap.new
     |> BoundedMap.put("key1", "value1")

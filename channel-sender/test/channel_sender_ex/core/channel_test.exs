@@ -48,7 +48,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     end)
 
     {:ok,
-     init_args: {channel_ref, app, user_ref, []},
+     init_args: {channel_ref, app, user_ref, %{}},
      message: %{
        message_id: "32452",
        correlation_id: "1111",
@@ -64,7 +64,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
 
-    {_, app, user, []} = init_args
+    {_, app, user, %{}} = init_args
     data = %Data{application: app, user_ref: user}
     assert data.application == app
 

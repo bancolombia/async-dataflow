@@ -65,10 +65,13 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   setup do
     [ok: _] = EntryPoint.start(0)
     port = :ranch.get_port(:external_server)
+    Application.put_env(:channel_sender_ex, :initial_redelivery_time, 5)
 
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
       Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
+      Application.delete_env(:channel_sender_ex, :initial_redelivery_time)
+
       :ok = :cowboy.stop_listener(:external_server)
     end)
 
@@ -199,7 +202,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   end
 
   test "Should send pending messages to twin process when terminated by supervisor merge (name conflict)" do
-    channel_args = {"channel_ref", "application", "user_ref", []}
+    channel_args = {"channel_ref", "application", "user_ref", %{}}
     {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup1, strategy: :one_for_one)
     {:ok, _} = Horde.DynamicSupervisor.start_link(name: :sup2, strategy: :one_for_one)
     {:ok, _} = Horde.Registry.start_link(name: :reg1, keys: :unique)

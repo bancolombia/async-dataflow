@@ -1,5 +1,5 @@
 defmodule ChannelSenderEx.Persistence.RedisConnectionPropsTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import Mock
 
   alias ChannelSenderEx.Persistence.RedisConnectionProps

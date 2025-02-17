@@ -146,7 +146,8 @@ defmodule ChannelSenderEx.Transport.Socket do
   @impl :cowboy_websocket
   def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, _}, _}) do
     Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
-    spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
+    new_pid = ReConnectProcess.start(self(), channel_ref)
+    Process.monitor(new_pid)
     {_commands = [], state}
   end
 

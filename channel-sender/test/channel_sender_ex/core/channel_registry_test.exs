@@ -1,13 +1,17 @@
 Code.compiler_options(ignore_module_conflict: true)
 
 defmodule ChannelSenderEx.Core.ChannelRegistryTest do
-  use ExUnit.Case, sync: true
+  use ExUnit.Case, sync: false
   import Mock
 
   alias ChannelSenderEx.Core.ChannelRegistry
   alias Horde.Registry
 
   @moduletag :capture_log
+
+  test "Should start registry" do
+    assert {:ok, _} = ChannelRegistry.start_link(nil)
+  end
 
   test "Should query by app" do
     with_mocks([

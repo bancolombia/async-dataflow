@@ -9,7 +9,7 @@ channel_sender_ex:
     # before it is closed
     max_age: 900
 
-  # initial time in seconds to wait before re-send a message not acked to a channel
+  # initial time in milliseconds to wait before re-send a message not acked to a channel
   initial_redelivery_time: 900
 
   # max time in milliseconds to wait the client to send the auth token
@@ -28,9 +28,10 @@ channel_sender_ex:
   # (max_age - min_disconnection_tolerance)
   min_disconnection_tolerance: 50
 
+  # milliseconds to wait before a process response
   on_connected_channel_reply_timeout: 2000
 
-  # max time a channel process will wait to perform the send operation before times out
+  # max time in milliseconds a channel process will wait to perform the send operation before times out
   accept_channel_reply_timeout: 1000
 
   # Allowed max number of unacknowledged messages per client connection
@@ -38,7 +39,7 @@ channel_sender_ex:
   max_unacknowledged_queue: 100
 
   # Allowed max number of retries to re-send unack'ed message to a channel
-  max_unacknowledged_retries: 10
+  max_unacknowledged_retries: 20
 
   # Allowed max number of messages pending to be sent to a channel
   # received by sender while on waiting state (no socket connection)
@@ -80,7 +81,7 @@ channel_sender_ex:
   persistence:
     enabled: true # Indicates if the persistence layer is enabled
     type: :redis # Indicates the type of persistence layer
-    ttl: 900 # Time to live of the messages in the persistence layer (after each write operation)
+    ttl: 900 # Time to live of the messages (seconds) in the persistence layer (after each write operation)
     # config:
     #   ssl: false # Indicates if the connection to the persistence layer is encrypted
     #   host: "localhost" # Host of the persistence layer

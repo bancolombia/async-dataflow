@@ -13,6 +13,14 @@ defmodule ChannelSenderEx.Core.RulesProviderTest do
 
   doctest ChannelSenderEx.Core.RulesProvider.Compiler
 
+  setup do
+    Application.put_env(:channel_sender_ex, :initial_redelivery_time, 101)
+
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :initial_redelivery_time)
+    end)
+  end
+
   test "Should get rules into new module" do
     Compiler.compile(Test.NewModule, rule1: "value1", rule2: {:some, :value})
     assert Test.NewModule.get(:rule1) == "value1"

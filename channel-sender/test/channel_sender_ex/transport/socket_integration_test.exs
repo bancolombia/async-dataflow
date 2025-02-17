@@ -67,8 +67,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     [ok: _] = EntryPoint.start(0)
     port = :ranch.get_port(:external_server)
 
+    Application.put_env(:channel_sender_ex, :max_unacknowledged_retries, 3)
+
     on_exit(fn ->
       :ok = :cowboy.stop_listener(:external_server)
+      Application.delete_env(:channel_sender_ex, :max_unacknowledged_retries)
     end)
 
     {channel, secret} = ChannelAuthenticator.create_channel("App1", "User1234")

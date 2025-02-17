@@ -35,14 +35,14 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp create_channel(conn) do
     # collect metadata from headers, up to 3 metadata fields
-    metadata = conn.req_headers
+    headers = conn.req_headers
     |> Enum.filter(fn {key, _} -> String.starts_with?(key, @metadata_headers_prefix) end)
     |> Enum.map(fn {key, value} -> {String.replace(key, @metadata_headers_prefix, ""), String.slice(value, 0, 50)} end)
     |> Enum.take(@metadata_headers_max)
-    route_create(conn.body_params, metadata, conn)
+    route_create(conn.body_params, %{"headers" => headers, "postponed" => %{}}, conn)
   end
 
-  @spec route_create(map(), list(), Plug.Conn.t()) :: Plug.Conn.t()
+  @spec route_create(map(), map(), Plug.Conn.t()) :: Plug.Conn.t()
   defp route_create(message = %{
     application_ref: application_ref,
     user_ref: user_ref
