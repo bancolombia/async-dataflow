@@ -183,6 +183,10 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state_and_data, :postpone}
   end
 
+  def waiting({:timeout, {:resend, _}}, _retries, _data) do
+    :keep_state_and_data
+  end
+
   def waiting({:call, _from}, _event, _data) do
     :keep_state_and_data
   end
@@ -312,28 +316,36 @@ defmodule ChannelSenderEx.Core.Channel do
   ## And it will continue to be executed until the message is acknowledged by the client.
   def connected({:timeout, {:redelivery, ref}}, retries, data) do
     {message, new_data} = retrieve_pending_ack(data, ref)
-    {message_id, _, _, _, _} = message
 
-    max_unacknowledged_retries = get_param(:max_unacknowledged_retries, 20)
-    case retries do
-      r when r >= max_unacknowledged_retries ->
-        Logger.warning(fn -> "Channel #{data.channel} reached max retries for message #{inspect(message_id)}" end)
-        ChannelPersistence.save_channel_data(new_data)
-        {:keep_state, new_data}
+    case message do
+      :noop ->
+        Logger.warning("Channel #{data.channel} received redelivery timeout for unknown message ref #{inspect(ref)}")
+        :keep_state_and_data
 
       _ ->
-        send_message(data, message)
 
-        # reschedule the timer to keep retrying to deliver the message
-        initial_redelivery_time = get_param(:initial_redelivery_time, @default_redelivery_time_millis)
-        next_delay = round(exp_back_off(initial_redelivery_time, @default_max_backoff_redelivery_millis, retries, 0.2))
-        Logger.debug(fn -> "Channel #{data.channel} re-delivered message #{message_id} (retry ##{retries + 1}), and will do again in #{next_delay} ms" end)
-        actions = [
-          _timeout =
-            {{:timeout, {:redelivery, ref}}, next_delay, retries + 1}
-        ]
-        {:keep_state_and_data, actions}
-      end
+        {message_id, _, _, _, _} = message
+        max_unacknowledged_retries = get_param(:max_unacknowledged_retries, 20)
+        case retries do
+          r when r >= max_unacknowledged_retries ->
+            Logger.warning(fn -> "Channel #{data.channel} reached max retries for message #{inspect(message_id)}" end)
+            ChannelPersistence.save_channel_data(new_data)
+            {:keep_state, new_data}
+
+          _ ->
+            send_message(data, message)
+
+            # reschedule the timer to keep retrying to deliver the message
+            initial_redelivery_time = get_param(:initial_redelivery_time, @default_redelivery_time_millis)
+            next_delay = round(exp_back_off(initial_redelivery_time, @default_max_backoff_redelivery_millis, retries, 0.2))
+            Logger.debug(fn -> "Channel #{data.channel} re-delivered message #{message_id} (retry ##{retries + 1}), and will do again in #{next_delay} ms" end)
+            actions = [
+              _timeout =
+                {{:timeout, {:redelivery, ref}}, next_delay, retries + 1}
+            ]
+            {:keep_state_and_data, actions}
+        end
+    end
   end
 
   def connected({:timeout, {:resend, message}}, _retries, data) do
@@ -453,7 +465,7 @@ defmodule ChannelSenderEx.Core.Channel do
       get_param(:max_unacknowledged_queue, @default_max_unacknowledged_queue))}
   end
 
-  @spec retrieve_pending_ack(Data.t(), reference()) :: {ProtocolMessage.t(), Data.t()}
+  @spec retrieve_pending_ack(Data.t(), reference()) :: {ProtocolMessage.t() | :noop, Data.t()}
   @compile {:inline, retrieve_pending_ack: 2}
   defp retrieve_pending_ack(data = %{pending_ack: pending_ack}, ref) do
     case BoundedMap.pop(pending_ack, ref) do
