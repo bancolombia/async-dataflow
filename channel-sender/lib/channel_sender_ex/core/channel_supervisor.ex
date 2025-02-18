@@ -65,9 +65,11 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   defp start_channel_retried(args = {channel_ref, _application, _user_ref, _meta}) do
     case Horde.DynamicSupervisor.start_child(__MODULE__, channel_child_spec(args)) do
       {:ok, pid} ->
+        Logger.debug("Channel #{channel_ref} started with pid #{inspect(pid)}")
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
+        Logger.debug("Channel #{channel_ref} already started with pid #{inspect(pid)}")
         {:ok, pid}
 
       {:error, reason} ->

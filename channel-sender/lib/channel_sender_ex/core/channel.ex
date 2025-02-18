@@ -113,6 +113,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @doc false
   def init({channel, application, user_ref, meta}) do
     Process.flag(:trap_exit, true)
+    Logger.info("Channel #{channel} starting")
     CustomTelemetry.execute_custom_event([:adf, :channel], %{count: 1})
     {:ok, :waiting, Data.new(channel, application, user_ref, meta)}
   end
@@ -121,6 +122,7 @@ defmodule ChannelSenderEx.Core.Channel do
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
   def waiting(:enter, old_state, data) do
+    Logger.debug("Channel #{data.channel} entering waiting state")
     load_state_from_external(data, old_state)
     |> calculate_waiting_time
     |> decide_next_state_from_waiting
@@ -525,6 +527,7 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   defp load_state_from_external(channel, from_state) when from_state == :waiting do
+    Logger.debug(fn -> "Channel #{channel.channel} searching data in persistence." end)
     case ChannelPersistence.get_channel_data(channel.channel) do
       {:ok, loaded_data} ->
         Logger.info(fn -> "Channel #{channel.channel} loaded state sucessfully" end)

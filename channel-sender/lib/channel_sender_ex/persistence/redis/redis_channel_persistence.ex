@@ -46,6 +46,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @impl true
   @spec get_channel_data(binary()) :: {:ok, Data.t()} | {:error, :not_found}
   def get_channel_data(channel_id) do
+      Logger.debug(fn -> "Getting channel data for: #{channel_id}" end)
       with {:ok, data} when not is_nil(data) <- Redix.command(:redix_read, ["GET", channel_id]),
           {:ok, map} <- Jason.decode(data) do
         parsed =
@@ -53,10 +54,12 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
           |> Map.put("pending_sending", BoundedMap.from_map(Map.get(map, "pending_sending")))
           |> Enum.map(fn {k, v} -> {String.to_existing_atom(k), v} end)
 
+        Logger.debug(fn -> "Got channel data: #{inspect(parsed)}" end)
         CustomTelemetry.execute_custom_event([:adf, :persistence, :get], %{count: 1})
         {:ok, struct(Data, parsed)}
       else
         _ ->
+          Logger.debug(fn -> "Channel data not found for: #{channel_id}" end)
           CustomTelemetry.execute_custom_event([:adf, :persistence, :getmiss], %{count: 1})
           {:error, :not_found}
       end
