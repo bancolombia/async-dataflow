@@ -42,7 +42,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     action_fn = fn _ -> start_channel_retried(args) end
 
     execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
-      raise("Error creating channel")
+      raise("Error creating channel #{inspect(args)}")
     end)
   end
 
@@ -55,7 +55,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @compile {:inline, channel_child_spec: 2}
   def channel_child_spec(channel_args = {channel_ref, _application, _user_ref, _meta}, name) do
     %{
-      id: "Channel_#{channel_ref}",
+      id: channel_ref,
       start: {Channel, :start_link, [channel_args, [name: name]]},
       shutdown: get_shutdown_tolerance(),
       restart: :transient
@@ -65,15 +65,23 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   defp start_channel_retried(args = {channel_ref, _application, _user_ref, _meta}) do
     case Horde.DynamicSupervisor.start_child(__MODULE__, channel_child_spec(args)) do
       {:ok, pid} ->
-        Logger.debug("Channel #{channel_ref} started with pid #{inspect(pid)}")
+        Logger.debug(fn -> "ChannelSupervisor #{channel_ref} started channel child with pid #{inspect(pid)}" end)
+        {:ok, pid}
+
+      {:ok, pid, _info} ->
+        Logger.debug(fn -> "ChannelSupervisor #{channel_ref} started channel child with pid #{inspect(pid)}" end)
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
-        Logger.debug("Channel #{channel_ref} already started with pid #{inspect(pid)}")
+        Logger.debug(fn -> "ChannelSupervisor channel #{channel_ref} already started with pid #{inspect(pid)}" end)
         {:ok, pid}
 
       {:error, reason} ->
-        Logger.warning("Error starting channel #{channel_ref}: #{inspect(reason)}, operation will be retried")
+        Logger.warning(fn -> "Error starting channel #{channel_ref}: #{inspect(reason)}, operation will be retried" end)
+        :retry
+
+      :ignore ->
+        Logger.warning(fn -> "Error starting channel #{channel_ref}: :ignore, operation will be retried" end)
         :retry
     end
   end

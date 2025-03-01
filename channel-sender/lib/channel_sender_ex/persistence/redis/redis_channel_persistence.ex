@@ -18,8 +18,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
       serializable = %{
         data
-        | pending_ack: BoundedMap.to_map(data.pending_ack),
-          pending_sending: BoundedMap.to_map(data.pending_sending)
+        | pending: BoundedMap.to_map(data.pending)
       }
       |> Jason.encode!()
 
@@ -50,8 +49,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
       with {:ok, data} when not is_nil(data) <- Redix.command(:redix_read, ["GET", channel_id]),
           {:ok, map} <- Jason.decode(data) do
         parsed =
-          Map.put(map, "pending_ack", BoundedMap.from_map(Map.get(map, "pending_ack")))
-          |> Map.put("pending_sending", BoundedMap.from_map(Map.get(map, "pending_sending")))
+          Map.put(map, "pending", BoundedMap.from_map(Map.get(map, "pending")))
           |> Enum.map(fn {k, v} -> {String.to_existing_atom(k), v} end)
 
         Logger.debug(fn -> "Got channel data: #{inspect(parsed)}" end)

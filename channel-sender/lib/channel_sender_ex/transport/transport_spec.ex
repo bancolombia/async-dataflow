@@ -108,7 +108,7 @@ alias ChannelSenderEx.Persistence.ChannelPersistence
               #Logger.debug(fn -> "Transport #{@__option__} recovered channel from persistence: #{channel_ref} and started it. pid: #{inspect(pid)}" end)
               proc
             _ ->
-              #Logger.error(fn -> "Transport #{@__option__} unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}" end)
+              Logger.error(fn -> "Transport #{@__option__} unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}" end)
               {:error, <<@invalid_channel_code>>}
           end
         end)

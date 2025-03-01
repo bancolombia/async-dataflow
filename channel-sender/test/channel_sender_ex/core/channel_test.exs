@@ -61,7 +61,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     {:ok, pid} = start_channel_safe(init_args)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
-    :accepted_connected = Channel.deliver_message(pid, message_to_send)
+    :accepted = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
 
     {_, app, user, %{}} = init_args
@@ -76,7 +76,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
       {:ok, pid} = start_channel_safe(init_args)
       :ok = Channel.socket_connected(pid, self())
       message_to_send = ProtocolMessage.to_protocol_message(message)
-      :accepted_connected = Channel.deliver_message(pid, message_to_send)
+      :accepted = Channel.deliver_message(pid, message_to_send)
       assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
       Process.exit(pid, :kill)
     end
@@ -85,10 +85,10 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   test "On connect should deliver message", %{init_args: init_args, message: message} do
     {:ok, pid} = start_channel_safe(init_args)
     message_to_send = ProtocolMessage.to_protocol_message(message)
-    :accepted_waiting = Channel.deliver_message(pid, message_to_send)
+    :accepted = Channel.deliver_message(pid, message_to_send)
     refute_receive {_from = {^pid, _ref}, ^message_to_send}, 350
     :ok = Channel.socket_connected(pid, self())
-    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
+    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 2000
     Process.exit(pid, :kill)
   end
 
@@ -96,7 +96,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     {:ok, pid} = start_channel_safe(init_args)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
-    :accepted_connected = Channel.deliver_message(pid, message_to_send)
+    :accepted = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
     Process.exit(pid, :kill)
@@ -106,7 +106,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     {:ok, pid} = start_channel_safe(init_args)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
-    :accepted_connected = Channel.deliver_message(pid, message_to_send)
+    :accepted = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, ref}, ^message_to_send}
     Channel.notify_ack(pid, ref, message.message_id)
     refute_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
@@ -120,7 +120,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     {:ok, pid} = start_channel_safe(init_args)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
-    :accepted_connected = Channel.deliver_message(pid, message_to_send)
+    :accepted = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 600
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1500
@@ -161,7 +161,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     {:ok, pid} = start_channel_safe(init_args)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
-    :accepted_connected = Channel.deliver_message(pid, message_to_send)
+    :accepted = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, ref}, ^message_to_send}
 
     Channel.notify_ack(pid, ref, message.message_id)
@@ -173,7 +173,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
 
     refute_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 300
 
-    :accepted_connected = Channel.deliver_message(pid, message_to_send)
+    :accepted = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
 
     Process.exit(pid, :kill)
@@ -183,7 +183,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     {:ok, pid} = start_channel_safe(init_args)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
-    :accepted_connected = Channel.deliver_message(pid, message_to_send)
+    :accepted = Channel.deliver_message(pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^pid, ref}, ^message_to_send}
     # Receive retry
     assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}, 1000
@@ -207,7 +207,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     :ok = Channel.socket_connected(channel_pid, proxy)
 
     message_to_send = ProtocolMessage.to_protocol_message(message)
-    assert :accepted_connected = Channel.deliver_message(channel_pid, message_to_send)
+    assert :accepted = Channel.deliver_message(channel_pid, message_to_send)
     assert_receive {:deliver_msg, _from = {^channel_pid, _ref}, ^message_to_send}
 
     send(proxy, :stop)

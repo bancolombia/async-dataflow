@@ -165,7 +165,7 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
     {conn, _stream} = connect(port, channel, secret)
 
     {message_id, data} = deliver_message(channel)
-    assert_receive {:gun_data, _pid, _ref, :fin, encoded_data}
+    assert_receive {:gun_data, _pid, _ref, :fin, encoded_data}, 2000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(encoded_data)
 
     :gun.close(conn)

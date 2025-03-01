@@ -7,7 +7,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
   alias ChannelSenderEx.Persistence.RedisChannelPersistence
 
   test "save_channel_data/1 saves data to Redis" do
-    data = %Data{channel: "channel_1", application: "value", pending_ack: BoundedMap.new, pending_sending: BoundedMap.new}
+    data = %Data{channel: "channel_1", application: "value", pending: BoundedMap.new}
     Application.put_env(:channel_sender_ex, :persistence_ttl, 50)
 
     with_mock Redix,
@@ -17,7 +17,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
   end
 
   test "save_channel_data/1 handles error saving" do
-    data = %Data{channel: "channel_1", application: "value", pending_ack: BoundedMap.new, pending_sending: BoundedMap.new}
+    data = %Data{channel: "channel_1", application: "value", pending: BoundedMap.new}
     Application.put_env(:channel_sender_ex, :persistence_ttl, 50)
 
     with_mock BoundedMap,
@@ -27,8 +27,8 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
   end
 
   test "get_channel_data/1 retrieves data from Redis" do
-    data = %Data{channel: "channel_1", application: "value", pending_ack: BoundedMap.new, pending_sending: BoundedMap.new}
-    encoded_data = "{\"channel\":\"channel_1\",\"application\":\"value\",\"pending_ack\":{},\"pending_sending\":{},\"user_ref\":\"\",\"meta\":null}"
+    data = %Data{channel: "channel_1", application: "value", pending: BoundedMap.new}
+    encoded_data = "{\"channel\":\"channel_1\",\"application\":\"value\",\"pending\":{},\"user_ref\":\"\",\"meta\":null}"
 
     with_mock Redix, command: fn :redix_read, ["GET", "channel_1"] -> {:ok, encoded_data} end do
       assert {:ok, ^data} = RedisChannelPersistence.get_channel_data("channel_1")

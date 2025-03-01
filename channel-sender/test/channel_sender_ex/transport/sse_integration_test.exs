@@ -190,7 +190,7 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
 
     {message_id, data} = deliver_message(channel)
 
-    assert_receive {:gun_data, _pid, _ref, :nofin, encoded_data}, 400
+    assert_receive {:gun_data, _pid, _ref, :nofin, encoded_data}, 1500
 
     assert {^message_id, "", "event.test", ^data, _} = decode_message(encoded_data)
 

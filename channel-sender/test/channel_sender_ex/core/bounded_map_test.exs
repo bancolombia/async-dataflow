@@ -81,8 +81,7 @@ defmodule ChannelSenderEx.Core.BoundedMapTest do
       channel: "xxxxxxxxxx",
       application: "app1",
       socket: nil,
-      pending_ack: BoundedMap.new(),
-      pending_sending: BoundedMap.new()
+      pending: BoundedMap.new()
         |> BoundedMap.put("d290f1ee-6c54-4b01-90e6-d701748f0852",
             {"d290f1ee-6c54-4b01-90e6-d701748f0852",
             "d290f1ee-6c54-4b01-90e6-d701748f0852",
@@ -98,7 +97,7 @@ defmodule ChannelSenderEx.Core.BoundedMapTest do
       "d290f1ee-6c54-4b01-90e6-d701748f0852" => ["d290f1ee-6c54-4b01-90e6-d701748f0852",
        "d290f1ee-6c54-4b01-90e6-d701748f0852", "event.productCreated", "hello",
        1_739_649_854_675]
-    } = BoundedMap.to_map(data.pending_sending)
+    } = BoundedMap.to_map(data.pending)
 
   end
 

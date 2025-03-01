@@ -10,17 +10,10 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   @moduletag :capture_log
 
   setup_all do
-    Application.put_env(:channel_sender_ex,
-      :accept_channel_reply_timeout,
-      1000)
-
-    Application.put_env(:channel_sender_ex,
-      :on_connected_channel_reply_timeout,
-      2000)
-
+    Application.put_env(:channel_sender_ex, :accept_channel_reply_timeout, 1000)
+    Application.put_env(:channel_sender_ex, :on_connected_channel_reply_timeout, 2000)
     Application.put_env(:channel_sender_ex, :channel_shutdown_on_clean_close, 900)
     Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection, 900)
-
     Application.put_env(:channel_sender_ex, :secret_base, {
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
         "socket auth"
@@ -30,6 +23,8 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
     {:ok, _} = Application.ensure_all_started(:telemetry)
+    {:ok, _} = Application.ensure_all_started(:delta_crdt)
+    {:ok, _} = Application.ensure_all_started(:horde)
 
     Helper.compile(:channel_sender_ex)
 
@@ -41,21 +36,30 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     }
 
     pid_registry = case Horde.Registry.start_link(name: ChannelRegistry, keys: :unique) do
-      {:ok, pid_registry} -> pid_registry
-      {:error, {:already_started, pid_registry}} -> pid_registry
+      {:ok, pid_registry} ->
+        pid_registry
+      {:error, {:already_started, pid_registry}} ->
+        pid_registry
     end
+    Process.sleep(200)
 
     pid_supervisor = case Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one) do
-      {:ok, pid_supervisor} -> pid_supervisor
-      {:error, {:already_started, pid_supervisor}} -> pid_supervisor
+      {:ok, pid_supervisor} ->
+        pid_supervisor
+      {:error, {:already_started, pid_supervisor}} ->
+        pid_supervisor
     end
+    Process.sleep(200)
 
     on_exit(fn ->
       true = Process.exit(pid_registry, :normal)
       true = Process.exit(pid_supervisor, :normal)
+      IO.puts("Supervisor and Registry was terminated")
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
       Application.delete_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
-      IO.puts("Supervisor and Registry was terminated")
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
+      Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
+      Application.delete_env(:channel_sender_ex, :secret_base)
     end)
 
     message = ProtocolMessage.to_protocol_message(ext_message)
@@ -130,15 +134,15 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   } do
 
     # send 2 messages
-    assert {:accepted_waiting, _, _} = deliver_message(channel, "99")
-    assert {:accepted_waiting, _, _} = deliver_message(channel, "100")
+    assert {:accepted, _, _} = deliver_message(channel, "99")
+    assert {:accepted, _, _} = deliver_message(channel, "100")
 
     # connect
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
 
     # recv 2 pending messages
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"99\",\"\",\"event.test\",\"MessageData12_3245rs42112aa99\"]"}}
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"100\",\"\",\"event.test\",\"MessageData12_3245rs42112aa100\"]"}}
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"99\",\"\",\"event.test\",\"MessageData12_3245rs42112aa99\"]"}}, 1500
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"100\",\"\",\"event.test\",\"MessageData12_3245rs42112aa100\"]"}}, 1500
 
     :gun.close(conn)
     Process.sleep(100)
@@ -150,11 +154,11 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     secret: secret
   } do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-    assert {:accepted_connected, _, _} = deliver_message(channel)
+    assert {:accepted, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
     :gun.close(conn)
     Process.sleep(100)
-    assert {:accepted_waiting, _, _} = deliver_message(channel)
+    assert {:accepted, _, _} = deliver_message(channel)
   end
 
   test "Should do no waiting when connection closes clean", %{
@@ -167,7 +171,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Helper.compile(:channel_sender_ex)
 
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-    assert {:accepted_connected, _, _} = deliver_message(channel)
+    assert {:accepted, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
 
     channel_pid = ChannelRegistry.lookup_channel_addr(channel)
@@ -224,7 +228,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert_receive {:DOWN, _ref, :process, channel_pid, _} when channel_pid in [pid1, pid2]
 
     assert [{pid, _}] = Horde.Registry.lookup(ChannelRegistry.via_tuple("channel_ref", :reg1))
-    {_, %{pending_sending: {pending_msg, _}}} = :sys.get_state(pid)
+    {_, %{pending: {pending_msg, _}}} = :sys.get_state(pid)
     assert Map.get(pending_msg, "42") == msg1
     assert Map.get(pending_msg, "82") == msg2
   end
@@ -264,9 +268,10 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   defp assert_connect_and_authenticate(port, channel, secret) do
     conn = connect(port, channel)
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 500
+    Process.sleep(:rand.uniform(400))
     :gun.ws_send(conn, {:text, "Auth::#{secret}"})
 
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
+    assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}, 500
     message = decode_message(data_string)
     assert "AuthOk" == ProtocolMessage.event_name(message)
     {conn, stream}

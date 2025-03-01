@@ -58,8 +58,8 @@ channel_sender_ex:
   # A value of 0, will terminate the channel process immediately. This value should never
   # be greater than max_age.
   channel_shutdown_socket_disconnect: 
-    on_clean_close: 300
-    on_disconnection: 900
+    on_clean_close: 900
+    on_disconnection: 1800
 
   no_start: false
   topology:
@@ -79,7 +79,7 @@ channel_sender_ex:
     # for more information about the kubernetes configuration with libcluser
 
   persistence:
-    enabled: true # Indicates if the persistence layer is enabled
+    enabled: false # Indicates if the persistence layer is enabled
     type: :redis # Indicates the type of persistence layer
     ttl: 900 # Time to live of the messages (seconds) in the persistence layer (after each write operation)
     # config:
