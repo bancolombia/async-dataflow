@@ -54,10 +54,9 @@ spec:
   serviceName: "adfsender-headless"
   template:
     metadata:
-      ## annotations required for istio-proxy to detect ports
       annotations:
-        traffic.sidecar.istio.io/includeOutboundPorts: "4369"
-        traffic.sidecar.istio.io/includeInboundPorts: "4369, 8081, 8082"
+        traffic.sidecar.istio.io/excludeOutboundPorts: "4369"
+        traffic.sidecar.istio.io/excludeInboundPorts: "4369, 8081, 8082"
         prometheus.io/port: "9568"
         prometheus.io/path: "/metrics"
         prometheus.io/scrape: "true"        
@@ -101,3 +100,15 @@ spec:
         - name: config-volume
           configMap:
             name: adfsender-config
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: disable-mtls-adfsender
+  namespace: sendernm
+spec:
+  selector:
+    matchLabels:
+      app: adfsender
+  mtls:
+    mode: DISABLE            

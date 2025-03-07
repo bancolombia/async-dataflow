@@ -1,19 +1,5 @@
 import Config
 
 config :channel_sender_ex,
-  secret_base:
-    {"aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc", "socket auth"},
-  initial_redelivery_time: 100,
-  app_repo: ChannelSenderEx.Repository.ApplicationRepo,
-  channel_shutdown_tolerance: 10_000,
-  max_age: 900,
-  socket_idle_timeout: 60000,
-  socket_port: 8082,
-  rest_port: 8081,
-  topology: [
-    strategy: Cluster.Strategy.Gossip
-  ],
-  persistence: [
-    enabled: false,
-    type: :noop
-  ]
+  config_file: "./config/config-local.yaml",
+  prometheus_port: 9568

@@ -93,4 +93,4 @@ channel_sender_ex:
       # if secret is provided, the other fields can be overwritten by the secret but only if there are present in the secret
 
 logger:
-  level: debug
+  level: error
