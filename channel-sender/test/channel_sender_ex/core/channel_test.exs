@@ -5,7 +5,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   import Mock
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.Channel.Data
+  alias ChannelSenderEx.Core.Data
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider

@@ -2,6 +2,10 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   @moduledoc """
   Endpoints for internal channel creation and channel message delivery orders
   """
+
+  alias ChannelSenderEx.Adapter.WsConnections
+  alias ChannelSenderEx.Persistence.ChannelPersistence
+  alias ChannelSenderEx.Core.Data
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
@@ -21,13 +25,18 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   plug(Plug.Parsers,
     parsers: [:urlencoded, :json],
-    json_decoder: {Jason, :decode!, [[keys: :atoms]]}
+    json_decoder: {Jason, :decode!, [[keys: :strings]]}
   )
 
   plug(:dispatch)
 
   get("/health", do: send_resp(conn, 200, "UP"))
   post("/ext/channel/create", do: create_channel(conn))
+
+  post("/ext/channel/gateway/connect", do: connect_client(conn))
+  post("/ext/channel/gateway/disconnect", do: disconnect_client(conn))
+  post("/ext/channel/gateway/message", do: message_client(conn))
+
   post("/ext/channel/deliver_message", do: deliver_message(conn))
   post("/ext/channel/deliver_batch", do: deliver_message(conn))
   delete("/ext/channel", do: close_channel(conn))
@@ -35,17 +44,17 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp create_channel(conn) do
     # collect metadata from headers, up to 3 metadata fields
-    metadata = conn.req_headers
+    headers = conn.req_headers
     |> Enum.filter(fn {key, _} -> String.starts_with?(key, @metadata_headers_prefix) end)
     |> Enum.map(fn {key, value} -> {String.replace(key, @metadata_headers_prefix, ""), String.slice(value, 0, 50)} end)
     |> Enum.take(@metadata_headers_max)
-    route_create(conn.body_params, metadata, conn)
+    route_create(conn.body_params, %{"headers" => headers, "postponed" => %{}}, conn)
   end
 
-  @spec route_create(map(), list(), Plug.Conn.t()) :: Plug.Conn.t()
+  @spec route_create(map(), map(), Plug.Conn.t()) :: Plug.Conn.t()
   defp route_create(message = %{
-    application_ref: application_ref,
-    user_ref: user_ref
+    "application_ref" => application_ref,
+    "user_ref" => user_ref
   }, metadata, conn
   ) do
 
@@ -55,6 +64,12 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     case is_valid do
       true ->
         {channel_ref, channel_secret} = ChannelAuthenticator.create_channel(application_ref, user_ref, metadata)
+
+        # invocar al worker
+        Task.start(fn ->
+          ChannelPersistence.save_channel_data(Data.new(channel_ref, application_ref, user_ref, metadata))
+        end)
+
         response = %{channel_ref: channel_ref, channel_secret: channel_secret}
 
         conn
@@ -69,6 +84,138 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp route_create(_body, _metadata, conn) do
     invalid_body(conn)
   end
+
+  ## ----------------- Gateway endpoints ----------------- ##
+
+  defp connect_client(conn) do
+    route_connect(get_header(conn, "channel"),
+      get_header(conn, "connectionid"), conn)
+  rescue
+    e ->
+      Logger.error("Error authorizing channel: #{inspect(e)}")
+      conn
+      |> put_resp_header("content-type", "application/json")
+      |> send_resp(200, Jason.encode!(%{"message" => "invalid request"}))
+  end
+
+  defp route_connect(channel, connection_id, conn) do
+    result = case PubSubCore.channel_exists?(channel) do
+      {true, _pid} ->
+        Logger.debug("Channel #{channel} validation response: true")
+        Task.start(fn ->
+          ChannelPersistence.save_socket_data(connection_id, channel)
+        end)
+        Jason.encode!("{\"result\": \"OK\"}")
+
+      false ->
+        Logger.error("Channel #{channel} validation response: Channel does not exist")
+
+        # the channel does not exist, close the connection
+        Task.start(fn ->
+          Process.sleep(50) # must wait for the socket to be fully created in AWS, for the send data and close to work
+          WsConnections.send_data(connection_id, "[\"\",\"Error::3008\", \"\", \"\"]")
+          Process.sleep(50)
+          WsConnections.close(connection_id)
+        end)
+
+        Jason.encode!("{\"result\": \"4001\"}")
+    end
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, result)
+  end
+
+  defp message_client(conn) do
+    process_message(conn.body_params, get_header(conn, "connectionid"), conn)
+  rescue
+    e ->
+      Logger.error("Error processing message: #{inspect(e)}")
+      conn
+      |> put_resp_header("content-type", "text/plain")
+      |> send_resp(200, "[\"\",\"Error\", \"\", \"\"]")
+  end
+
+  defp process_message(message = %{
+    "action" => _action,
+    "channel" => channel,
+    "secret" => secret
+   }, connection_id, conn) do
+
+    Logger.debug("Authorization message #{inspect(message)}")
+
+    case ChannelAuthenticator.authorize_channel(channel, secret) do
+      {:ok, _application, _user_ref} ->
+        Logger.debug("Authorized channel Success #{channel}")
+        # update the channel process with the socket connection id
+        Task.start(fn ->
+          PubSubCore.update_connection_id(channel, connection_id)
+        end)
+
+        conn
+        |> put_resp_header("content-type", "text/plain")
+        |> send_resp(200, "[\"\",\"AuthOK\", \"\", \"\"]")
+
+      :unauthorized ->
+        Logger.error("Unauthorized channel #{channel}")
+
+        result = conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(401, "[\"\",\"AuthFailed\", \"\", \"\"]")
+
+        Task.start(fn ->
+          Process.sleep(50)
+          WsConnections.close(connection_id)
+        end)
+        result
+    end
+  rescue
+    e ->
+      Logger.error("Error authorizing channel : #{inspect(e)}")
+      conn
+      |> put_resp_header("content-type", "text/plain")
+      |> send_resp(400, "[\"\",\"AuthError\", \"\", \"\"]")
+  end
+
+  defp process_message(message = %{
+    "action" => _action,
+    "channel" => channel,
+    "ack_message_id" => message_id
+   }, _connection_id, conn) do
+
+    Logger.debug("Ack message #{inspect(message)}")
+
+    PubSubCore.ack_message(channel, message_id)
+
+    conn
+    |> put_resp_header("content-type", "text/plain")
+    |> send_resp(200, "[\"\",\"AckOK\", \"\", \"\"]")
+
+  rescue
+    e ->
+      Logger.error("Error ACK message : #{inspect(e)}")
+      conn
+      |> put_resp_header("content-type", "text/plain")
+      |> send_resp(400, "[\"\",\"AckError\", \"\", \"\"]")
+  end
+
+  defp disconnect_client(conn) do
+    IO.inspect(conn, label: "OnDisconnect Request")
+    case ChannelPersistence.get_channel_data("socket_" <> get_header(conn,"connectionid")) do
+      {:ok, loaded_data} ->
+        PubSubCore.update_connection_id(loaded_data.channel, "")
+        Task.start(fn ->
+          ChannelPersistence.delete_channel_data("socket_" <> get_header(conn,"connectionid"))
+        end)
+      {:error, _} ->
+        :ok
+    end
+    conn
+        |> put_resp_header("content-type", "application/json")
+        |> send_resp(200, Jason.encode!(%{"message" => "Disconnect acknowledged"}))
+  end
+
+  ## ----------------- End Gateweay endpoints ----------------- ##
 
   defp close_channel(conn) do
     channel = conn.query_string
@@ -100,7 +247,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp route_deliver(_body = %{
-    messages: messages
+    "messages" => messages
     }, conn) do
 
     # takes N first messages and separates them into valid and invalid messages
@@ -110,16 +257,15 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     |> perform_delivery
 
     batch_build_response({valid_messages, invalid_messages}, messages, conn)
-
   end
 
   defp route_deliver(
     message = %{
-      channel_ref: channel_ref,
-      message_id: _message_id,
-      correlation_id: _correlation_id,
-      message_data: _message_data,
-      event_name: _event_name
+      "channel_ref" => channel_ref,
+      "message_id" => _message_id,
+      "correlation_id" => _correlation_id,
+      "message_data" => _message_data,
+      "event_name" => _event_name
      }, conn
    ) do
     assert_deliver_request(message)
@@ -129,11 +275,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp route_deliver(
         message = %{
-          app_ref: app_ref,
-          message_id: _message_id,
-          correlation_id: _correlation_id,
-          message_data: _message_data,
-          event_name: _event_name
+          "app_ref" => app_ref,
+          "message_id" => _message_id,
+          "correlation_id" => _correlation_id,
+          "message_data" => _message_data,
+          "event_name" => _event_name
         }, conn
       ) do
 
@@ -145,11 +291,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp route_deliver(
     message = %{
-      user_ref: user_ref,
-      message_id: _message_id,
-      correlation_id: _correlation_id,
-      message_data: _message_data,
-      event_name: _event_name
+      "user_ref" => user_ref,
+      "message_id" => _message_id,
+      "correlation_id" => _correlation_id,
+      "message_data" => _message_data,
+      "event_name" => _event_name
     }, conn
   ) do
 
@@ -199,7 +345,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
     Task.start(fn ->
       new_msg = message
-      |> Map.drop([:channel_ref])
+      |> Map.drop(["channel_ref"])
       |> ProtocolMessage.to_protocol_message
 
       PubSubCore.deliver_to_channel(channel_ref, new_msg)
@@ -318,6 +464,13 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     conn
     |> put_resp_header("content-type", "application/json")
     |> send_resp(conn.status, response)
+  end
+
+  defp get_header(conn, name) do
+    conn.req_headers
+    |> Enum.filter(fn {key, _} -> key == name end)
+    |> Enum.map(fn {_, value} -> value end)
+    |> List.first()
   end
 
 end

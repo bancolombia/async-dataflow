@@ -2,6 +2,8 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
   @moduledoc """
   Provides base implementation for transport modules.
   """
+alias ChannelSenderEx.Core.ChannelSupervisor
+alias ChannelSenderEx.Persistence.ChannelPersistence
 
   @doc false
   defmacro __using__(opts) do
@@ -101,8 +103,14 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
         # retries 3 times the lookup of the channel reference (useful when running as a cluster with several nodes)
         # with a backoff strategy of 100ms initial delay and max of 500ms delay.
         execute(100, 500, 3, action_fn, fn ->
-          Logger.error("Transport #{@__option__} unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
-          {:error, <<@invalid_channel_code>>}
+          case spawn_channel_from_persistence(channel_ref) do
+            {:ok, pid} = proc ->
+              #Logger.debug(fn -> "Transport #{@__option__} recovered channel from persistence: #{channel_ref} and started it. pid: #{inspect(pid)}" end)
+              proc
+            _ ->
+              Logger.error(fn -> "Transport #{@__option__} unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}" end)
+              {:error, <<@invalid_channel_code>>}
+          end
         end)
       end
 
@@ -127,12 +135,36 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
         Process.monitor(channel_pid)
       end
 
+      defp spawn_channel_from_persistence(channel_ref) do
+        case ChannelPersistence.get_channel_data(channel_ref) do
+          {:ok, data} ->
+            call_supervisor({channel_ref, data.application, data.user_ref, data.meta})
+          {:error, :not_found} ->
+            Logger.debug(fn -> "Channel not found in persistence: #{channel_ref}" end)
+            {:error, :not_found}
+        end
+      end
+
+      defp call_supervisor(params = {channel_ref, application, user_ref, meta}) do
+        case ChannelSupervisor.start_channel({channel_ref, application, user_ref, meta}) do
+          {:ok, pid} = resp ->
+            resp
+          {:error, {:already_started, pid}} ->
+            {:ok, pid}
+          {:error, reason} ->
+            {:error, reason}
+        end
+        rescue
+          e ->
+            Logger.error(fn -> "Error spawning channel from transport : #{inspect(params)}: #{inspect(e)}" end)
+            {:error, :not_found}
+      end
+
       def get_param(param, def) do
         RulesProvider.get(param)
       rescue
         _e -> def
       end
-
     end
   end
 

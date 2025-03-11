@@ -111,6 +111,10 @@ defmodule ChannelSenderEx.ApplicationConfig do
 
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
+    persistence_cfg = parse_persistence(config)
+    Application.put_env(:channel_sender_ex, :persistence, persistence_cfg)
+    Application.put_env(:channel_sender_ex, :persistence_ttl, persistence_cfg[:ttl] || 900)
+
     if config == %{} do
       Logger.warning("No valid configuration found!!!, Loading pre-defined default values : #{inspect(Application.get_all_env(:channel_sender_ex))}")
     else
@@ -118,6 +122,15 @@ defmodule ChannelSenderEx.ApplicationConfig do
     end
 
     config
+  end
+
+  defp parse_persistence(config) do
+    persistence = fetch(config, :channel_sender_ex, "persistence")
+    [
+      enabled: Map.get(persistence, "enabled", false),
+      type: process_param(Map.get(persistence, "type", ":none")),
+      config: parse_config_key(Map.get(persistence, "config", %{}))
+    ]
   end
 
   defp parse_libcluster_topology(config) do
@@ -145,10 +158,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     end
   end
 
-  defp process_param(param) when is_integer(param) do
-    param
-  end
-
+  defp process_param(_param = "nil"), do: nil
   defp process_param(param) when is_binary(param) do
     case String.starts_with?(param, ":") do
       true ->
@@ -156,6 +166,9 @@ defmodule ChannelSenderEx.ApplicationConfig do
       false ->
         param
     end
+  end
+  defp process_param(param) do
+    param
   end
 
   defp fetch(config, base) do

@@ -58,10 +58,59 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   end
 
   defp do_deliver_to_channel(channel_ref, message) do
-    case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      pid when is_pid(pid) -> Channel.deliver_message(pid, message)
-      :noproc ->
-        :retry
+    case channel_exists?(channel_ref) do
+      {true, pid} -> Channel.deliver_message(pid, message)
+      _ -> :retry
+    end
+  end
+
+  @doc """
+  Updates the websocket connection id in the channel process associated with the given channel reference.
+  """
+  @spec update_connection_id(channel_ref(), binary()) :: any()
+  def update_connection_id(channel_ref, connection_id) do
+    action_fn = fn _ -> do_update_connection_id(channel_ref, connection_id) end
+    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
+      CustomTelemetry.execute_custom_event([:adf, :message, :nodelivered], %{count: 1})
+      raise("No channel found")
+    end)
+  rescue
+    e ->
+      Logger.warning("Could not update channel with connection id after #{@max_retries} retries, to channel: \"#{channel_ref}\". Cause: #{inspect(e)}")
+      :error
+  end
+
+  defp do_update_connection_id(channel_ref, connection_id) do
+    case channel_exists?(channel_ref) do
+      {true, pid} ->
+        case connection_id do
+          "" -> Channel.socket_disconnected(pid)
+          _ -> Channel.socket_connected(pid, connection_id)
+        end
+      _ -> :retry
+    end
+  end
+
+  @doc """
+  Acks a message.
+  """
+  @spec ack_message(channel_ref(), binary()) :: any()
+  def ack_message(channel_ref, msg_id) do
+    action_fn = fn _ -> do_ack_id(channel_ref, msg_id) end
+    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
+      CustomTelemetry.execute_custom_event([:adf, :message, :nodelivered], %{count: 1})
+      raise("No channel found")
+    end)
+  rescue
+    e ->
+      Logger.warning("Could not update channel with connection id after #{@max_retries} retries, to channel: \"#{channel_ref}\". Cause: #{inspect(e)}")
+      :error
+  end
+
+  defp do_ack_id(channel_ref, msg_id) do
+    case channel_exists?(channel_ref) do
+      {true, pid} -> Channel.notify_ack(pid, msg_id, msg_id)
+      _ -> :retry
     end
   end
 
@@ -74,10 +123,16 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   end
 
   def do_delete_channel(channel_ref) do
+    case channel_exists?(channel_ref) do
+      {true, pid} -> Channel.stop(pid)
+      _ -> :retry
+    end
+  end
+
+  def channel_exists?(channel_ref) do
     case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      pid when is_pid(pid) -> Channel.stop(pid)
-      :noproc ->
-        :retry
+      pid when is_pid(pid) -> {true, pid}
+      :noproc -> false
     end
   end
 end

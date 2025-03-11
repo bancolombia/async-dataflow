@@ -40,6 +40,9 @@ defmodule ChannelSenderEx.Core.BoundedMap do
     Map.get(map, key)
   end
 
+  # get all keys
+  def keys({_, keys}), do: keys
+
   # Pop a key-value pair
   def pop({map, keys}, key) do
     if Map.has_key?(map, key) do
@@ -64,13 +67,28 @@ defmodule ChannelSenderEx.Core.BoundedMap do
     end
   end
 
-  # Convert to a plain map
-  def to_map({map, _keys}), do: map
+  def to_map({map, _keys}) do
+    Enum.map(map, fn {k, v} -> {k, parse_data(v)} end)
+    |> Enum.into(%{})
+  end
 
+  def from_map(map) do
+    Enum.reduce(map, new(), fn {k, v}, acc ->
+      put(acc, k, List.to_tuple(v))
+    end)
+  end
   def merge({map, keys}, {map2, keys2}) do
     new_map = Map.merge(map, map2)
     new_keys = keys ++ keys2
     {new_map, new_keys}
+  end
+
+  defp parse_data(data) when is_tuple(data) do
+    data |> Tuple.to_list()
+  end
+
+  defp parse_data(data) do
+    data
   end
 
 end

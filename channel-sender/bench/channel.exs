@@ -1,5 +1,5 @@
 alias ChannelSenderEx.Core.Channel
-alias ChannelSenderEx.Core.Channel.Data
+alias ChannelSenderEx.Core.Data
 alias ChannelSenderEx.Core.ProtocolMessage
 alias ChannelSenderEx.Core.ChannelIDGenerator
 

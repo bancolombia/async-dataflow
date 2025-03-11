@@ -59,6 +59,11 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       counter("elixir.adf.message.delivered.count", tags: [:service]),
       counter("elixir.adf.message.nodelivered.count", tags: [:service]),
 
+      counter("elixir.adf.persistence.get.count", tags: [:service]),
+      counter("elixir.adf.persistence.getmiss.count", tags: [:service]),
+      counter("elixir.adf.persistence.save.count", tags: [:service]),
+      counter("elixir.adf.persistence.delete.count", tags: [:service]),
+
       counter("elixir.adf.socket.badrequest.count", tags: [:request_path, :status, :code, :service]),
       counter("elixir.adf.socket.switchprotocol.count", tags: [:request_path, :status, :code, :service]),
       counter("elixir.adf.socket.connection.count", tags: [:service]),

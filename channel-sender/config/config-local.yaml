@@ -1,5 +1,5 @@
 channel_sender_ex:
-  rest_port: 8081
+  rest_port: 3000
   socket_port: 8082
   secret_generator:
     base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
@@ -64,6 +64,11 @@ channel_sender_ex:
   topology:
     strategy: Elixir.Cluster.Strategy.Gossip # for local development
 
+  api_gateway:
+    id: "zf2fc0xj0i"
+    region: "us-east-1"
+    stage: "beta"
+
     # strategy: Elixir.Cluster.Strategy.Kubernetes # topology for kubernetes
     # config: 
     #   mode: :hostname
@@ -76,6 +81,20 @@ channel_sender_ex:
 
     # see https://github.com/bancolombia/async-dataflow/tree/master/channel-sender/deploy_samples/k8s
     # for more information about the kubernetes configuration with libcluser
+
+  persistence:
+    enabled: true # Indicates if the persistence layer is enabled
+    type: :redis # Indicates the type of persistence layer
+    ttl: 900 # Time to live of the messages (seconds) in the persistence layer (after each write operation)
+    # config:
+    #   ssl: false # Indicates if the connection to the persistence layer is encrypted
+    #   host: "localhost" # Host of the persistence layer
+    #   hostread: "localhost" # Host of the persistence layer for read operations
+    #   port: 6379 # Port of the persistence layer
+    #   username: nil # Username to connect to the persistence layer
+    #   password: nil # Password to connect to the persistence layer
+      # secret: "redis-secret" # Secret to connect to the persistence layer secret can be json like: {"username": "", "password": "", "host": "", "hostread", "port": 0, "ssl": false}
+      # if secret is provided, the other fields can be overwritten by the secret but only if there are present in the secret
 
 logger:
   level: debug

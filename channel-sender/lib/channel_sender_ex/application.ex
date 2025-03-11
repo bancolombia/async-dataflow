@@ -5,6 +5,7 @@ defmodule ChannelSenderEx.Application do
 
   alias ChannelSenderEx.ApplicationConfig
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Persistence.ChannelPersistence
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Utils.ClusterUtils
@@ -12,6 +13,7 @@ defmodule ChannelSenderEx.Application do
 
   use Application
   require Logger
+  @default_prometheus_port 9568
 
   def start(_type, _args) do
 
@@ -30,23 +32,31 @@ defmodule ChannelSenderEx.Application do
     Supervisor.start_link(children(no_start_param), opts)
   end
 
-  defp children(no_start_param) do
-    case no_start_param do
-      false ->
-        [
-          {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
-          ChannelSenderEx.Core.ChannelRegistry,
-          ChannelSenderEx.Core.ChannelSupervisor,
-          ChannelSenderEx.Core.NodeObserver,
-          {Plug.Cowboy, scheme: :http, plug: RestController, options: [
-            port: Application.get_env(:channel_sender_ex, :rest_port),
-          ]},
-          {TelemetryMetricsPrometheus, [metrics: CustomTelemetry.metrics()]},
-          # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()}
-        ]
-      true ->
-        []
-    end
+  defp children(_no_start_param = true), do: []
+
+  defp children(_no_start_param = false) do
+    prometheus_port = Application.get_env(:channel_sender_ex, :prometheus_ports, @default_prometheus_port)
+
+    [
+      {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
+      ChannelSenderEx.Core.ChannelRegistry,
+      ChannelSenderEx.Core.ChannelSupervisor,
+      ChannelSenderEx.Core.NodeObserver,
+      {Plug.Cowboy,
+       scheme: :http,
+       plug: RestController,
+       options: [
+         port: Application.get_env(:channel_sender_ex, :rest_port)
+       ]},
+      {TelemetryMetricsPrometheus,
+       [
+         metrics: CustomTelemetry.metrics(),
+         port: prometheus_port
+       ]},
+      # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()},
+      {Finch, name: AwsConnectionsFinch},
+      :poolboy.child_spec(:worker, poolboy_config())
+    ] ++ ChannelPersistence.child_spec()
   end
 
   defp topologies do
@@ -55,5 +65,14 @@ defmodule ChannelSenderEx.Application do
     ]
     Logger.debug("Topology selected: #{inspect(topology)}")
     topology
+  end
+
+  defp poolboy_config do
+    [
+      name: {:local, :worker},
+      worker_module: ChannelSenderEx.Core.ChannelWorker,
+      size: 80,
+      max_overflow: 20
+    ]
   end
 end
