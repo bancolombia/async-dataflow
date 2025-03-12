@@ -41,8 +41,16 @@ defmodule ChannelSenderEx.Core.Data do
     }
   end
 
-  def put_in_meta(data, key, value) do
-    %{data | meta: Map.put(data.meta, key, value)}
+  def put_in_meta(data = %__MODULE__{}, key, value) do
+    %__MODULE__{data | meta: Map.put(data.meta, key, value)}
+  end
+
+  def set_pending(data = %__MODULE__{}, pending) do
+    %__MODULE__{data | pending: pending}
+  end
+
+  def set_socket(data = %__MODULE__{}, socket) do
+    %__MODULE__{data | socket: socket}
   end
 
 end

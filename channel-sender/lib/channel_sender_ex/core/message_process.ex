@@ -14,12 +14,9 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   # alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [exp_back_off: 4]
 
-  @on_connected_channel_reply_timeout 2000
-  @millis_to_seconds 1000
-  @default_token_age_seconds 900
   @default_redelivery_time_millis 900
-  @default_max_pending_queue 100
   @default_max_backoff_redelivery_millis 1_700
+  @default_retries 20
 
   @type msg_tuple() :: ProtocolMessage.t()
   @type deliver_msg() :: {:deliver_msg, {pid(), String.t()}, msg_tuple()}
@@ -27,14 +24,18 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   @type deliver_response :: :accepted
 
   @doc false
-  def start_link(args = {_channel_ref, _socket_id, _message}, opts \\ []) do
-    GenStateMachine.start_link(__MODULE__, args, opts)
+  def start_link(args = {_channel_ref, _message_id}, opts \\ []) do
+    GenServer.start_link(__MODULE__, args, opts)
   end
 
   @doc false
-  def init({channel_ref, socket_id, message_id}) do
-    schedule_work(0)
-    {:ok, {channel_ref, socket_id, message_id, 0, get_param(:max_unacknowledged_retries, 20)}}
+  @impl true
+  def init({channel_ref, message_id}) do
+    initial_retries = 0
+    schedule_work(initial_retries)
+    max_retries = get_param(:max_unacknowledged_retries, @default_retries)
+
+    {:ok, {channel_ref, message_id, initial_retries, max_retries}}
   end
 
   defp schedule_work(retries) do
@@ -43,81 +44,86 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
   @impl true
   def handle_info(:route_message, state) do
-    {channel_ref, socket_id, message_id, retries, max_retries} = state
+    {channel_ref, message_id, _retries, _max_retries} = state
 
-    result = get_from_state(channel_ref)
+    get_from_state(channel_ref)
     |> retrieve_pending(message_id)
-    |> send_message(socket_id)
-
-    case result do
-      :ok ->
-        case retries do
-          r when r >= max_retries ->
-            Logger.warning(fn -> "Channel #{channel_ref} reached max retries for message #{message_id}" end)
-            {:stop, :normal, state}
-          _ ->
-            Logger.debug(fn ->
-              "Channel #{channel_ref} re-delivered message #{message_id} (retry ##{retries + 1})..."
-            end)
-            schedule_work(retries + 1)
-            {:noreply, {channel_ref, socket_id, message_id, retries + 1, max_retries}}
-        end
-      _ ->
-        # the message no longer exist in the persistence we can stop the process
-        {:stop, :normal, state}
-    end
+    |> send_message()
+    |> schedule_or_stop(state)
   end
 
   @spec get_from_state(binary()) :: {:ok, Data.t()} | :noop
   defp get_from_state(ref) do
     case ChannelPersistence.get_channel_data(ref) do
-      {:ok, _loaded_data} = data ->
+      {:ok, data} ->
         data
+
       {:error, _} ->
         :noop
     end
   end
 
-  defp retrieve_pending({:ok, _data = %{pending: pending}}, ref) do
-    case BoundedMap.size(pending) do
-      0 -> :noop
-      _ ->
-        case BoundedMap.pop(pending, ref) do
-          {:noop, pending} ->
-            {:noop, pending}
-          {message, new_pending} ->
-            {message, new_pending}
-        end
+  defp retrieve_pending(:noop, _message_id), do: :noop
+  defp retrieve_pending(%{socket: nil}, _message_id), do: :no_socket
+  defp retrieve_pending(%{socket: ""}, _message_id), do: :no_socket
+
+  defp retrieve_pending(%{pending: pending, socket: connection_id}, message_id) do
+    case BoundedMap.pop(pending, message_id) do
+      {:noop, _bounded_map} ->
+        :noop
+
+      {message, _new_pending} ->
+        {message, connection_id}
     end
   end
 
-  defp retrieve_pending(:noop, _ref) do
-    :noop
-  end
+  defp send_message(:noop), do: :noop
+  defp send_message(:no_socket), do: :no_socket
 
-  defp send_message(data = {:noop, _}, _socket_id) do
-    data
-  end
-
-  # @spec send_message(map(), binary()) :: deliver_msg()
-  defp send_message(data = {message, _new_pending}, socket_id) do
-
-    # TODO optimize this mess
-    new_msg = message
-    |> Map.drop(["channel_ref"])
-    |> ProtocolMessage.to_protocol_message
+  defp send_message({message, socket_id}) do
+    socket_message =
+      ProtocolMessage.to_protocol_message(message)
+      |> ProtocolMessage.to_socket_message()
+      |> Jason.encode!()
 
     # sends to socket id
-    WsConnections.send_data(socket_id,
-      ProtocolMessage.to_socket_message(message)
-      |> Jason.encode!())
-
+    WsConnections.send_data(socket_id, socket_message)
     :ok
   end
 
+  defp schedule_or_stop(:noop, state) do
+    # the message no longer exist in the persistence we can stop the process
+    {:stop, :normal, state}
+  end
+
+  defp schedule_or_stop(_other, state) do
+    {channel_ref, message_id, retries, max_retries} = state
+
+    if retries >= max_retries do
+      Logger.warning(fn ->
+        "Channel #{channel_ref} reached max retries for message #{message_id}"
+      end)
+
+      {:stop, :normal, state}
+    else
+      Logger.debug(fn ->
+        "Channel #{channel_ref} re-delivered message #{message_id} (retry ##{retries + 1})..."
+      end)
+
+      schedule_work(retries + 1)
+      {:noreply, {channel_ref, message_id, retries + 1, max_retries}}
+    end
+  end
+
   defp calculate_next_redelivery_time(retries) do
-    round(exp_back_off(get_param(:initial_redelivery_time, @default_redelivery_time_millis),
-      @default_max_backoff_redelivery_millis, retries, 0.2))
+    round(
+      exp_back_off(
+        get_param(:initial_redelivery_time, @default_redelivery_time_millis),
+        @default_max_backoff_redelivery_millis,
+        retries,
+        0.2
+      )
+    )
   end
 
   defp get_param(param, def) do
@@ -125,5 +131,4 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   rescue
     _e -> def
   end
-
 end

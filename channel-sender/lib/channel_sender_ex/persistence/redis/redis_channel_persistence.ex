@@ -11,7 +11,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
   @impl true
   @spec save_channel_data(Data.t()) :: :ok
-  def save_channel_data(data = %Data{channel: channel_id}) do
+  def save_channel_data(data = %Data{channel: channel_ref}) do
       Logger.debug(fn -> "Saving channel data: #{inspect(data)}" end)
 
       ttl = get_channel_data_ttl()
@@ -24,7 +24,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
       CustomTelemetry.execute_custom_event([:adf, :persistence, :save], %{count: 1})
 
-      Redix.noreply_command(:redix_write, ["SETEX", "channel_" <> channel_id, ttl, serializable])
+      Redix.noreply_command(:redix_write, ["SETEX", "channel_" <> channel_ref, ttl, serializable])
       case data.socket do
         nil -> :ok
         socket ->
@@ -38,7 +38,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
   @impl true
   @spec save_socket_data(binary(), binary()) :: :ok
-  def save_socket_data(socket_id, channel_ref) do
+  def save_socket_data(channel_ref, socket_id) do
       Logger.debug(fn -> "Saving socket-channel relation: #{socket_id} - #{channel_ref}" end)
       ttl = get_channel_data_ttl()
       Redix.noreply_command(:redix_write, ["SETEX", "socket_" <> socket_id, ttl, channel_ref])
@@ -50,27 +50,27 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
   @impl true
   @spec delete_channel_data(binary()) :: :ok
-  def delete_channel_data(channel_id) do
+  def delete_channel_data(channel_ref) do
     CustomTelemetry.execute_custom_event([:adf, :persistence, :delete], %{count: 1})
-    Redix.noreply_command(:redix_write, ["DEL", channel_id])
+    Redix.noreply_command(:redix_write, ["DEL", channel_ref])
   rescue
     e ->
-      Logger.error(fn -> "Error while deleting channel/socket data [#{channel_id}]: #{inspect(e)}" end)
+      Logger.error(fn -> "Error while deleting channel/socket data [#{channel_ref}]: #{inspect(e)}" end)
       :ok
   end
 
   @impl true
   @spec get_channel_data(binary()) :: {:ok, Data.t()} | {:error, :not_found}
-  def get_channel_data(channel_id) do
-    case String.starts_with?(channel_id, "socket_") do
-      true -> lookup_socket(channel_id)
-      false -> lookup_channel(channel_id)
+  def get_channel_data(channel_ref) do
+    case String.starts_with?(channel_ref, "socket_") do
+      true -> lookup_socket(channel_ref)
+      false -> lookup_channel(channel_ref)
     end
   end
 
-  def lookup_channel(channel_id) do
-    Logger.debug(fn -> "Getting channel data for channel: #{channel_id}" end)
-    with {:ok, data} when not is_nil(data) <- Redix.command(:redix_read, ["GET", channel_id]),
+  def lookup_channel(channel_ref) do
+    Logger.debug(fn -> "Getting channel data for channel: #{channel_ref}" end)
+    with {:ok, data} when not is_nil(data) <- Redix.command(:redix_read, ["GET", channel_ref]),
         {:ok, map} <- Jason.decode(data) do
       parsed =
         Map.put(map, "pending", BoundedMap.from_map(Map.get(map, "pending")))
@@ -81,7 +81,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
       {:ok, struct(Data, parsed)}
     else
       _ ->
-        Logger.debug(fn -> "Channel data not found for: #{channel_id}" end)
+        Logger.debug(fn -> "Channel data not found for: #{channel_ref}" end)
         CustomTelemetry.execute_custom_event([:adf, :persistence, :getmiss], %{count: 1})
         {:error, :not_found}
     end

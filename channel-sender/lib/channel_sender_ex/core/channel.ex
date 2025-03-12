@@ -19,7 +19,6 @@ defmodule ChannelSenderEx.Core.Channel do
   @millis_to_seconds 1000
   @default_token_age_seconds 900
   @default_redelivery_time_millis 900
-  @default_max_pending_queue 100
   @default_max_backoff_redelivery_millis 1_700
 
   @type msg_tuple() :: ProtocolMessage.t()

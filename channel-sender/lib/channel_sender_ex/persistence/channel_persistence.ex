@@ -14,18 +14,18 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
   end
 
   @spec save_socket_data(binary(), binary()) :: :ok
-  def save_socket_data(socket_id, channel_ref) do
-    imp().save_socket_data(socket_id, channel_ref)
+  def save_socket_data(channel_ref, socket_id) do
+    imp().save_socket_data(channel_ref, socket_id)
   end
 
   @spec delete_channel_data(binary()) :: :ok
-  def delete_channel_data(channel_id) do
-    imp().delete_channel_data(channel_id)
+  def delete_channel_data(channel_ref) do
+    imp().delete_channel_data(channel_ref)
   end
 
   @spec get_channel_data(binary()) :: {:ok, Data.t()} | {:error, :not_found}
-  def get_channel_data(channel_id) do
-    imp().get_channel_data(channel_id)
+  def get_channel_data(channel_ref) do
+    imp().get_channel_data(channel_ref)
   end
 
   @spec child_spec() :: [Supervisor.child_spec()] | []

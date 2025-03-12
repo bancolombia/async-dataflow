@@ -10,13 +10,13 @@ defmodule ChannelSenderEx.Application do
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Utils.ClusterUtils
   alias ChannelSenderEx.Utils.CustomTelemetry
+  alias ChannelSenderEx.Core.ChannelWorker
 
   use Application
   require Logger
   @default_prometheus_port 9568
 
   def start(_type, _args) do
-
     _config = ApplicationConfig.load()
 
     ClusterUtils.discover_and_connect_local()
@@ -24,6 +24,7 @@ defmodule ChannelSenderEx.Application do
     CustomTelemetry.custom_telemetry_events()
 
     no_start_param = Application.get_env(:channel_sender_ex, :no_start)
+
     if !no_start_param do
       EntryPoint.start()
     end
@@ -35,12 +36,15 @@ defmodule ChannelSenderEx.Application do
   defp children(_no_start_param = true), do: []
 
   defp children(_no_start_param = false) do
-    prometheus_port = Application.get_env(:channel_sender_ex, :prometheus_ports, @default_prometheus_port)
+    prometheus_port =
+      Application.get_env(:channel_sender_ex, :prometheus_ports, @default_prometheus_port)
+
+    pool_opts = Application.get_env(:channel_sender_ex, :channel_worker_pool, [])
 
     [
       {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
-      ChannelSenderEx.Core.ChannelRegistry,
-      ChannelSenderEx.Core.ChannelSupervisor,
+      ChannelSenderEx.Core.MessageProcessRegistry,
+      ChannelSenderEx.Core.MessageProcessSupervisor,
       ChannelSenderEx.Core.NodeObserver,
       {Plug.Cowboy,
        scheme: :http,
@@ -55,7 +59,7 @@ defmodule ChannelSenderEx.Application do
        ]},
       # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()},
       {Finch, name: AwsConnectionsFinch},
-      :poolboy.child_spec(:worker, poolboy_config())
+      ChannelWorker.pool_child_spec(pool_opts)
     ] ++ ChannelPersistence.child_spec()
   end
 
@@ -63,16 +67,8 @@ defmodule ChannelSenderEx.Application do
     topology = [
       k8s: Application.get_env(:channel_sender_ex, :topology)
     ]
+
     Logger.debug("Topology selected: #{inspect(topology)}")
     topology
-  end
-
-  defp poolboy_config do
-    [
-      name: {:local, :worker},
-      worker_module: ChannelSenderEx.Core.ChannelWorker,
-      size: 80,
-      max_overflow: 20
-    ]
   end
 end
