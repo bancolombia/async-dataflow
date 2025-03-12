@@ -6,6 +6,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Rest.RestController
+  alias ChannelSenderEx.Core.ChannelWorker
+  alias ChannelSenderEx.Core.Data
+  alias ChannelSenderEx.Core.HeadlessChannelOperations
 
   @moduletag :capture_log
   @options RestController.init([])
@@ -29,8 +32,10 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   test "Should create channel on request" do
     body = Jason.encode!(%{application_ref: "some_application", user_ref: "user_ref_00117ALM"})
 
-    with_mock ChannelAuthenticator, [create_channel: fn(_, _, _) -> {"xxxx", "yyyy"} end] do
-
+    with_mocks([
+      {ChannelAuthenticator, [], [create_channel_credentials: fn(_, _) -> {"xxxx", "yyyy"} end]},
+      {ChannelWorker, [], [save_channel: fn(_) -> :ok end]},
+    ]) do
       conn = conn(:post, "/ext/channel/create", body)
       |> put_req_header("content-type", "application/json")
       |> put_req_header("x-meta-foo", "bar")
@@ -400,6 +405,149 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
       assert %{"error" => "Invalid request", "request" => %{}} =
                Jason.decode!(conn2.resp_body)
 
+    end
+  end
+
+  test "Should call connected from gateway" do
+
+    with_mocks([
+      {HeadlessChannelOperations, [], [on_connect: fn(_ref, _socket) -> {:ok, "OK"} end]},
+    ]) do
+      conn = conn(:post, "/ext/channel/gateway/connect", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("channel", "xyz")
+      |> put_req_header("connectionid", "abc")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 200
+
+      assert %{"message" => "OK"}=
+               Jason.decode!(conn.resp_body)
+    end
+
+  end
+
+  test "Should call connected from gateway and handle bad request" do
+
+    with_mocks([
+      {HeadlessChannelOperations, [], [on_connect: fn(_ref, _socket) -> {:error, "3008"} end]},
+    ]) do
+      conn = conn(:post, "/ext/channel/gateway/connect", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("channel", "xyz")
+      |> put_req_header("connectionid", "abc")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 200
+
+      assert %{"message" => "3008"}=
+               Jason.decode!(conn.resp_body)
+    end
+
+  end
+
+  test "Should call disconnected from gateway" do
+
+    with_mocks([
+      {HeadlessChannelOperations, [], [on_disconnect: fn(_connection_id) -> :ok end]},
+    ]) do
+      conn = conn(:post, "/ext/channel/gateway/disconnect", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("connectionid", "abc")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 200
+
+      assert %{"message" => "Disconnect acknowledged"} =
+               Jason.decode!(conn.resp_body)
+    end
+
+  end
+
+  test "Should call auth message from gateway" do
+    body = Jason.encode!(%{
+      "action" => "sendMessage", "channel" => "xxx", "secret" => "foo.bar"
+    })
+    with_mocks([
+      {HeadlessChannelOperations, [], [on_message: fn(_data, _connection_id) -> {:ok, "[\"\",\"AuthOK\", \"\", \"\"]"} end]},
+    ]) do
+      conn = conn(:post, "/ext/channel/gateway/message", body)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("connectionid", "abc")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 200
+
+      assert ["", "AuthOK", "", ""] =
+               Jason.decode!(conn.resp_body)
+    end
+  end
+
+  test "Should call auth message from gateway and handle unauthorized" do
+    body = Jason.encode!(%{
+      "action" => "sendMessage", "channel" => "xxx", "secret" => "foo.bar"
+    })
+    with_mocks([
+      {HeadlessChannelOperations, [], [on_message: fn(_data, _connection_id) ->
+        {:unauthorized, "[\"\",\"AuthFailed\", \"\", \"\"]"} end]},
+    ]) do
+      conn = conn(:post, "/ext/channel/gateway/message", body)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("connectionid", "abc")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 401
+
+      assert ["", "AuthFailed", "", ""] =
+               Jason.decode!(conn.resp_body)
+    end
+  end
+
+  test "Should call ack message from gateway" do
+    body = Jason.encode!(%{
+      "action" => "sendMessage", "channel" => "xxx", "ack_message_id" => "foo.bar"
+    })
+    with_mocks([
+      {HeadlessChannelOperations, [], [on_message: fn(_data, _connection_id) ->
+        {:ok, "[\"\",\"AckOK\", \"\", \"\"]"} end]},
+    ]) do
+      conn = conn(:post, "/ext/channel/gateway/message", body)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("connectionid", "abc")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 200
+
+      assert ["", "AckOK", "", ""] =
+               Jason.decode!(conn.resp_body)
+    end
+  end
+
+  test "Should call ack message from gateway and handle error" do
+    body = Jason.encode!(%{
+      "action" => "sendMessage", "channel" => "xxx", "ack_message_id" => "foo.bar"
+    })
+    with_mocks([
+      {HeadlessChannelOperations, [], [on_message: fn(_data, _connection_id) ->
+        raise ("Dummy Error")
+      end]},
+    ]) do
+      conn = conn(:post, "/ext/channel/gateway/message", body)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("connectionid", "abc")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 200
+
+      assert ["", "Error", "", ""] =
+               Jason.decode!(conn.resp_body)
     end
   end
 

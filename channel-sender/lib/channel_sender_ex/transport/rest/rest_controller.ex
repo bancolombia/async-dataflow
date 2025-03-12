@@ -58,11 +58,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp connect_client(conn) do
     channel_ref = get_header(conn, "channel")
     connection_id = get_header(conn, "connectionid")
-    result = HeadlessChannelOperations.on_connect(channel_ref, connection_id)
+    {_, result} = HeadlessChannelOperations.on_connect(channel_ref, connection_id)
 
     conn
     |> put_resp_header("content-type", "application/json")
-    |> send_resp(200, result)
+    |> send_resp(200, Jason.encode!(%{"message" => result}))
   rescue
     e ->
       Logger.error("Error accepting channel connection: #{inspect(e)}")
@@ -101,11 +101,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp disconnect_client(conn) do
-    IO.inspect(conn, label: "OnDisconnect Request")
     connection_id = get_header(conn, "connectionid")
-
     HeadlessChannelOperations.on_disconnect(connection_id)
-
     conn
     |> put_resp_header("content-type", "application/json")
     |> send_resp(200, Jason.encode!(%{"message" => "Disconnect acknowledged"}))
