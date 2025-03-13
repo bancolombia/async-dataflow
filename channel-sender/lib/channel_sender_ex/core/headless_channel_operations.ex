@@ -29,8 +29,9 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     case ChannelPersistence.get_channel_data("channel_#{channel}") do
       {:ok, _data} ->
         Logger.debug("Channel #{channel} existence validation response: Channel exists")
+
         ChannelWorker.save_socket_data(channel, connection_id)
-        ""
+        {:ok, "OK"}
 
       {:error, _} ->
         Logger.error("Channel #{channel} existence validation response: Channel does not exist")
@@ -44,7 +45,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
           WsConnections.close(connection_id)
         end)
 
-        "{\"result\": \"4001\"}"
+        {:error, "3008"}
     end
   end
 

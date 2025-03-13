@@ -12,7 +12,7 @@ defmodule ChannelSenderEx.Model.CreateChannelData do
   @type user_ref :: String.t()
   @type meta :: map()
 
-  @spec validate(map()) :: %__MODULE__{}
+  @spec validate(map()) :: {:ok, application, user_ref}
   def validate(%{"application_ref" => application_ref, "user_ref" => user_ref})
       when is_binary(application_ref) and
              application_ref != "" and
@@ -20,6 +20,8 @@ defmodule ChannelSenderEx.Model.CreateChannelData do
              user_ref != "" do
     {:ok, application_ref, user_ref}
   end
+
+  def validate(_), do: {:error, :invalid_data}
 
   def from(_, _), do: {:error, :invalid_data}
 end

@@ -96,7 +96,7 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
         {:error, body}
 
       {:error, reason} ->
-        Logger.error("Error sending data: #{inspect(body)}")
+        Logger.error("Error sending data: #{inspect(reason)}")
         {:error, reason}
     end
   end
