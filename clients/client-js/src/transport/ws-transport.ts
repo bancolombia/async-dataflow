@@ -65,7 +65,7 @@ export class WsTransport implements Transport {
             return;
         }
         console.debug('async-client. connect() called')
-        this.socket = new this.transport(this.socketUrl()/*, this.subProtocols*/);
+        this.socket = new this.transport(this.socketUrl()/*, this.subProtocols*/); // TODO: check json proto
         this.socket.binaryType = "arraybuffer";
         this.socket.onopen = (event) => this.onSocketOpen(event)
         this.socket.onerror = error => this.onSocketError(error)
