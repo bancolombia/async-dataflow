@@ -29,8 +29,8 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     case ChannelPersistence.get_channel_data("channel_#{channel}") do
       {:ok, _data} ->
         Logger.debug("Channel #{channel} existence validation response: Channel exists")
-        # TODO: Check reserialization
-        Jason.encode!("{\"result\": \"OK\"}")
+        ChannelWorker.save_socket_data(channel, connection_id)
+        ""
 
       {:error, _} ->
         Logger.error("Channel #{channel} existence validation response: Channel does not exist")
@@ -44,57 +44,49 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
           WsConnections.close(connection_id)
         end)
 
-        # TODO: Check reserialization
-        Jason.encode!("{\"result\": \"4001\"}")
+        "{\"result\": \"4001\"}"
     end
   end
 
-  def on_message(
-        %{
-          "action" => _action,
-          "channel" => channel,
-          "secret" => secret
-        },
-        connection_id
-      ) do
-    case ChannelAuthenticator.authorize_channel(channel, secret) do
-      {:ok, _application, _user_ref} ->
-        Logger.debug("Authorized channel Success #{channel}")
-        # update the channel process with the socket connection id
-        ChannelWorker.accept_socket(channel, connection_id)
+  def on_message(%{"payload" => "Auth::" <> secret}, connection_id) do
+    Logger.debug("Auth message received for ")
 
-        {:ok, "[\"\",\"AuthOK\", \"\", \"\"]"}
+    with {:ok, channel} <- ChannelPersistence.get_channel_data("socket_#{connection_id}"),
+         {:ok, _application, _user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret) do
+      Logger.debug("Authorized channel Success #{channel}")
+      # update the channel process with the socket connection id
+      ChannelWorker.accept_socket(channel, connection_id)
 
-      :unauthorized ->
-        Logger.error("Unauthorized channel #{channel}")
+      {:ok, "[\"\",\"\",\"AuthOk\",\"\"]"}
+    else
+      _ ->
+        Logger.error("Unauthorized socket #{connection_id}")
 
         Task.start(fn ->
           Process.sleep(50)
           WsConnections.close(connection_id)
         end)
 
-        {:unauthorized, "[\"\",\"AuthFailed\", \"\", \"\"]"}
+        {:unauthorized, "[\"\",\"\",\"AuthFailed\",\"\"]"}
     end
   end
 
-  def on_message(
-        message = %{
-          "action" => _action,
-          "channel" => channel,
-          "ack_message_id" => message_id
-        },
-        _connection_id
-      ) do
-    Logger.debug("Ack message #{inspect(message)}")
+  def on_message(%{"payload" => "Ack::" <> message_id}, connection_id) do
+    ChannelWorker.ack_message(connection_id, message_id)
 
-    ChannelWorker.ack_message(channel, message_id)
+    {:ok, "[\"\",\"\",\"AckOk\",\"\"]"}
+  end
 
-    {:ok, "[\"\",\"AckOK\", \"\", \"\"]"}
-  rescue
-    e ->
-      Logger.error("Error ACK message : #{inspect(e)}")
+  def on_message(%{"payload" => "hb::" <> hb_seq}, connection_id) do
+    # TODO: Should we add ttl to the persistence?
 
-      {:bad_request, "[\"\",\"AckError\", \"\", \"\"]"}
+    {:ok, "[\"\",#{hb_seq},\":hb\",\"\"]"}
+  end
+
+  def on_message(any, _connection_id) do
+    Logger.error("Invalid message received: #{inspect(any)}")
+
+    {:ok, "[\"\",\"POC\", \"\", \"\"]"}
   end
 
   def on_disconnect(connection_id) do

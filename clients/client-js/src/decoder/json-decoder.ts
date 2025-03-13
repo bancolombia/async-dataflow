@@ -7,6 +7,7 @@ import { MessageDecoder } from "./message-decoder";
 export class JsonDecoder implements MessageDecoder {
 
     public decode(messageEvent: MessageEvent): ChannelMessage {
+        console.log('JsonDecoder.decode', messageEvent.data);
         const [message_id, correlation_id, event, payload] = JSON.parse(messageEvent.data);
         return new ChannelMessage(message_id, event, correlation_id, payload);
     }

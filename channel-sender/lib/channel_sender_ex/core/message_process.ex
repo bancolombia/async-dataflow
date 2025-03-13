@@ -31,6 +31,9 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   @doc false
   @impl true
   def init({channel_ref, message_id}) do
+    Logger.debug(fn ->
+      "Starting message process for channel #{channel_ref} and message #{message_id}"
+    end)
     initial_retries = 0
     schedule_work(initial_retries)
     max_retries = get_param(:max_unacknowledged_retries, @default_retries)
@@ -54,7 +57,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
   @spec get_from_state(binary()) :: {:ok, Data.t()} | :noop
   defp get_from_state(ref) do
-    case ChannelPersistence.get_channel_data(ref) do
+    case ChannelPersistence.get_channel_data("channel_#{ref}") do
       {:ok, data} ->
         data
 
@@ -64,10 +67,15 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   end
 
   defp retrieve_pending(:noop, _message_id), do: :noop
-  defp retrieve_pending(%{socket: nil}, _message_id), do: :no_socket
-  defp retrieve_pending(%{socket: ""}, _message_id), do: :no_socket
+  defp retrieve_pending(%{socket: socket}, message_id) when is_nil(socket) or socket == "" do
+    Logger.warning("No socket found routing message #{message_id}")
+    :no_socket
+  end
 
   defp retrieve_pending(%{pending: pending, socket: connection_id}, message_id) do
+    Logger.debug(fn ->
+      "Retrieving message #{message_id} from pending list for connection #{connection_id}"
+    end)
     case BoundedMap.pop(pending, message_id) do
       {:noop, _bounded_map} ->
         :noop
@@ -82,11 +90,11 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
   defp send_message({message, socket_id}) do
     socket_message =
-      ProtocolMessage.to_protocol_message(message)
-      |> ProtocolMessage.to_socket_message()
+      ProtocolMessage.to_socket_message(message)
       |> Jason.encode!()
 
     # sends to socket id
+    # TODO: handle errors
     WsConnections.send_data(socket_id, socket_message)
     :ok
   end

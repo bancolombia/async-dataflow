@@ -50,6 +50,7 @@ defmodule ChannelSenderEx.Core.MessageProcessSupervisor do
   defp start_message_process_retried(child_specification = %{id: id}) do
     case Horde.DynamicSupervisor.start_child(__MODULE__, child_specification) do
       {:ok, pid} ->
+        Logger.info("Message process #{id} started")
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
@@ -78,7 +79,7 @@ defmodule ChannelSenderEx.Core.MessageProcessSupervisor do
   end
 
   defp via_tuple(message_id) do
-    {:via, Horde.Registry, {ChannelSenderEx.Core.ChannelRegistry, message_id}}
+    {:via, Horde.Registry, {ChannelSenderEx.Core.MessageProcessRegistry, message_id}}
   end
 
   defp get_shutdown_tolerance do

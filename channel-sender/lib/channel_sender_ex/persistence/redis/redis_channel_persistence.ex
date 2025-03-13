@@ -62,9 +62,10 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @impl true
   @spec get_channel_data(binary()) :: {:ok, Data.t()} | {:error, :not_found}
   def get_channel_data(channel_ref) do
-    case String.starts_with?(channel_ref, "socket_") do
-      true -> lookup_socket(channel_ref)
-      false -> lookup_channel(channel_ref)
+    if String.starts_with?(channel_ref, "socket_") do
+      lookup_socket(channel_ref)
+    else
+      lookup_channel(channel_ref)
     end
   end
 
@@ -97,7 +98,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
     with {:ok, data} when not is_nil(data) <- Redix.command(:redix_read, ["GET", socket_id]) do
       Logger.debug(fn -> "Got socket data: #{data}" end)
       # CustomTelemetry.execute_custom_event([:adf, :persistence, :get], %{count: 1})
-      {:ok, %Data{socket: socket_id, channel: data}}
+      {:ok, data}
     else
       _ ->
         Logger.debug(fn -> "Socket data not found for: #{socket_id}" end)

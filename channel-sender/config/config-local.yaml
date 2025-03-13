@@ -67,7 +67,7 @@ channel_sender_ex:
   api_gateway:
     id: "zf2fc0xj0i"
     region: "us-east-1"
-    stage: "beta"
+    stage: "galvis"
 
     # strategy: Elixir.Cluster.Strategy.Kubernetes # topology for kubernetes
     # config: 

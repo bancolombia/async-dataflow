@@ -65,7 +65,7 @@ export class WsTransport implements Transport {
             return;
         }
         console.debug('async-client. connect() called')
-        this.socket = new this.transport(this.socketUrl(), this.subProtocols);
+        this.socket = new this.transport(this.socketUrl()/*, this.subProtocols*/);
         this.socket.binaryType = "arraybuffer";
         this.socket.onopen = (event) => this.onSocketOpen(event)
         this.socket.onerror = error => this.onSocketError(error)
@@ -202,7 +202,7 @@ export class WsTransport implements Transport {
         if (url.startsWith('http')) {
             url = url.replace('http', 'ws');
         }
-        return `${url}/ext/socket?channel=${this.config.channel_ref}`;
+        return `${url}?channel=${this.config.channel_ref}`;
     }
 
     private teardown(callback?: () => void): void {

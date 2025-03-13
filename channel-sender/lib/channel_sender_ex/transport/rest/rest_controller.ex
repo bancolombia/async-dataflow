@@ -7,6 +7,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.HeadlessChannelOperations
   alias ChannelSenderEx.Utils.HeaderUtils
+  alias ChannelSenderEx.Core.ChannelWorker
   alias Plug.Conn.Query
 
   use Plug.Router
@@ -20,7 +21,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   plug(Plug.Parsers,
     parsers: [:urlencoded, :json],
-    json_decoder: {Jason, :decode!, [[keys: :strings]]}
+    json_decoder: {ChannelSenderEx.Transport.Encoders.JsonEncoder, :decode, [[keys: :strings]]},
+    # json_decoder: Jason,
+    pass: ["*/*"]
   )
 
   plug(:dispatch)
@@ -61,7 +64,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     result = HeadlessChannelOperations.on_connect(channel_ref, connection_id)
 
     conn
-    |> put_resp_header("content-type", "application/json")
+    # |> put_resp_header("content-type", "application/json")
     |> send_resp(200, result)
   rescue
     e ->
@@ -202,7 +205,10 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     |> build_and_send_response(conn)
   end
 
-  defp route_deliver(_, conn), do: invalid_body(conn)
+  defp route_deliver(body, conn) do
+    IO.inspect(body)
+    invalid_body(conn)
+  end
 
   # """
   # Asserts that the message is a valid delivery request
@@ -211,13 +217,12 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp assert_deliver_request(message) do
     # Check if minimal fields are present and not nil
     result =
-      message
-      |> Enum.all?(fn {key, value} ->
+      Enum.all?(message, fn {key, value} ->
         case key do
-          :message_data ->
+          "message_data" ->
             not is_nil(value)
 
-          :correlation_id ->
+          "correlation_id" ->
             true
 
           _ ->
@@ -244,14 +249,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
-    Task.start(fn ->
-      new_msg =
-        message
-        |> Map.drop(["channel_ref"])
-        |> ProtocolMessage.to_protocol_message()
-
-      PubSubCore.deliver_to_channel(channel_ref, new_msg)
-    end)
+    ChannelWorker.route_message(Map.put(message, "channel_ref", channel_ref))
 
     {202, %{result: "Ok"}}
   end

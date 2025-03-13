@@ -29,4 +29,11 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoder do
   def simple_frame(event) do
     {:text, ["[\"\", \"\", \"", event, "\", \"\"]"]}
   end
+
+  def decode(input, opts \\ []) do
+    case Jason.decode(input, opts) do
+      {:ok, data} -> data
+      {:error, _error} -> %{"payload" => input}
+    end
+  end
 end
