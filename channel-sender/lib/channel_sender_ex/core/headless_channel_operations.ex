@@ -29,8 +29,8 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     case ChannelPersistence.get_channel_data("channel_#{channel}") do
       {:ok, _data} ->
         Logger.debug("Channel #{channel} existence validation response: Channel exists")
-
-        ChannelWorker.save_socket_data(channel, connection_id)
+        ChannelPersistence.save_socket_data(channel, connection_id)
+        # ChannelWorker.save_socket_data(channel, connection_id)
         {:ok, "OK"}
 
       {:error, _} ->
@@ -50,7 +50,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   end
 
   def on_message(%{"payload" => "Auth::" <> secret}, connection_id) do
-    Logger.debug("Auth message received for ")
+    Logger.debug("Auth message received for #{connection_id}")
 
     with {:ok, channel} <- ChannelPersistence.get_channel_data("socket_#{connection_id}"),
          {:ok, _application, _user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret) do
@@ -75,7 +75,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   def on_message(%{"payload" => "Ack::" <> message_id}, connection_id) do
     ChannelWorker.ack_message(connection_id, message_id)
 
-    {:ok, "[\"\",\"\",\"AckOk\",\"\"]"}
+    {:ok, ""}
   end
 
   def on_message(%{"payload" => "hb::" <> hb_seq}, connection_id) do

@@ -2,6 +2,7 @@ defmodule ChannelSenderEx.Transport.Encoders.JsonEncoder do
   @moduledoc """
   Encoder for json format
   """
+  require Logger
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Transport.MessageEncoder
 

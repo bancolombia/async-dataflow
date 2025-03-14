@@ -52,6 +52,7 @@ defmodule ChannelSenderEx.MixProject do
       {:ex_aws, "~> 2.5"},
       {:ex_aws_sts, "~> 2.3"},
       {:ex_aws_secretsmanager, "~> 2.0"},
+      {:hackney, "~> 1.23"},
       {:sweet_xml, "~> 0.7"},
       {:configparser_ex, "~> 4.0"},
       {:redix, "~> 1.5"},
@@ -62,7 +63,6 @@ defmodule ChannelSenderEx.MixProject do
       {:cowboy_telemetry, "~> 0.4"},
       {:telemetry, "~> 1.3"},
       # for testing
-      {:hackney, "~> 1.23", only: :test},
       {:stream_data, "~> 1.1", only: [:test]},
       {:benchee, "~> 1.3", only: [:dev, :benchee]},
       {:gun, "~> 2.1", only: [:test, :benchee]},
