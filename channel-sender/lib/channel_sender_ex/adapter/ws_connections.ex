@@ -2,7 +2,7 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
   # TODO read from yaml configuration
   @region "us-east-1"
   @api_id "zf2fc0xj0i"
-  @stage "galvis"
+  @stage "poc"
   @service "execute-api"
   @endopoint "https://#{@api_id}.execute-api.#{@region}.amazonaws.com/#{@stage}/@connections/"
   # @endopoint "http://localhost:3000/"
