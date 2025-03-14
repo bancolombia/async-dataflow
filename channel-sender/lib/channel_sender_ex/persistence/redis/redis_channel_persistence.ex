@@ -122,7 +122,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
   @compile {:inline, get_channel_data_ttl: 0}
   defp get_channel_data_ttl do
-    Application.get_env(:channel_sender_ex, :persistence_ttl)
+    Application.get_env(:channel_sender_ex, :persistence_ttl, 900)
   end
 
 end

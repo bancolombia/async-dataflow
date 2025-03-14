@@ -29,7 +29,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
       name: {:local, @pool_name},
       worker_module: __MODULE__,
       size: Keyword.get(opts, :size, 80),
-      max_overflow: Keyword.get(opts, :size, 20)
+      max_overflow: Keyword.get(opts, :max_overflow, 20)
     ]
 
     :poolboy.child_spec(@pool_name, poolboy_config)

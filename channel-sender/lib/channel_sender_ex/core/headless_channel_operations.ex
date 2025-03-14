@@ -28,14 +28,15 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
 
   def on_connect(channel, connection_id) do
     case ChannelPersistence.get_channel_data("channel_#{channel}") do
-      {:ok, _data} ->
+      {:ok, data} ->
         Logger.debug("Channel #{channel} existence validation response: Channel exists")
-        ChannelPersistence.save_socket_data(channel, connection_id)
-        # ChannelWorker.save_socket_data(channel, connection_id)
+        # in order to have the relation persisted in both directions
+        ChannelWorker.save_channel(%{data | socket: connection_id})
+        ChannelWorker.save_socket_data(channel, connection_id)
         {:ok, "OK"}
 
-      {:error, _} ->
-        Logger.error("Channel #{channel} existence validation response: Channel does not exist")
+      {:error, reason} ->
+        Logger.error("Channel #{channel} existence validation error: #{inspect(reason)}")
 
         # the channel does not exist, close the connection
         Task.start(fn ->
