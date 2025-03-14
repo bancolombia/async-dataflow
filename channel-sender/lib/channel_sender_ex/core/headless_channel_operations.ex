@@ -17,6 +17,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     with {:ok, app, user_ref} <- CreateChannelData.validate(create_request),
          {channel, secret} <- ChannelAuthenticator.create_channel_credentials(app, user_ref) do
       # ChannelWorker.save_channel(Data.new(channel, app, user_ref, meta))
+      # Should be saved inmediately because auth message could be received before the channel is saved
       ChannelPersistence.save_channel_data(Data.new(channel, app, user_ref, meta))
       {:ok, channel, secret}
     end
@@ -31,7 +32,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
       {:ok, data} ->
         Logger.debug("Channel #{channel} existence validation response: Channel exists")
         # in order to have the relation persisted in both directions
-        ChannelWorker.save_channel(%{data | socket: connection_id})
+        # ChannelWorker.save_channel(%{data | socket: connection_id}) # TODO: I think that this should be saved after success auth
         ChannelWorker.save_socket_data(channel, connection_id)
         {:ok, "OK"}
 
