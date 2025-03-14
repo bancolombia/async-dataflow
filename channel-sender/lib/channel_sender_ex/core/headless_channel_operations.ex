@@ -16,8 +16,6 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   def create_channel(create_request, meta \\ %{}) do
     with {:ok, app, user_ref} <- CreateChannelData.validate(create_request),
          {channel, secret} <- ChannelAuthenticator.create_channel_credentials(app, user_ref) do
-      # ChannelWorker.save_channel(Data.new(channel, app, user_ref, meta))
-      # Should be saved inmediately because auth message could be received before the channel is saved
       ChannelPersistence.save_channel_data(Data.new(channel, app, user_ref, meta))
       {:ok, channel, secret}
     end
@@ -29,10 +27,9 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
 
   def on_connect(channel, connection_id) do
     case ChannelPersistence.get_channel_data("channel_#{channel}") do
-      {:ok, data} ->
+      {:ok, _data} ->
         Logger.debug("Channel #{channel} existence validation response: Channel exists")
         # in order to have the relation persisted in both directions
-        # ChannelWorker.save_channel(%{data | socket: connection_id}) # TODO: I think that this should be saved after success auth
         ChannelWorker.save_socket_data(channel, connection_id)
         {:ok, "OK"}
 
@@ -81,7 +78,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     {:ok, ""}
   end
 
-  def on_message(%{"payload" => "hb::" <> hb_seq}, connection_id) do
+  def on_message(%{"payload" => "hb::" <> hb_seq}, _connection_id) do
     # TODO: Should we add ttl to the persistence?
 
     {:ok, "[\"\",#{hb_seq},\":hb\",\"\"]"}

@@ -6,7 +6,6 @@ defmodule ChannelSenderEx.Application do
   alias ChannelSenderEx.ApplicationConfig
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Persistence.ChannelPersistence
-  alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Utils.ClusterUtils
   alias ChannelSenderEx.Utils.CustomTelemetry
@@ -24,11 +23,6 @@ defmodule ChannelSenderEx.Application do
     CustomTelemetry.custom_telemetry_events()
 
     no_start_param = Application.get_env(:channel_sender_ex, :no_start)
-
-    if !no_start_param do
-      EntryPoint.start()
-    end
-
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     Supervisor.start_link(children(no_start_param), opts)
   end

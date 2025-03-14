@@ -1,11 +1,7 @@
 defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-
-  import Mock
-
   @moduletag :capture_log
 
   setup_all do
@@ -22,24 +18,12 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
   end
 
   test "Should create channel" do
-    with_mocks([
-      {ChannelSupervisor, [], [
-        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
-      ]}
-    ]) do
-      assert {_, _} = ChannelAuthenticator.create_channel("App1", "User1")
-    end
+    assert {_, _} = ChannelAuthenticator.create_channel_credentials("App1", "User1")
   end
 
   test "Should verify creds" do
-    with_mocks([
-      {ChannelSupervisor, [], [
-        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
-      ]}
-    ]) do
-      {ref , secret} = ChannelAuthenticator.create_channel("App1", "User1")
-      assert {:ok, "App1", "User1"} == ChannelAuthenticator.authorize_channel(ref, secret)
-    end
+    {ref , secret} = ChannelAuthenticator.create_channel_credentials("App1", "User1")
+    assert {:ok, "App1", "User1"} == ChannelAuthenticator.authorize_channel(ref, secret)
   end
 
   test "Should fail verify creds" do

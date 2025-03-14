@@ -1,7 +1,6 @@
 defmodule ChannelSenderEx.ApplicationTest do
   use ExUnit.Case
   alias ChannelSenderEx.Application, as: APP
-  alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Utils.CustomTelemetry
   import Mock
 
@@ -18,7 +17,6 @@ defmodule ChannelSenderEx.ApplicationTest do
           custom_telemetry_events: fn() -> :ok end,
           metrics: fn() -> [] end
           ]},
-        {EntryPoint, [], [start: fn() -> :ok end]},
         {Supervisor, [], [start_link: fn(_, _) -> {:ok, :c.pid(0, 250, 0)} end]},
       ]) do
         assert {:ok, _pid} = APP.start(:normal, [])
@@ -32,7 +30,6 @@ defmodule ChannelSenderEx.ApplicationTest do
           custom_telemetry_events: fn() -> :ok end,
           metrics: fn() -> [] end
           ]},
-        {EntryPoint, [], [start: fn() -> :ok end]},
         {Supervisor, [], [start_link: fn(_, _) -> {:ok, :c.pid(0, 250, 0)} end]},
       ]) do
         assert {:ok, _pid} = APP.start(:normal, [])

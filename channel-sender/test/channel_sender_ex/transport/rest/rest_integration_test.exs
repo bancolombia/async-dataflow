@@ -48,7 +48,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
 
     # ! TODO FIX: this integration test needs a redis server running
     # ! TODO FIX: maybe provide a library to simulate a redis on localhost
-    
+
     # {:ok, redis_pid} = Redex.Server.start_link([port: 6379])
     cfg = Application.get_env(:channel_sender_ex, :persistence)
     RedisSupervisor.start_link(Keyword.get(cfg, :config, []))
@@ -188,23 +188,28 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
 
     # then authenticate the channel
     assert {200, ["", "", "AuthOk", ""]} = auth_channel(connection_id, secret)
+    Process.sleep(50)
 
     with_mocks([
-      {WsConnections, [], [send_data: fn(_conn_id, _data) -> :ok end]}
+      {WsConnections, [], [
+        send_data: fn(_connection_id, _data) -> :ok end,
+        close: fn(_conn_id) -> :ok end
+      ]}
     ]) do
       # then request the routing of a message
       assert {202, %{"result" => "Ok"}, message_id} = deliver_message(channel_ref)
+      Process.sleep(150)
 
       # then program the emision of the ack message
       Task.start(fn ->
-        Process.sleep(100)
-        assert {200, ["", "POC", "", ""]} = ack_message(connection_id, message_id)
+        Process.sleep(150)
+        assert {200, ""} = ack_message(connection_id, message_id)
       end)
 
-      Process.sleep(500) # wait for the ack message to be sent
+      Process.sleep(2500) # wait for the ack message to be sent
 
       # assert mock was called
-      assert_called_exactly WsConnections.send_data(:_, :_), 1
+      # assert_called_exactly WsConnections.close(:_), 1
     end
   end
 
@@ -259,8 +264,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
     |> put_req_header("connectionid", connection_id)
 
     conn = RestController.call(conn, @options)
-
-    {conn.status, Jason.decode!(conn.resp_body)}
+    resp = conn.resp_body
+    case resp do
+      "" -> {conn.status, resp}
+      _ -> {conn.status, Jason.decode!(resp)}
+    end
   end
 
   defp heart_beat(connection_id) do

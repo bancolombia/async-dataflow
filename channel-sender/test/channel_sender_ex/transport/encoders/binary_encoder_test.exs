@@ -5,11 +5,11 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoderTest do
 
   setup do
     external_message = %{
-      channel_ref: "channel_ref",
-      message_id: "message_id2",
-      correlation_id: "correlation_id2",
-      message_data: "message_data1",
-      event_name: "event_name2"
+      "channel_ref" => "channel_ref",
+      "message_id" => "message_id2",
+      "correlation_id" => "correlation_id2",
+      "message_data" => "message_data1",
+      "event_name" => "event_name2"
     }
 
     message = ProtocolMessage.to_protocol_message(external_message)
@@ -32,7 +32,7 @@ defmodule ChannelSenderEx.Transport.Encoders.BinaryEncoderTest do
   } do
     message = %{
       message
-      | message_data:
+      | "message_data" =>
           "{\"strange_message: \"áéíóú@ñ&%$#!especíalç\", \"strange_message: \"áéíóú@ñ&%$#!especíal2ç\"}"
     }
 

@@ -85,14 +85,25 @@ defmodule ChannelSenderEx.Core.MessageProcess do
     end
   end
 
-  defp send_message(:noop), do: :noop
-  defp send_message(:no_socket), do: :no_socket
-
+  defp send_message(:noop) do
+    Logger.warning(fn ->
+      ":noop message"
+    end)
+    :noop
+  end
+  defp send_message(:no_socket) do
+    Logger.warning(fn ->
+      ":nosocket message"
+    end)
+    :no_socket
+  end
   defp send_message({message, socket_id}) do
     socket_message =
       ProtocolMessage.to_socket_message(message)
       |> Jason.encode!()
-
+    Logger.debug(fn ->
+      "Sending message #{socket_message} to socket #{socket_id}"
+    end)
     # sends to socket id
     # TODO: handle errors
     WsConnections.send_data(socket_id, socket_message)
