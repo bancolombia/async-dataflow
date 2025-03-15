@@ -20,6 +20,7 @@ class AsyncClient {
   static const String BINARY_FLOW = 'binary_flow';
   static const String RESPONSE_AUTH_OK = 'AuthOk';
   static const String RESPONSE_HB = ':hb';
+  static const String RESPONSE_ACK = ':Ack';
   static const String RESPONSE_NEW_TOKEN = ':n_token';
   static const String EVENT_KIND_SYSTEM = 'system_event';
   static const String EVENT_KIND_USER = 'user_event';
@@ -88,6 +89,8 @@ class AsyncClient {
           } else if (message.event == RESPONSE_HB &&
               message.correlationId == _transport?.pendingHeartbeatRef) {
             _handleCleanHeartBeat(message);
+          } else if (message.event == RESPONSE_ACK || message.event == null) {
+            // do nothing
           } else if (message.event == RESPONSE_NEW_TOKEN) {
             _handleNewToken(message);
           } else {

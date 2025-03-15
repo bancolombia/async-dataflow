@@ -8,6 +8,11 @@ import { Transport } from "./transport";
 import { TransportError } from "./transport-error";
 import { SocketState } from "./socket-state";
 
+const RESPONSE_ACK = ":Ack";
+const RESPONSE_AUTH_OK = "AuthOk";
+const RESPONSE_HB = ":hb";
+const RESPONSE_NEW_TOKEN = ":n_token";
+
 export class WsTransport implements Transport {
     private actualToken;
     private socket: WebSocket;
@@ -116,13 +121,17 @@ export class WsTransport implements Transport {
 
     private onSocketMessage(event) {
         const message = this.serializer.decode(event)
-        if (!this.isActive && message.event == "AuthOk") {
+        if (!message || !message.event || message.event == RESPONSE_ACK) {
+            // ack replies
+            return;
+        }
+        if (!this.isActive && message.event == RESPONSE_AUTH_OK) {
             this.isActive = true;
             this.reconnectTimer.reset();
             console.log('async-client. Auth OK');
-        } else if (message.event == ":hb" && message.correlation_id == this.pendingHeartbeatRef) {
+        } else if (message.event == RESPONSE_HB && message.correlation_id == this.pendingHeartbeatRef) {
             this.pendingHeartbeatRef = null;
-        } else if (message.event == ":n_token") {
+        } else if (message.event == RESPONSE_NEW_TOKEN) {
             this.actualToken = message.payload;
             this.ackMessage(message);
             this.handleMessage(message);

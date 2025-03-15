@@ -7,9 +7,13 @@ import { MessageDecoder } from "./message-decoder";
 export class JsonDecoder implements MessageDecoder {
 
     public decode(messageEvent: MessageEvent): ChannelMessage {
-        console.log('JsonDecoder.decode', messageEvent.data); // TODO: manage json parse errors
-        const [message_id, correlation_id, event, payload] = JSON.parse(messageEvent.data);
-        return new ChannelMessage(message_id, event, correlation_id, payload);
+        try {
+            const [message_id, correlation_id, event, payload] = JSON.parse(messageEvent.data);
+            return new ChannelMessage(message_id, event, correlation_id, payload);
+        } catch (e) {
+            console.error('Error decoding json message', messageEvent.data, e);
+            return null;
+        }
     }
 
     public decode_sse(sse_event: string): ChannelMessage {
