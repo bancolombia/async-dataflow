@@ -4,7 +4,6 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   """
 
   alias ChannelSenderEx.Core.HeadlessChannelOperations
-  alias ChannelSenderEx.Utils.HeaderUtils
   alias ChannelSenderEx.Core.ChannelWorker
   alias Plug.Conn.Query
 
@@ -36,13 +35,13 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   match(_, do: send_resp(conn, 404, "Route not found."))
 
   defp create_channel(conn) do
-    headers = HeaderUtils.get_metadata_headers(conn)
-    meta = %{"headers" => headers, "postponed" => %{}}
-
     with {:ok, channel_ref, channel_secret} <-
-           HeadlessChannelOperations.create_channel(conn.body_params, meta),
+           HeadlessChannelOperations.create_channel(conn.body_params),
          {:ok, response} <-
            Jason.encode(%{channel_ref: channel_ref, channel_secret: channel_secret}) do
+
+      Logger.debug("Rest Controller: Channel created with ref: #{channel_ref}")
+
       conn
       |> put_resp_header("content-type", "application/json")
       |> send_resp(200, response)
@@ -56,6 +55,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp connect_client(conn) do
     channel_ref = get_header(conn, "channel")
     connection_id = get_header(conn, "connectionid")
+
+    Logger.debug("Rest Controller: Connection signal to ref: #{channel_ref} and connection[#{connection_id}]")
+
     {_, result} = HeadlessChannelOperations.on_connect(channel_ref, connection_id)
 
     conn
@@ -63,7 +65,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     |> send_resp(200, Jason.encode!(%{"message" => result}))
   rescue
     e ->
-      Logger.error("Error accepting channel connection: #{inspect(e)}")
+      Logger.error("Rest Controller: Error accepting channel connection: #{inspect(e)}")
 
       conn
       |> put_resp_header("content-type", "application/json")
@@ -73,6 +75,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp message_client(conn) do
     connection_id = get_header(conn, "connectionid")
 
+    Logger.debug("Rest Controller: Message signal on connection[#{connection_id}]")
+
     case HeadlessChannelOperations.on_message(conn.body_params, connection_id) do
       {:ok, message} ->
         conn
@@ -81,17 +85,12 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
       {:unauthorized, message} ->
         conn
-        |> put_resp_header("content-type", "application/json")
+        |> put_resp_header("content-type", "text/plain")
         |> send_resp(401, message)
-
-      {:bad_request, message} ->
-        conn
-        |> put_resp_header("content-type", "application/json")
-        |> send_resp(400, message)
     end
   rescue
     e ->
-      Logger.error("Error processing message: #{inspect(e)}")
+      Logger.error("Rest Controller: Error processing message: #{inspect(e)}")
 
       conn
       |> put_resp_header("content-type", "text/plain")
@@ -100,6 +99,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp disconnect_client(conn) do
     connection_id = get_header(conn, "connectionid")
+    Logger.debug("Rest Controller: Disconnection signal to connection[#{connection_id}]")
+
     HeadlessChannelOperations.on_disconnect(connection_id)
     conn
     |> put_resp_header("content-type", "application/json")
@@ -137,7 +138,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp route_deliver(
          message = %{
-           "channel_ref" => channel_ref,
+           "channel_ref" => _channel_ref,
            "message_id" => _message_id,
            "correlation_id" => _correlation_id,
            "message_data" => _message_data,
@@ -146,7 +147,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
          conn
        ) do
     assert_deliver_request(message)
-    |> perform_delivery(%{"channel_ref" => channel_ref})
+    |> perform_delivery()
     |> build_and_send_response(conn)
   end
 
@@ -183,12 +184,12 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     end
   end
 
-  defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
-    ChannelWorker.route_message(Map.put(message, "channel_ref", channel_ref))
+  defp perform_delivery({:ok, message}) do
+    ChannelWorker.route_message(message)
     {202, %{result: "Ok"}}
   end
 
-  defp perform_delivery(e = {:error, :invalid_message}, _) do
+  defp perform_delivery(e = {:error, :invalid_message}) do
     {400, e}
   end
 
@@ -223,7 +224,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
           Jason.encode!(%{error: "Unknown error"})
       end
 
-    Logger.error("Error detected in request: #{inspect(reason)}, response will be: #{response}")
+    Logger.error("Rest Controller: Error detected in request: #{inspect(reason)}, response will be: #{response}")
 
     conn
     |> put_resp_header("content-type", "application/json")

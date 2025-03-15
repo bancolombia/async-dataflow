@@ -7,10 +7,8 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
 
   alias ChannelSenderEx.Adapter.WsConnections
   alias ChannelSenderEx.Core.BoundedMap
-  alias ChannelSenderEx.Core.Data
   alias ChannelSenderEx.Core.MessageProcessSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
-  alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Persistence.ChannelPersistence
 
   @type msg_tuple() :: ProtocolMessage.t()
@@ -35,12 +33,16 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
     :poolboy.child_spec(@pool_name, poolboy_config)
   end
 
-  def save_channel(data) do
-    pool_cast({:save_channel, data})
+  def save_channel(channel, socket \\ "") do
+    pool_cast({:save_channel, channel, socket})
   end
 
   def get_channel(channel_ref) do
     pool_call({:get_channel, channel_ref})
+  end
+
+  def get_socket(socket) do
+    pool_call({:get_socket, socket})
   end
 
   def save_socket_data(channel_ref, connection_id) do
@@ -57,6 +59,10 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
 
   def disconnect_socket(connection_id) do
     pool_cast({:disconnect_socket, connection_id})
+  end
+
+  def disconnect_raw_socket(connection_id, reason) do
+    pool_cast({:disconnect_raw_socket, connection_id, reason})
   end
 
   def ack_message(connection_id, message_id) do
@@ -90,29 +96,36 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
 
   @impl true
   def handle_call({:get_channel, channel_ref}, _from, state) do
-    {:reply, ChannelPersistence.get_channel_data(channel_ref), state}
+    {:reply, ChannelPersistence.get_channel(channel_ref), state}
   end
 
   @impl true
-  def handle_cast({:save_channel, data}, state) do
-    ChannelPersistence.save_channel_data(data)
+  def handle_call({:get_socket, socket}, _from, state) do
+    {:reply, ChannelPersistence.get_socket(socket), state}
+  end
+
+  @impl true
+  def handle_cast({:save_channel, channel, socket}, state) do
+    ChannelPersistence.save_channel(channel, socket)
     {:noreply, state}
   end
 
   @impl true
   def handle_cast({:save_socket_data, channel_ref, connection_id}, state) do
-    ChannelPersistence.save_socket_data(channel_ref, connection_id)
+    ChannelPersistence.save_socket(channel_ref, connection_id)
     {:noreply, state}
   end
 
   @impl true
   def handle_cast({:delete_channel, channel_ref}, state) do
-    case ChannelPersistence.get_channel_data(channel_ref) do
-      {:ok, data} ->
-        delete_channel_and_close_socket(data)
+    case ChannelPersistence.get_channel(channel_ref) do
+      {:ok, connection_id} ->
+        Logger.info(fn -> "ChWorker: Removing all info from channel [#{channel_ref}] and socket [#{connection_id}]" end)
+        ChannelPersistence.delete_channel(channel_ref, connection_id)
+        WsConnections.close(connection_id)
 
-      {:error, _} ->
-        Logger.info("No channel found for channel_ref #{channel_ref}")
+        {:error, _} ->
+        Logger.info("ChWorker: No channel found for channel_ref #{channel_ref}")
     end
 
     # Drop socket connection too
@@ -121,14 +134,12 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
 
   @impl true
   def handle_cast({:accept_socket, channel_ref, connection_id}, state) do
-    key = "channel_#{channel_ref}"
-
-    case ChannelPersistence.get_channel_data(key) do
-      {:ok, data} ->
-        ChannelPersistence.save_channel_data(Data.set_socket(data, connection_id))
+    case ChannelPersistence.get_channel(channel_ref) do
+      {:ok, _data} ->
+        ChannelPersistence.save_channel(channel_ref, connection_id)
 
       {:error, _} ->
-        Logger.info("No channel found with channel_ref #{channel_ref}")
+        Logger.info("ChWorker: No channel found with channel_ref #{channel_ref}")
     end
 
     {:noreply, state}
@@ -136,109 +147,47 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
 
   @impl true
   def handle_cast({:disconnect_socket, connection_id}, state) do
-    case ChannelPersistence.get_channel_data("socket_#{connection_id}") do
+    case ChannelPersistence.get_socket(connection_id) do
       {:ok, channel_ref} ->
-        Logger.info("Disconnecting socket #{connection_id} from channel #{inspect(channel_ref)}")
-        remove_socket_from_channel(channel_ref, connection_id)
+        Logger.info("ChWorker: Removing socket [#{connection_id}] info and removing relation to channel [#{channel_ref}]")
+        ChannelPersistence.delete_socket(connection_id, channel_ref)
+        WsConnections.close(connection_id)
 
       {:error, _} ->
-        Logger.info("No channel found for socket connection #{inspect(connection_id)}")
+        Logger.info("ChWorker: No channel found for socket connection #{inspect(connection_id)}")
     end
+    {:noreply, state}
+  end
+
+  # only use this to disconnect a socket connection that it's not related to a channel yet
+  @impl true
+  def handle_cast({:disconnect_raw_socket, connection_id, response_code}, state) do
+    Logger.info("ChWorker: Disconnecting socket connection #{connection_id} with response code #{response_code}")
+
+    WsConnections.send_data(connection_id, "[\"\",\"#{response_code}\", \"\", \"\"]")
+    Process.sleep(50)
+    WsConnections.close(connection_id)
 
     {:noreply, state}
   end
 
   @impl true
-  def handle_cast({:ack_message, connection_id, message_id}, state) do
-    case ChannelPersistence.get_channel_data("socket_#{connection_id}") do
-      {:ok, channel_ref} ->
-        remove_message_and_save(channel_ref, message_id)
-
-      {:error, _} ->
-        Logger.info("No channel found for socket #{connection_id}")
-    end
-
+  def handle_cast({:ack_message, _connection_id, message_id}, state) do
+    Logger.debug("ChWorker: Ack message #{message_id}")
+    ChannelPersistence.delete_message(message_id)
     {:noreply, state}
   end
 
   @impl true
   def handle_cast(
         {:route_message,
-         message = %{"channel_ref" => _channel_ref, "message_id" => _msg_id}},
+         message = %{"channel_ref" => channel_ref, "message_id" => msg_id}},
         state
       ) do
-    route_single_message(message)
-    {:noreply, state}
-  end
 
-  defp route_single_message(message = %{"channel_ref" => channel_ref, "message_id" => msg_id}) do
-    with {:ok, data} <- ChannelPersistence.get_channel_data("channel_#{channel_ref}"),
-      protocol_msg <- ProtocolMessage.to_protocol_message(message),
-      new_data when is_map(new_data) <- put_pending(data, protocol_msg),
-      :ok <- ChannelPersistence.save_channel_data(new_data) do
+      ChannelPersistence.save_message(msg_id, Map.drop(message, ["channel_ref"]))
       MessageProcessSupervisor.start_message_process({channel_ref, msg_id})
-    else
-      error ->
-        Logger.error("Error routing message with id: #{msg_id} #{inspect(error)}")
-    end
-  end
-
-  #########################################
-  ###      Support functions           ####
-  #########################################
-
-  @compile {:inline, put_pending: 2}
-  defp put_pending(data = %Data{pending: pending, channel: channel_ref}, message) do
-    message_id = ProtocolMessage.message_id(message)
-    Logger.debug("Channel #{channel_ref} saving pending message id #{message_id}")
-    # CustomTelemetry.execute_custom_event([:adf, :channel_ref, :pending, :ack], %{count: 1})
-    max_size = get_param(:max_unacknowledged_queue, 100)
-    new_pending = BoundedMap.put(pending, message_id, message, max_size)
-
-    Data.set_pending(data, new_pending)
-  end
-
-  defp remove_socket_from_channel(channel_ref, connection_id) do
-    Logger.info("Removing socket #{connection_id} from channel #{channel_ref}")
-
-    case ChannelPersistence.get_channel_data("channel_#{channel_ref}") do
-      {:ok, data = %{socket: ^connection_id}} ->
-        ChannelPersistence.save_channel_data(Data.set_socket(data, nil))
-
-      _other ->
-        Logger.info("No channel found for socket connection #{connection_id}")
-    end
-
-    ChannelPersistence.delete_channel_data("socket_#{connection_id}")
-  end
-
-  defp remove_message_and_save(channel_ref, message_id) do
-    with {:ok, data = %{pending: pending}} <-
-           ChannelPersistence.get_channel_data("channel_#{channel_ref}"),
-         {msg, bounded_map} when msg != :noop <- BoundedMap.pop(pending, message_id) do
-      ChannelPersistence.save_channel_data(Data.set_pending(data, bounded_map))
-    else
-      _other ->
-        Logger.info("No message found with id #{message_id} when ack")
-        :ok
-    end
-  end
-
-  defp delete_channel_and_close_socket(%{channel: channel, socket: connection_id})
-       when is_binary(connection_id) and connection_id != "" do
-    ChannelPersistence.delete_channel_data("channel_#{channel}")
-    ChannelPersistence.delete_channel_data("socket_#{connection_id}")
-    WsConnections.close(connection_id)
-  end
-
-  defp delete_channel_and_close_socket(%{channel: channel}) do
-    ChannelPersistence.delete_channel_data("channel_#{channel}")
-  end
-
-  defp get_param(param, def) do
-    RulesProvider.get(param)
-  rescue
-    _e -> def
+      {:noreply, state}
   end
 
 end

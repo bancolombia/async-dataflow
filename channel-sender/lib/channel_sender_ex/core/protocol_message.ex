@@ -76,4 +76,13 @@ defmodule ChannelSenderEx.Core.ProtocolMessage do
   def to_socket_message({message_id, correlation_id, event_name, message_data, _timestamp}) do
     [message_id, correlation_id, event_name, message_data]
   end
+
+  def to_socket_message(%{
+    "message_id" => message_id,
+    "correlation_id" => correlation_id,
+    "message_data" => message_data,
+    "event_name" => event_name
+  }) do
+    [message_id, correlation_id, event_name, message_data]
+  end
 end

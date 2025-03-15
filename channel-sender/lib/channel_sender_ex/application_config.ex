@@ -42,26 +42,6 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Map.get(fetch(config, :logger), "level", "info")
     ))
 
-    Application.put_env(:channel_sender_ex, :no_start,
-      Map.get(fetch(config, :channel_sender_ex), "no_start", false)
-    )
-
-    Application.put_env(:channel_sender_ex, :channel_shutdown_tolerance,
-      Map.get(fetch(config, :channel_sender_ex), "channel_shutdown_tolerance", 10_000)
-    )
-
-    Application.put_env(:channel_sender_ex, :min_disconnection_tolerance,
-      Map.get(fetch(config, :channel_sender_ex), "min_disconnection_tolerance", 50)
-    )
-
-    Application.put_env(:channel_sender_ex, :on_connected_channel_reply_timeout,
-      Map.get(fetch(config, :channel_sender_ex), "on_connected_channel_reply_timeout", 2000)
-    )
-
-    Application.put_env(:channel_sender_ex, :accept_channel_reply_timeout,
-      Map.get(fetch(config, :channel_sender_ex), "accept_channel_reply_timeout", 1000)
-    )
-
     Application.put_env(:channel_sender_ex, :secret_base,
       {
         Map.get(fetch(config, :channel_sender_ex, "secret_generator"), "base",
@@ -70,12 +50,12 @@ defmodule ChannelSenderEx.ApplicationConfig do
       }
     )
 
-    Application.put_env(:channel_sender_ex, :max_age,
-      Map.get(fetch(config, :channel_sender_ex, "secret_generator"), "max_age", 900)
+    Application.put_env(:channel_sender_ex, :no_start,
+      Map.get(fetch(config, :channel_sender_ex), "no_start", false)
     )
 
-    Application.put_env(:channel_sender_ex, :socket_port,
-      Map.get(fetch(config, :channel_sender_ex), "socket_port", 8082)
+    Application.put_env(:channel_sender_ex, :max_age,
+      Map.get(fetch(config, :channel_sender_ex, "secret_generator"), "max_age", 900)
     )
 
     Application.put_env(:channel_sender_ex, :rest_port,
@@ -86,28 +66,32 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Map.get(fetch(config, :channel_sender_ex), "initial_redelivery_time", 900)
     )
 
-    Application.put_env(:channel_sender_ex, :socket_idle_timeout,
-      Map.get(fetch(config, :channel_sender_ex), "socket_idle_timeout", 30_000)
-    )
-
     Application.put_env(:channel_sender_ex, :max_unacknowledged_retries,
       Map.get(fetch(config, :channel_sender_ex), "max_unacknowledged_retries", 20)
     )
 
-    Application.put_env(:channel_sender_ex, :max_unacknowledged_queue,
-      Map.get(fetch(config, :channel_sender_ex), "max_unacknowledged_queue", 100)
+    Application.put_env(:channel_sender_ex, :api_gateway_connection,
+      Map.get(fetch(config, :channel_sender_ex), "api_gateway_connection", "")
     )
 
-    Application.put_env(:channel_sender_ex, :max_pending_queue,
-      Map.get(fetch(config, :channel_sender_ex), "max_pending_queue", 100)
-    )
+    Map.get(fetch(config, :channel_sender_ex, "secret_generator"), "base",
+          "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc")
 
-    channel_wait_times = Map.get(fetch(config, :channel_sender_ex),
-      "channel_shutdown_socket_disconnect", %{"on_clean_close" => 30, "on_disconnection" => 300})
-    Application.put_env(:channel_sender_ex, :channel_shutdown_on_clean_close,
-      Map.get(channel_wait_times, "on_clean_close", 30))
-    Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection,
-      Map.get(channel_wait_times, "on_disconnection", 300))
+    apig_config = parse_api_gateway(config)
+    if apig_config[:domain] != nil do
+      # when using custom domain
+      Application.put_env(:channel_sender_ex, :api_gateway_connection,
+        "https://#{apig_config[:domain]}/#{apig_config[:stage]}/@connections/"
+      )
+    else
+      # when using default name
+      Application.put_env(:channel_sender_ex, :api_gateway_connection,
+        "https://#{apig_config[:api]}.execute-api.#{apig_config[:region]}.amazonaws.com/#{apig_config[:stage]}/@connections/"
+      )
+    end
+    Application.put_env(:channel_sender_ex, :api_id, apig_config[:api])
+    Application.put_env(:channel_sender_ex, :api_region, apig_config[:region])
+    Application.put_env(:channel_sender_ex, :api_stage, apig_config[:stage])
 
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
@@ -122,6 +106,20 @@ defmodule ChannelSenderEx.ApplicationConfig do
     end
 
     config
+  end
+
+  defp parse_api_gateway(config) do
+    apigateway = fetch(config, :channel_sender_ex, "api_gateway")
+    cfg = [
+      api: Map.get(apigateway, "api", "000000"),
+      region: Map.get(apigateway, "region", "us-east-1"),
+      stage: Map.get(apigateway, "stage", "dev")
+    ]
+    if Map.get(apigateway, "domain", "") != "" do
+      cfg ++ [domain: Map.get(apigateway, "domain")]
+    else
+      cfg
+    end
   end
 
   defp parse_persistence(config) do

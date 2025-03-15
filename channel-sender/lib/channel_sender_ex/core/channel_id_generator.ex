@@ -13,7 +13,7 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
   @type channel_secret() :: String.t()
 
   def generate_channel_id(app_id, user_id) do
-    "#{UUID.uuid3(:dns, "#{app_id}.#{user_id}", :hex)}.#{UUID.uuid4(:hex)}"
+    UUID.uuid5(UUID.uuid4(:default), "#{app_id}.#{user_id}", :hex)
   end
 
   def generate_token(channel_ref, app_id, user_id) do

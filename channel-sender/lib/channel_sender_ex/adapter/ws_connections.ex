@@ -1,21 +1,17 @@
 defmodule ChannelSenderEx.Adapter.WsConnections do
-  # TODO read from yaml configuration
-  @region "us-east-1"
-  @api_id "zf2fc0xj0i"
-  @stage "poc"
+
   @service "execute-api"
-  @endopoint "https://#{@api_id}.execute-api.#{@region}.amazonaws.com/#{@stage}/@connections/"
-  # @endopoint "http://localhost:3000/"
   @content_type "application/json"
+
+  alias ChannelSenderEx.Core.RulesProvider
+
   require Logger
-  import ExAws
+  # import ExAws
 
-  def send_data(connection_id, data) do
-    Logger.debug("sending data #{data} to connection #{connection_id}")
-
-    endpoint = "#{@endopoint}#{connection_id}"
-
-    signed_headers = get_signed_headers(endpoint, @region, @service, "POST", data)
+  def send_data(connection_id, data) when is_binary(connection_id) and connection_id != "" do
+    Logger.debug("sending data #{data} to connection [#{connection_id}]")
+    endpoint = get_param(:api_gateway_connection, "") <> connection_id
+    signed_headers = get_signed_headers(endpoint, get_param(:api_region, "us-east-1"), @service, "POST", data)
 
     Finch.build(:post, endpoint, signed_headers, data)
     |> Finch.request(AwsConnectionsFinch)
@@ -26,10 +22,11 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
       {:error, e}
   end
 
-  def close(connection_id) do
-    endpoint = "#{@endopoint}#{connection_id}"
+  def send_data(_, _), do: {:error, :invalid_connection_id}
 
-    signed_headers = get_signed_headers(endpoint, @region, @service, "DELETE", "")
+  def close(connection_id) do
+    endpoint = get_param(:api_gateway_connection, "") <> connection_id
+    signed_headers = get_signed_headers(endpoint, get_param(:api_region, "us-east-1"), @service, "DELETE", "")
 
     Finch.build(:delete, endpoint, signed_headers)
     |> Finch.request(AwsConnectionsFinch)
@@ -41,9 +38,8 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
   end
 
   def get_info(connection_id) do
-    endpoint = "#{@endopoint}#{connection_id}"
-
-    signed_headers = get_signed_headers(endpoint, @region, @service, "GET", "")
+    endpoint = get_param(:api_gateway_connection, "") <> connection_id
+    signed_headers = get_signed_headers(endpoint, get_param(:api_region, "us-east-1"), @service, "GET", "")
 
     Finch.build(:get, endpoint, signed_headers)
     |> Finch.request(AwsConnectionsFinch)
@@ -75,7 +71,7 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
     {access_key, secret_key, session_token} = get_creds()
 
     headers = [
-      {"host", "#{@api_id}.execute-api.#{@region}.amazonaws.com"},
+      {"host", "#{get_param(:api_id, "000")}.execute-api.#{get_param(:api_region, "us-east-1")}.amazonaws.com"},
       {"X-Amz-Security-Token", session_token},
       {"Content-Type", @content_type}
     ]
@@ -111,4 +107,11 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
         {:error, reason}
     end
   end
+
+  defp get_param(param, def) do
+    RulesProvider.get(param)
+  rescue
+    _e -> def
+  end
+
 end

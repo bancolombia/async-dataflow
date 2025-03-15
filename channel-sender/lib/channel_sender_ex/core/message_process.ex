@@ -6,8 +6,6 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   require Logger
 
   alias ChannelSenderEx.Adapter.WsConnections
-  alias ChannelSenderEx.Core.Data
-  alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Persistence.ChannelPersistence
@@ -20,7 +18,6 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
   @type msg_tuple() :: ProtocolMessage.t()
   @type deliver_msg() :: {:deliver_msg, {pid(), String.t()}, msg_tuple()}
-  @type pending() :: BoundedMap.t()
   @type deliver_response :: :accepted
 
   @doc false
@@ -32,13 +29,10 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   @impl true
   def init({channel_ref, message_id}) do
     Logger.debug(fn ->
-      "Starting message process for channel #{channel_ref} and message #{message_id}"
+      "MsgProcess: Starting process for channel #{channel_ref} and message #{message_id}"
     end)
-    initial_retries = 0
-    schedule_work(initial_retries)
-    max_retries = get_param(:max_unacknowledged_retries, @default_retries)
-
-    {:ok, {channel_ref, message_id, initial_retries, max_retries}}
+    schedule_work(0)
+    {:ok, {channel_ref, message_id, 0, get_param(:max_unacknowledged_retries, @default_retries)}}
   end
 
   defp schedule_work(retries) do
@@ -49,68 +43,54 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   def handle_info(:route_message, state) do
     {channel_ref, message_id, _retries, _max_retries} = state
 
-    get_from_state(channel_ref)
-    |> retrieve_pending(message_id)
+    get_from_state(message_id, channel_ref)
     |> send_message()
     |> schedule_or_stop(state)
   end
 
-  @spec get_from_state(binary()) :: {:ok, Data.t()} | :noop
-  defp get_from_state(ref) do
-    case ChannelPersistence.get_channel_data("channel_#{ref}") do
-      {:ok, data} ->
-        data
-
-      {:error, _} ->
-        :noop
+  @spec get_from_state(binary(), binary()) :: {:ok, [any()]}
+  defp get_from_state(message_id, channel) do
+    {:ok, [socket | message]} = ChannelPersistence.get_message(message_id, channel)
+    case List.first(message) do
+      nil ->
+        Logger.debug(fn ->
+          "MsgProcess: message #{message_id} no longer exists in the persistence"
+        end)
+        {:noop, socket}
+      _ ->
+        {Jason.decode!(message) |> ProtocolMessage.to_socket_message, socket}
     end
   end
 
-  defp retrieve_pending(:noop, _message_id), do: :noop
-  defp retrieve_pending(%{socket: socket}, message_id) when is_nil(socket) or socket == "" do
-    Logger.warning("No socket found routing message #{message_id}")
-    :no_socket
+  defp send_message(msg = {:noop, _socket}) do
+    msg
   end
 
-  defp retrieve_pending(%{pending: pending, socket: connection_id}, message_id) do
+  defp send_message({message, socket_id}) when is_binary(socket_id) and socket_id != "" do
     Logger.debug(fn ->
-      "Retrieving message #{message_id} from pending list for connection #{connection_id}"
-    end)
-    case BoundedMap.pop(pending, message_id) do
-      {:noop, _bounded_map} ->
-        :noop
-
-      {message, _new_pending} ->
-        {message, connection_id}
-    end
-  end
-
-  defp send_message(:noop) do
-    Logger.warning(fn ->
-      ":noop message"
-    end)
-    :noop
-  end
-  defp send_message(:no_socket) do
-    Logger.warning(fn ->
-      ":nosocket message"
-    end)
-    :no_socket
-  end
-  defp send_message({message, socket_id}) do
-    socket_message =
-      ProtocolMessage.to_socket_message(message)
-      |> Jason.encode!()
-    Logger.debug(fn ->
-      "Sending message #{socket_message} to socket #{socket_id}"
+      "MsgProcess: Sending message #{inspect(message)} to socket [#{socket_id}]"
     end)
     # sends to socket id
     # TODO: handle errors
-    WsConnections.send_data(socket_id, socket_message)
-    :ok
+    case WsConnections.send_data(socket_id, message |> Jason.encode!()) do
+      :ok -> :ok
+      {:error, reason} = e ->
+        Logger.error(fn ->
+          "MsgProcess: Error sending #{inspect(reason)}"
+        end)
+        e
+    end
   end
 
-  defp schedule_or_stop(:noop, state) do
+  defp send_message(data = {message, socket_id})  when is_nil(socket_id) or socket_id == "" do
+    [msg_id | _] = message
+    Logger.warning(fn ->
+      "MsgProcess: Not sending message #{msg_id} to an non-valid socket-id"
+    end)
+    data
+  end
+
+  defp schedule_or_stop({:noop, _socket}, state) do
     # the message no longer exist in the persistence we can stop the process
     {:stop, :normal, state}
   end
@@ -120,13 +100,13 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
     if retries >= max_retries do
       Logger.warning(fn ->
-        "Channel #{channel_ref} reached max retries for message #{message_id}"
+        "MsgProcess: max retries for message [#{message_id}] on channel [#{channel_ref}]"
       end)
-
+      ChannelPersistence.delete_message(message_id)
       {:stop, :normal, state}
     else
       Logger.debug(fn ->
-        "Channel #{channel_ref} re-delivered message #{message_id} (retry ##{retries + 1})..."
+        "MsgProcess: Message #{message_id} re-delivered (retry ##{retries + 1})..."
       end)
 
       schedule_work(retries + 1)
