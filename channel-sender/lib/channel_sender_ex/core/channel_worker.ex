@@ -6,14 +6,12 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   require Logger
 
   alias ChannelSenderEx.Adapter.WsConnections
-  alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.MessageProcessSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Persistence.ChannelPersistence
 
   @type msg_tuple() :: ProtocolMessage.t()
   @type deliver_msg() :: {:deliver_msg, {pid(), String.t()}, msg_tuple()}
-  @type pending() :: BoundedMap.t()
   @type deliver_response :: :accepted
 
   @pool_name :channel_worker
@@ -120,12 +118,12 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   def handle_cast({:delete_channel, channel_ref}, state) do
     case ChannelPersistence.get_channel(channel_ref) do
       {:ok, connection_id} ->
-        Logger.info(fn -> "ChWorker: Removing all info from channel [#{channel_ref}] and socket [#{connection_id}]" end)
+        Logger.debug(fn -> "ChWorker: Removing all info from channel [#{channel_ref}] and socket [#{connection_id}]" end)
         ChannelPersistence.delete_channel(channel_ref, connection_id)
         WsConnections.close(connection_id)
 
         {:error, _} ->
-        Logger.info("ChWorker: No channel found for channel_ref #{channel_ref}")
+          Logger.debug(fn -> "ChWorker: No channel found for channel_ref #{channel_ref}" end)
     end
 
     # Drop socket connection too
@@ -139,7 +137,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
         ChannelPersistence.save_channel(channel_ref, connection_id)
 
       {:error, _} ->
-        Logger.info("ChWorker: No channel found with channel_ref #{channel_ref}")
+        Logger.debug(fn -> "ChWorker: No channel found with channel_ref #{channel_ref}" end)
     end
 
     {:noreply, state}
@@ -149,12 +147,12 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   def handle_cast({:disconnect_socket, connection_id}, state) do
     case ChannelPersistence.get_socket(connection_id) do
       {:ok, channel_ref} ->
-        Logger.info("ChWorker: Removing socket [#{connection_id}] info and removing relation to channel [#{channel_ref}]")
+        Logger.debug(fn -> "ChWorker: Removing socket [#{connection_id}] info and removing relation to channel [#{channel_ref}]" end)
         ChannelPersistence.delete_socket(connection_id, channel_ref)
         WsConnections.close(connection_id)
 
       {:error, _} ->
-        Logger.info("ChWorker: No channel found for socket connection #{inspect(connection_id)}")
+        Logger.debug(fn -> "ChWorker: No channel found for socket connection #{inspect(connection_id)}" end)
     end
     {:noreply, state}
   end
@@ -162,7 +160,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   # only use this to disconnect a socket connection that it's not related to a channel yet
   @impl true
   def handle_cast({:disconnect_raw_socket, connection_id, response_code}, state) do
-    Logger.info("ChWorker: Disconnecting socket connection #{connection_id} with response code #{response_code}")
+    Logger.debug(fn -> "ChWorker: Disconnecting socket connection #{connection_id} with response code #{response_code}" end)
 
     WsConnections.send_data(connection_id, "[\"\",\"#{response_code}\", \"\", \"\"]")
     Process.sleep(50)
@@ -173,7 +171,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
 
   @impl true
   def handle_cast({:ack_message, _connection_id, message_id}, state) do
-    Logger.debug("ChWorker: Ack message #{message_id}")
+    Logger.debug(fn -> "ChWorker: Ack message #{message_id}" end)
     ChannelPersistence.delete_message(message_id)
     {:noreply, state}
   end
@@ -184,9 +182,14 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
          message = %{"channel_ref" => channel_ref, "message_id" => msg_id}},
         state
       ) do
-
-      ChannelPersistence.save_message(msg_id, Map.drop(message, ["channel_ref"]))
-      MessageProcessSupervisor.start_message_process({channel_ref, msg_id})
+      # ChannelPersistence.get_channel(channel_ref)
+      # |> case do
+      #   {:ok, _} ->
+          ChannelPersistence.save_message(msg_id, Map.drop(message, ["channel_ref"]))
+          MessageProcessSupervisor.start_message_process({channel_ref, msg_id})
+      #   {:error, _} ->
+      #     Logger.error("ChWorker: No channel found [#{channel_ref}], message [#{msg_id}] will not be routed")
+      # end
       {:noreply, state}
   end
 

@@ -48,7 +48,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
     |> schedule_or_stop(state)
   end
 
-  @spec get_from_state(binary(), binary()) :: {:ok, [any()]}
+  @spec get_from_state(binary(), binary()) :: {any(), any()}
   defp get_from_state(message_id, channel) do
     {:ok, [socket | message]} = ChannelPersistence.get_message(message_id, channel)
     case List.first(message) do

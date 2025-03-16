@@ -37,9 +37,7 @@ defmodule ChannelSenderEx.Application do
 
     [
       {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
-      ChannelSenderEx.Core.MessageProcessRegistry,
       ChannelSenderEx.Core.MessageProcessSupervisor,
-      ChannelSenderEx.Core.NodeObserver,
       {Plug.Cowboy,
        scheme: :http,
        plug: RestController,
