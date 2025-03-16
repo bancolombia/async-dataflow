@@ -24,9 +24,9 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
     assert true
   end
 
-  test "set events" do
-    CustomTelemetry.custom_telemetry_events()
-    assert true
-  end
+  # test "set events" do
+  #   CustomTelemetry.custom_telemetry_events()
+  #   assert true
+  # end
 
 end

@@ -19,6 +19,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   end
 
   def delete_channel(channel) do
+    Logger.debug(fn -> "ChannelOps: Requesting #{channel} deletion" end)
     ChannelWorker.delete_channel(channel)
   end
 
@@ -26,7 +27,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     case ChannelWorker.get_channel(channel) do
       {:ok, _data} ->
         Logger.debug(fn -> "ChannelOps: Channel #{channel} exists" end)
-        ChannelWorker.save_socket_data(channel, connection_id)
+        ChannelWorker.save_socket(channel, connection_id)
         {:ok, "OK"}
 
       {:error, reason} ->
@@ -49,7 +50,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
 
       Logger.debug(fn -> "ChannelOps: Authorized channel [#{channel}] and socket [#{connection_id}]" end)
       # update the channel process with the socket connection id
-      ChannelWorker.save_socket_data(channel, connection_id)
+      ChannelWorker.save_socket(channel, connection_id)
 
       {:ok, "[\"\",\"\",\"AuthOk\",\"\"]"}
     else
@@ -76,6 +77,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   end
 
   def on_disconnect(connection_id) do
+    Logger.debug(fn -> "ChannelOps: on_disconnect received to socket [#{connection_id}]" end)
     ChannelWorker.disconnect_socket(connection_id)
   end
 end

@@ -5,7 +5,6 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
 
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Transport.Rest.RestController
-  alias ChannelSenderEx.Core.ChannelWorker
   alias ChannelSenderEx.Persistence.RedisSupervisor
   alias ChannelSenderEx.Core.MessageProcessSupervisor
   alias ChannelSenderEx.Adapter.WsConnections
@@ -15,14 +14,6 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
 
   setup_all do
     IO.puts("Starting Applications for Rest Integration Test")
-
-    Application.put_env(:channel_sender_ex,
-      :accept_channel_reply_timeout,
-      1000)
-
-    Application.put_env(:channel_sender_ex,
-      :on_connected_channel_reply_timeout,
-      2000)
 
     Application.put_env(:channel_sender_ex, :secret_base, {
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
@@ -52,7 +43,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
     cfg = Application.get_env(:channel_sender_ex, :persistence)
     RedisSupervisor.start_link(Keyword.get(cfg, :config, []))
 
-    {:ok, _} = :poolboy.start_link([
+    :poolboy.start_link([
         name: {:local, :channel_worker},
         worker_module: ChannelSenderEx.Core.ChannelWorker,
         size: 5,
@@ -106,7 +97,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
 
     # first create a channel
     %{"channel_ref" => channel_ref,
-      "channel_secret" => secret} = create_channel("App1", "User1234")
+      "channel_secret" => _secret} = create_channel("App1", "User1234")
 
     Process.sleep(10)
 

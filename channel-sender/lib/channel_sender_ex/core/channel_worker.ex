@@ -43,8 +43,8 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
     pool_call({:get_socket, socket})
   end
 
-  def save_socket_data(channel_ref, connection_id) do
-    pool_cast({:save_socket_data, channel_ref, connection_id})
+  def save_socket(channel_ref, connection_id) do
+    pool_cast({:save_socket, channel_ref, connection_id})
   end
 
   def delete_channel(channel_ref) do
@@ -109,7 +109,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   end
 
   @impl true
-  def handle_cast({:save_socket_data, channel_ref, connection_id}, state) do
+  def handle_cast({:save_socket, channel_ref, connection_id}, state) do
     ChannelPersistence.save_socket(channel_ref, connection_id)
     {:noreply, state}
   end
@@ -120,7 +120,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
       {:ok, connection_id} ->
         Logger.debug(fn -> "ChWorker: Removing all info from channel [#{channel_ref}] and socket [#{connection_id}]" end)
         ChannelPersistence.delete_channel(channel_ref, connection_id)
-        WsConnections.close(connection_id)
+        send_close_socket_signal(connection_id)
 
         {:error, _} ->
           Logger.debug(fn -> "ChWorker: No channel found for channel_ref #{channel_ref}" end)
@@ -149,7 +149,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
       {:ok, channel_ref} ->
         Logger.debug(fn -> "ChWorker: Removing socket [#{connection_id}] info and removing relation to channel [#{channel_ref}]" end)
         ChannelPersistence.delete_socket(connection_id, channel_ref)
-        WsConnections.close(connection_id)
+        send_close_socket_signal(connection_id)
 
       {:error, _} ->
         Logger.debug(fn -> "ChWorker: No channel found for socket connection #{inspect(connection_id)}" end)
@@ -164,7 +164,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
 
     WsConnections.send_data(connection_id, "[\"\",\"#{response_code}\", \"\", \"\"]")
     Process.sleep(50)
-    WsConnections.close(connection_id)
+    send_close_socket_signal(connection_id)
 
     {:noreply, state}
   end
@@ -191,6 +191,15 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
       #     Logger.error("ChWorker: No channel found [#{channel_ref}], message [#{msg_id}] will not be routed")
       # end
       {:noreply, state}
+  end
+
+  defp send_close_socket_signal(connection_id) when is_binary(connection_id) and connection_id != "" do
+    WsConnections.close(connection_id)
+  end
+
+  defp send_close_socket_signal(connection_id) when is_nil(connection_id) or connection_id == "" do
+    # socket id rerefence no longer exists
+    :ok
   end
 
 end

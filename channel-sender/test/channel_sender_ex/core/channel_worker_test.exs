@@ -1,41 +1,30 @@
 Code.compiler_options(ignore_module_conflict: true)
 
 defmodule ChannelSenderEx.Core.ChannelWorkerTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
   import Mock
 
-  alias ChannelSenderEx.Core.BoundedMap
+  alias ChannelSenderEx.Adapter.WsConnections
   alias ChannelSenderEx.Core.ChannelWorker
-  alias ChannelSenderEx.Core.Data
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.MessageProcessSupervisor
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Persistence.ChannelPersistence
-  alias ChannelSenderEx.Core.MessageProcessSupervisor
 
   @moduletag :capture_log
 
   setup_all do
-    Application.put_env(:channel_sender_ex,
-    :accept_channel_reply_timeout,
-    1000)
-
-    Application.put_env(:channel_sender_ex,
-      :on_connected_channel_reply_timeout,
-      2000)
-
-    Application.put_env(:channel_sender_ex, :channel_shutdown_on_clean_close, 900)
-    Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection, 900)
     Application.put_env(:channel_sender_ex, :secret_base, {
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
         "socket auth"
     })
 
-    {:ok, _} = Application.ensure_all_started(:plug_crypto)
+    Application.ensure_all_started(:plug_crypto)
     Helper.compile(:channel_sender_ex)
 
-    {:ok, _} = :poolboy.start_link([
+    :poolboy.start_link([
       name: {:local, :channel_worker},
-      worker_module: ChannelSenderEx.Core.ChannelWorker,
+      worker_module: ChannelWorker,
       size: 5,
       max_overflow: 10
     ])
@@ -68,17 +57,17 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
 
   test "Should save and read channel data", %{init_args: init_args} do
 
-    {channel_ref, app, user_ref, []} = init_args
-    data = %Data{application: app, user_ref: user_ref, channel: channel_ref}
+    {channel_ref, _app, _user_ref, []} = init_args
+    data = "my.connection.a"
 
     with_mocks([
       {ChannelPersistence, [], [
-        save_channel_data: fn(_) -> :ok end,
-        get_channel_data: fn(_) -> {:ok, data} end
+        save_channel: fn(_, _) -> :ok end,
+        get_channel: fn(_) -> {:ok, data} end
       ]}
     ]) do
       assert :ok = ChannelWorker.save_channel(data)
-      {:ok, data2} = ChannelWorker.get_channel("channel_#{channel_ref}")
+      {:ok, data2} = ChannelWorker.get_channel(channel_ref)
       assert data == data2
     end
   end
@@ -89,11 +78,11 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
 
     with_mocks([
       {ChannelPersistence, [], [
-        save_socket_data: fn(_ref, _conn_id) -> :ok end,
-        get_channel_data: fn(_) -> {:ok, channel_ref} end
+        save_socket: fn(_ref, _conn_id) -> :ok end,
+        get_channel: fn(_) -> {:ok, channel_ref} end
       ]}
     ]) do
-      assert :ok = ChannelWorker.save_socket_data(channel_ref, "my.connection.id")
+      assert :ok = ChannelWorker.save_socket(channel_ref, "my.connection.id")
       {:ok, data} = ChannelWorker.get_channel("socket_my.connection.id")
       assert data == channel_ref
     end
@@ -102,131 +91,112 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
 
   test "Should delete channel data", %{init_args: init_args} do
 
-    {channel_ref, app, user_ref, []} = init_args
-    data = %Data{application: app, user_ref: user_ref, channel: channel_ref}
+    {channel_ref, _app, _user_ref, []} = init_args
+    data = "my.connection.b"
 
     with_mocks([
       {ChannelPersistence, [], [
-        save_channel_data: fn(_) -> :ok end,
-        get_channel_data: fn(_) -> {:ok, data} end,
-        delete_channel_data: fn(_) -> :ok end
+        save_channel: fn(_, _) -> :ok end,
+        get_channel: fn(_) -> {:ok, data} end,
+        delete_channel: fn(_, _) -> :ok end
       ]}
     ]) do
-      assert :ok = ChannelWorker.save_channel(data)
+      assert :ok = ChannelWorker.save_channel(data, "")
       Process.sleep(10)
-      assert :ok = ChannelWorker.delete_channel("channel_#{channel_ref}")
+      assert :ok = ChannelWorker.delete_channel(channel_ref)
       Process.sleep(10)
-      assert_called ChannelPersistence.delete_channel_data(:_)
+      assert_called ChannelPersistence.delete_channel(:_, :_)
     end
   end
 
   test "Should update data with socket id", %{init_args: init_args} do
 
-    {channel_ref, app, user_ref, []} = init_args
-    data = %Data{application: app, user_ref: user_ref, channel: channel_ref}
+    {channel_ref, _app, _user_ref, []} = init_args
+    data = "my.connection.id"
 
     with_mocks([
       {ChannelPersistence, [], [
-        save_channel_data: fn(data) ->
-          assert data.socket == "my.connection.id"
+        save_channel: fn(_ch, socket) ->
+          assert socket == "my.connection.id"
           :ok
         end,
-        get_channel_data: fn(_) -> {:ok, data} end
+        get_channel: fn(_) -> {:ok, data} end,
       ]}
     ]) do
 
       assert :ok = ChannelWorker.accept_socket(channel_ref, "my.connection.id")
       Process.sleep(10)
 
-      assert_called ChannelPersistence.save_channel_data(:_)
+      assert_called ChannelPersistence.save_channel(:_, :_)
     end
   end
 
   test "Should update data removing socket id", %{init_args: init_args} do
 
-    {channel_ref, app, user_ref, []} = init_args
-    data = %Data{application: app, user_ref: user_ref, channel: channel_ref}
+    {channel_ref, _app, _user_ref, []} = init_args
 
     with_mocks([
       {ChannelPersistence, [], [
-        save_channel_data: fn(data) ->
-          assert data.socket == nil
-          :ok
-        end,
-        delete_channel_data: fn(_) -> :ok end,
-        get_channel_data: fn(ref) ->
-          case String.starts_with?(ref, "channel_") do
-            true -> {:ok, data}
-            false -> {:ok, channel_ref}
-          end
-        end
+        get_socket: fn(_) -> {:ok, channel_ref} end,
+        delete_socket: fn(_, _) -> :ok end,
       ]}
     ]) do
 
       assert :ok = ChannelWorker.disconnect_socket("my.connection.id")
       Process.sleep(10)
 
-      assert_called ChannelPersistence.delete_channel_data("socket_my.connection.id")
+      assert_called ChannelPersistence.delete_socket(:_, :_)
     end
   end
 
-  test "Should process ack operation", %{init_args: init_args, message: message} do
-
-    {channel_ref, app, user_ref, []} = init_args
-
-    messages = BoundedMap.new()
-    |> BoundedMap.put(Map.get(message, "message_id"), message)
-
-    data = %Data{application: app, user_ref: user_ref, channel: channel_ref,
-      pending: messages}
+  test "Should process ack operation" do
 
     with_mocks([
       {ChannelPersistence, [], [
-        save_channel_data: fn(data_arg) ->
-          assert {%{}, []} == data_arg.pending
+        delete_message: fn(_msg_id) ->
           :ok
-        end,
-        get_channel_data: fn(ref) ->
-          case String.starts_with?(ref, "channel_") do
-            true -> {:ok, data}
-            false -> {:ok, channel_ref}
-          end
         end
       ]}
     ]) do
 
-      assert :ok = ChannelWorker.ack_message("my.connection.id", "32452")
+      assert :ok = ChannelWorker.ack_message("conn.id", "32452")
       Process.sleep(10)
-      assert_called ChannelPersistence.save_channel_data(:_)
+      assert_called ChannelPersistence.delete_message(:_)
     end
   end
 
   test "Should process route message operation", %{init_args: init_args, message: message} do
 
-    {channel_ref, app, user_ref, []} = init_args
-    data = %Data{application: app, user_ref: user_ref, channel: channel_ref, socket: "my.connection.id"}
+    {channel_ref, _app, _user_ref, []} = init_args
 
     with_mocks([
       {ChannelPersistence, [], [
-        save_channel_data: fn(data_arg) ->
-          assert BoundedMap.size(data_arg.pending) == 1
+        save_message: fn(_msg_id, _message) ->
           :ok
-        end,
-        get_channel_data: fn(ref) ->
-          case String.starts_with?(ref, "channel_") do
-            true -> {:ok, data}
-            false -> {:ok, channel_ref}
-          end
         end]},
       {MessageProcessSupervisor, [], [start_message_process: fn(_) -> :ok end]}
     ]) do
 
       assert :ok = ChannelWorker.route_message(Map.put(message, "channel_ref", channel_ref))
       Process.sleep(10)
-      assert_called ChannelPersistence.save_channel_data(:_)
+      assert_called ChannelPersistence.save_message(:_, :_)
       assert_called MessageProcessSupervisor.start_message_process(:_)
     end
   end
 
+  test "Should process raw closing disconnection" do
+
+    with_mocks([
+      {WsConnections, [], [
+        send_data: fn(_, _) -> :ok end,
+        close: fn(_) -> :ok end
+      ]}
+    ]) do
+      assert :ok = ChannelWorker.disconnect_raw_socket("conn.id", "1000")
+      Process.sleep(100)
+      assert_called WsConnections.send_data(:_, :_)
+      assert_called WsConnections.close(:_)
+    end
+  end
 
 end

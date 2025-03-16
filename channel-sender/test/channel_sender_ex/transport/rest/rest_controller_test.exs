@@ -3,11 +3,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   use Plug.Test
   import Mock
 
-  alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Core.ChannelWorker
-  alias ChannelSenderEx.Core.Data
   alias ChannelSenderEx.Core.HeadlessChannelOperations
 
   @moduletag :capture_log
@@ -34,7 +32,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
     with_mocks([
       {ChannelAuthenticator, [], [create_channel_credentials: fn(_, _) -> {"xxxx", "yyyy"} end]},
-      {ChannelWorker, [], [save_channel: fn(_) -> :ok end]},
+      {ChannelWorker, [], [save_channel: fn(_, _) -> :ok end]},
     ]) do
       conn = conn(:post, "/ext/channel/create", body)
       |> put_req_header("content-type", "application/json")
