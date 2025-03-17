@@ -13,7 +13,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   def create_channel(create_request) do
     with {:ok, app, user_ref} <- CreateChannelData.validate(create_request),
          {channel, secret} <- ChannelAuthenticator.create_channel_credentials(app, user_ref) do
-      ChannelWorker.save_channel(channel, "no-auth")
+      ChannelWorker.save_channel(channel, "")
       {:ok, channel, secret}
     end
   end

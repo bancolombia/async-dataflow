@@ -9,7 +9,7 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
   # import ExAws
 
   def send_data(connection_id, data) when is_binary(connection_id) and connection_id != "" do
-    Logger.debug("sending data #{data} to connection [#{connection_id}]")
+    Logger.debug(fn -> "WSConnections: sending data to connection [#{connection_id}]" end)
     endpoint = get_param(:api_gateway_connection, "") <> connection_id
     signed_headers = get_signed_headers(endpoint, get_param(:api_region, "us-east-1"), @service, "POST", data)
 
@@ -24,7 +24,8 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
 
   def send_data(_, _), do: {:error, :invalid_connection_id}
 
-  def close(connection_id) do
+  def close(connection_id) when is_binary(connection_id) and connection_id != "" do
+    Logger.debug(fn -> "WSConnections: requesting close connection [#{connection_id}]" end)
     endpoint = get_param(:api_gateway_connection, "") <> connection_id
     signed_headers = get_signed_headers(endpoint, get_param(:api_region, "us-east-1"), @service, "DELETE", "")
 
@@ -36,6 +37,8 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
       Logger.error(Exception.format(:error, e, __STACKTRACE__))
       {:error, e}
   end
+
+  def close(_), do: {:error, :invalid_connection_id}
 
   def get_info(connection_id) do
     endpoint = get_param(:api_gateway_connection, "") <> connection_id

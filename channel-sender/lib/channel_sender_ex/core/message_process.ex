@@ -83,7 +83,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
       {:error, reason} = e ->
         Logger.error(fn ->
-          "MsgProcess: Error sending #{inspect(reason)}"
+          "MsgProcess: Error sending data: #{inspect(reason)}"
         end)
 
         e
