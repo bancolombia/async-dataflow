@@ -27,4 +27,14 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
         :unauthorized
     end
   end
+
+  def renew_channel_secret(channel_ref, channel_secret) do
+    case authorize_channel(channel_ref, channel_secret) do
+      {:ok, application, user_ref} ->
+        {:ok, ChannelIDGenerator.generate_token(channel_ref, application, user_ref)}
+
+      :unauthorized ->
+        :unauthorized
+    end
+  end
 end

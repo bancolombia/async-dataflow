@@ -12,6 +12,7 @@ const RESPONSE_ACK = ":Ack";
 const RESPONSE_AUTH_OK = "AuthOk";
 const RESPONSE_HB = ":hb";
 const RESPONSE_NEW_TOKEN = ":n_token";
+const REFRESH_WINDOW = 30_000;
 
 export class WsTransport implements Transport {
     private actualToken;
@@ -54,7 +55,7 @@ export class WsTransport implements Transport {
             2,
             () => this.errorCallback({ origin: 'ws', code: 1, message: "Max retries reached" })
         );
-        this.actualToken = config.channel_secret;
+        this.setToken(config.channel_secret);
         if (config.enable_binary_transport && typeof TextDecoder !== "undefined") {
             this.subProtocols.push(Protocol.BINARY)
         }
@@ -132,7 +133,7 @@ export class WsTransport implements Transport {
         } else if (message.event == RESPONSE_HB && message.correlation_id == this.pendingHeartbeatRef) {
             this.pendingHeartbeatRef = null;
         } else if (message.event == RESPONSE_NEW_TOKEN) {
-            this.actualToken = message.payload;
+            this.actualToken = this.setToken(message.payload);
             this.ackMessage(message);
             this.handleMessage(message);
         } else if (this.isActive) {
@@ -195,6 +196,29 @@ export class WsTransport implements Transport {
         this.pendingHeartbeatRef = null
         clearInterval(this.heartbeatTimer)
         this.heartbeatTimer = setInterval(() => this.sendHeartbeat(), this.heartbeatIntervalMs)
+    }
+
+    private setToken(token: string): void {
+        this.actualToken = token;
+        this.setupRefreshToken();
+    }
+
+    private setupRefreshToken() {
+        if (this.actualToken) {
+            const parts = this.actualToken.split(':');
+            if (parts.length == 2) {
+                const token = parts[1];
+                const exp = parseInt(token);
+                const now = new Date().getTime();
+                const diff = exp - now - REFRESH_WINDOW;
+                console.log(`async-client. Refresh token will be handled in ${diff} ms`);
+                setTimeout(() => this.sendRefreshToken(), diff);
+            }
+        }
+    }
+
+    private sendRefreshToken() {
+        this.socket.send(`n_token::${this.actualToken}`)
     }
 
     //Testing Only

@@ -75,6 +75,28 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     {:ok, "[\"\",#{hb_seq},\":hb\",\"\"]"}
   end
 
+  def on_message(%{"payload" => "n_token::" <> old_token}, connection_id) do
+    with {:ok, channel} <- ChannelWorker.get_socket(connection_id),
+         {:ok, new_token} <- ChannelAuthenticator.renew_channel_secret(channel, old_token) do
+      Logger.debug(fn ->
+        "ChannelOps: Renewed channel_secret for [#{channel}] and socket [#{connection_id}]"
+      end)
+
+      # Extend the channel process ttl with the new token
+      ChannelWorker.save_socket(channel, connection_id)
+
+      {:ok, "[\"\",\"\",\":n_token\",\"#{new_token}\"]"}
+    else
+      reason ->
+        Logger.warning(fn ->
+          "ChannelOps: Failed to renew channel_secret for socket #{connection_id} #{inspect(reason)}"
+        end)
+
+        ChannelWorker.disconnect_socket(connection_id)
+        {:ok, "[\"\",\"\",\"AuthFailed\",\"\"]"}
+    end
+  end
+
   def on_message(any, _connection_id) do
     Logger.error(fn -> "ChannelOps: Invalid message received: #{inspect(any)}" end)
     {:ok, "[\"\",\"\",\"9999\",\"\"]"}

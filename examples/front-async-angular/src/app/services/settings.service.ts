@@ -26,7 +26,7 @@ export class SettingsService {
       heartbeatDelay: 5000,
       maxRetries: 10,
       defaultRequestDelay: 1000,
-      transports: ['ws', 'sse'],
+      transports: ['ws' /*, 'sse'*/],
       server: Object.keys(environment.servers)[0]
     };
   }
