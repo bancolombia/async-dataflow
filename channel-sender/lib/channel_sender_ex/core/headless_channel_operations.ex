@@ -31,7 +31,9 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
         {:ok, "OK"}
 
       {:error, reason} ->
-        Logger.error(fn -> "ChannelOps: Channel #{channel} validation error: #{inspect(reason)}" end)
+        Logger.error(fn ->
+          "ChannelOps: Channel #{channel} validation error: #{inspect(reason)}"
+        end)
 
         # the channel does not exist, close the connection
         Task.start(fn ->
@@ -47,8 +49,10 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   def on_message(%{"payload" => "Auth::" <> secret}, connection_id) do
     with {:ok, channel} <- ChannelWorker.get_socket(connection_id),
          {:ok, _application, _user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret) do
+      Logger.debug(fn ->
+        "ChannelOps: Authorized channel [#{channel}] and socket [#{connection_id}]"
+      end)
 
-      Logger.debug(fn -> "ChannelOps: Authorized channel [#{channel}] and socket [#{connection_id}]" end)
       # update the channel process with the socket connection id
       ChannelWorker.save_socket(channel, connection_id)
 
@@ -63,7 +67,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
 
   def on_message(%{"payload" => "Ack::" <> message_id}, connection_id) do
     ChannelWorker.ack_message(connection_id, message_id)
-    {:ok, ""}
+    {:ok, "[\"\",\"\",\":Ack\",\"\"]"}
   end
 
   def on_message(%{"payload" => "hb::" <> hb_seq}, _connection_id) do

@@ -118,12 +118,15 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   def handle_cast({:delete_channel, channel_ref}, state) do
     case ChannelPersistence.get_channel(channel_ref) do
       {:ok, connection_id} ->
-        Logger.debug(fn -> "ChWorker: Removing all info from channel [#{channel_ref}] and socket [#{connection_id}]" end)
+        Logger.debug(fn ->
+          "ChWorker: Removing all info from channel [#{channel_ref}] and socket [#{connection_id}]"
+        end)
+
         ChannelPersistence.delete_channel(channel_ref, connection_id)
         send_close_socket_signal(connection_id)
 
-        {:error, _} ->
-          Logger.debug(fn -> "ChWorker: No channel found for channel_ref #{channel_ref}" end)
+      {:error, _} ->
+        Logger.debug(fn -> "ChWorker: No channel found for channel_ref #{channel_ref}" end)
     end
 
     # Drop socket connection too
@@ -147,20 +150,28 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   def handle_cast({:disconnect_socket, connection_id}, state) do
     case ChannelPersistence.get_socket(connection_id) do
       {:ok, channel_ref} ->
-        Logger.debug(fn -> "ChWorker: Removing socket [#{connection_id}] info and removing relation to channel [#{channel_ref}]" end)
+        Logger.debug(fn ->
+          "ChWorker: Removing socket [#{connection_id}] info and removing relation to channel [#{channel_ref}]"
+        end)
+
         ChannelPersistence.delete_socket(connection_id, channel_ref)
         send_close_socket_signal(connection_id)
 
       {:error, _} ->
-        Logger.debug(fn -> "ChWorker: No channel found for socket connection #{inspect(connection_id)}" end)
+        Logger.debug(fn ->
+          "ChWorker: No channel found for socket connection #{inspect(connection_id)}"
+        end)
     end
+
     {:noreply, state}
   end
 
   # only use this to disconnect a socket connection that it's not related to a channel yet
   @impl true
   def handle_cast({:disconnect_raw_socket, connection_id, response_code}, state) do
-    Logger.debug(fn -> "ChWorker: Disconnecting socket connection #{connection_id} with response code #{response_code}" end)
+    Logger.debug(fn ->
+      "ChWorker: Disconnecting socket connection #{connection_id} with response code #{response_code}"
+    end)
 
     WsConnections.send_data(connection_id, "[\"\",\"#{response_code}\", \"\", \"\"]")
     Process.sleep(50)
@@ -178,28 +189,23 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
 
   @impl true
   def handle_cast(
-        {:route_message,
-         message = %{"channel_ref" => channel_ref, "message_id" => msg_id}},
+        {:route_message, message = %{"channel_ref" => channel_ref, "message_id" => msg_id}},
         state
       ) do
-      # ChannelPersistence.get_channel(channel_ref)
-      # |> case do
-      #   {:ok, _} ->
-          ChannelPersistence.save_message(msg_id, Map.drop(message, ["channel_ref"]))
-          MessageProcessSupervisor.start_message_process({channel_ref, msg_id})
-      #   {:error, _} ->
-      #     Logger.error("ChWorker: No channel found [#{channel_ref}], message [#{msg_id}] will not be routed")
-      # end
-      {:noreply, state}
+    serialized = ProtocolMessage.to_socket_message(message) |> Jason.encode!()
+    ChannelPersistence.save_message(msg_id, serialized)
+    MessageProcessSupervisor.start_message_process({channel_ref, msg_id})
+    {:noreply, state}
   end
 
-  defp send_close_socket_signal(connection_id) when is_binary(connection_id) and connection_id != "" do
+  defp send_close_socket_signal(connection_id)
+       when is_binary(connection_id) and connection_id != "" do
     WsConnections.close(connection_id)
   end
 
-  defp send_close_socket_signal(connection_id) when is_nil(connection_id) or connection_id == "" do
+  defp send_close_socket_signal(connection_id)
+       when is_nil(connection_id) or connection_id == "" do
     # socket id rerefence no longer exists
     :ok
   end
-
 end

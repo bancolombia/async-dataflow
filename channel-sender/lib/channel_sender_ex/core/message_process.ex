@@ -31,6 +31,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
     Logger.debug(fn ->
       "MsgProcess: Starting process for channel #{channel_ref} and message #{message_id}"
     end)
+
     schedule_work(0)
     {:ok, {channel_ref, message_id, 0, get_param(:max_unacknowledged_retries, @default_retries)}}
   end
@@ -51,14 +52,17 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   @spec get_from_state(binary(), binary()) :: {any(), any()}
   defp get_from_state(message_id, channel) do
     {:ok, [socket | message]} = ChannelPersistence.get_message(message_id, channel)
+
     case List.first(message) do
       nil ->
         Logger.debug(fn ->
           "MsgProcess: message #{message_id} no longer exists in the persistence"
         end)
+
         {:noop, socket}
+
       _ ->
-        {Jason.decode!(message) |> ProtocolMessage.to_socket_message, socket}
+        {message, socket}
     end
   end
 
@@ -70,23 +74,29 @@ defmodule ChannelSenderEx.Core.MessageProcess do
     Logger.debug(fn ->
       "MsgProcess: Sending message #{inspect(message)} to socket [#{socket_id}]"
     end)
+
     # sends to socket id
     # TODO: handle errors
-    case WsConnections.send_data(socket_id, message |> Jason.encode!()) do
-      :ok -> :ok
+    case WsConnections.send_data(socket_id, message) do
+      :ok ->
+        :ok
+
       {:error, reason} = e ->
         Logger.error(fn ->
           "MsgProcess: Error sending #{inspect(reason)}"
         end)
+
         e
     end
   end
 
-  defp send_message(data = {message, socket_id})  when is_nil(socket_id) or socket_id == "" do
+  defp send_message(data = {message, socket_id}) when is_nil(socket_id) or socket_id == "" do
     [msg_id | _] = message
+
     Logger.warning(fn ->
       "MsgProcess: Not sending message #{msg_id} to an non-valid socket-id"
     end)
+
     data
   end
 
@@ -102,6 +112,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
       Logger.warning(fn ->
         "MsgProcess: max retries for message [#{message_id}] on channel [#{channel_ref}]"
       end)
+
       ChannelPersistence.delete_message(message_id)
       {:stop, :normal, state}
     else
