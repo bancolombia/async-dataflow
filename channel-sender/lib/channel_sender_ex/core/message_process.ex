@@ -51,22 +51,30 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
   @spec get_from_state(binary(), binary()) :: {any(), any()}
   defp get_from_state(message_id, channel) do
-    {:ok, [socket | message]} = ChannelPersistence.get_message(message_id, channel)
+    case ChannelPersistence.get_message(message_id, channel) do
+      {:ok, [socket, _message]} when is_nil(socket) or socket == "" ->
+        {:error, "No socket found for #{channel} when delivering message #{message_id}"}
 
-    case List.first(message) do
-      nil ->
-        Logger.debug(fn ->
-          "MsgProcess: message #{message_id} no longer exists in the persistence"
-        end)
-
+      {:ok, [socket, nil]} ->
         {:noop, socket}
 
-      _ ->
+      {:ok, [socket, message]} ->
         {message, socket}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   defp send_message(msg = {:noop, _socket}) do
+    msg
+  end
+
+  defp send_message(msg = {:error, reason}) do
+    Logger.error(fn ->
+      "MsgProcess: Error delivering message: #{inspect(reason)}"
+    end)
+
     msg
   end
 
@@ -88,16 +96,6 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
         e
     end
-  end
-
-  defp send_message(data = {message, socket_id}) when is_nil(socket_id) or socket_id == "" do
-    [msg_id | _] = message
-
-    Logger.warning(fn ->
-      "MsgProcess: Not sending message #{msg_id} to an non-valid socket-id"
-    end)
-
-    data
   end
 
   defp schedule_or_stop({:noop, _socket}, state) do

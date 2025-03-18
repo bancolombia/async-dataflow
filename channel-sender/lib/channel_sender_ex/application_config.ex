@@ -85,7 +85,6 @@ defmodule ChannelSenderEx.ApplicationConfig do
       apig_config[:region],
       apig_config[:stage]
     )
-    IO.inspect endpoint
     Application.put_env(:channel_sender_ex, :api_gateway_connection, endpoint)
 
     Application.put_env(:channel_sender_ex, :api_id, apig_config[:api])

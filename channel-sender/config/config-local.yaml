@@ -4,7 +4,7 @@ channel_sender_ex:
     base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
     salt: "socket auth"
     # Max time (in seconds) for a token to be valid
-    max_age: 60
+    max_age: 900
   
   # initial time in seconds to wait before re-send a message not acked to a channel
   initial_redelivery_time: 900
@@ -20,7 +20,7 @@ channel_sender_ex:
     # 
     # @connections endpoint for api gateway when using custom domain, put the fully qualified name ex: myapi.com
     #domain: myapi.com
-    # endpoint: "http://localhost:3000/@connections/"
+    endpoint: "http://localhost:3000/@connections/"
     # if not using custom domain or endpoint, provide the api id to set up the default endpoint
     api: "5nn096u8h6"
     region: "us-east-1"

@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const http = require('http');
 const { URL } = require('url');
-const conections = require('./managed-connections.js');
+const connections = require('./managed-connections.js');
 const client = require('./rest-client.js');
 
 const server = http.createServer((req, res) => {
@@ -23,7 +23,7 @@ function mapQueryParameters(url) {
 server.on('upgrade', (req, socket, head) => {
     console.log('upgrade request');
     const params = mapQueryParameters(req.url);
-    const connectionId = req.headers['sec-websocket-key'].replace(/-/g, '').replace(/\//g, '');
+    const connectionId = connections.formatConnectionId(req.headers['sec-websocket-key']);
     console.log(`New WebSocket connection ${connectionId}`);
     client.notifyConnect(connectionId, params || {})
         .then(res => {
@@ -45,7 +45,7 @@ server.on('upgrade', (req, socket, head) => {
 
 wss.on('connection', (ws, req) => {
     const connectionId = req.headers['sec-websocket-key'];
-    conections.addClient(ws, connectionId);
+    connections.addClient(ws, connectionId);
     ws.on('message', (message) => {
         console.log('Received for:', connectionId);
         client.forwardMessage(connectionId, message)
@@ -62,7 +62,7 @@ wss.on('connection', (ws, req) => {
 
     ws.on('close', () => {
         console.log('WebSocket connection closed:', connectionId);
-        conections.removeClient(connectionId);
+        connections.removeClient(connectionId);
         client.notifyDisconnect(connectionId)
             .then(res => {
                 if (res) {

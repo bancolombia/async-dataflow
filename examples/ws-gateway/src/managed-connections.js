@@ -12,8 +12,13 @@ function removeClient(connectionId) {
     delete clients[connectionId];
 }
 
+function formatConnectionId(key) {
+    return key.replace(/-/g, '').replace(/\//g, '').replace(/\+/g, '');
+}
+
 module.exports = {
     addClient,
     getClient,
-    removeClient
+    removeClient,
+    formatConnectionId
 };
