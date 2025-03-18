@@ -109,6 +109,26 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
     end
   end
 
+  test "Should handle no data found when deleting channel data", %{init_args: init_args} do
+
+    {channel_ref, _app, _user_ref, []} = init_args
+    data = "my.connection.b"
+
+    with_mocks([
+      {ChannelPersistence, [], [
+        save_channel: fn(_, _) -> :ok end,
+        get_channel: fn(_) -> {:error, :not_found} end,
+        delete_channel: fn(_, _) -> :ok end
+      ]}
+    ]) do
+      assert :ok = ChannelWorker.save_channel(data, "")
+      Process.sleep(10)
+      assert :ok = ChannelWorker.delete_channel(channel_ref)
+      Process.sleep(10)
+      assert_not_called ChannelPersistence.delete_channel(:_, :_)
+    end
+  end
+
   test "Should update data with socket id", %{init_args: init_args} do
 
     {channel_ref, _app, _user_ref, []} = init_args
@@ -131,6 +151,27 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
     end
   end
 
+  test "Should handle no channel found when trying to update data with socket id", %{init_args: init_args} do
+
+    {channel_ref, _app, _user_ref, []} = init_args
+
+    with_mocks([
+      {ChannelPersistence, [], [
+        save_channel: fn(_ch, socket) ->
+          assert socket == "my.connection.id"
+          :ok
+        end,
+        get_channel: fn(_) -> {:error, :not_found}  end,
+      ]}
+    ]) do
+
+      assert :ok = ChannelWorker.accept_socket(channel_ref, "my.connection.id")
+      Process.sleep(10)
+
+      assert_not_called ChannelPersistence.save_channel(:_, :_)
+    end
+  end
+
   test "Should update data removing socket id", %{init_args: init_args} do
 
     {channel_ref, _app, _user_ref, []} = init_args
@@ -146,6 +187,22 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
       Process.sleep(10)
 
       assert_called ChannelPersistence.delete_socket(:_, :_)
+    end
+  end
+
+  test "Should handle no socket found when removing socket id" do
+
+    with_mocks([
+      {ChannelPersistence, [], [
+        get_socket: fn(_) -> {:error, :not_found} end,
+        delete_socket: fn(_, _) -> :ok end,
+      ]}
+    ]) do
+
+      assert :ok = ChannelWorker.disconnect_socket("my.connection.id")
+      Process.sleep(10)
+
+      assert_not_called ChannelPersistence.delete_socket(:_, :_)
     end
   end
 

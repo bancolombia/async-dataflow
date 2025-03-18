@@ -31,12 +31,13 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
   end
 
   setup do
-
     Application.put_env(:channel_sender_ex, :max_unacknowledged_retries, 3)
+    Application.put_env(:channel_sender_ex, :max_age, 1)
     Helper.compile(:channel_sender_ex)
 
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :max_unacknowledged_retries)
+      Application.delete_env(:channel_sender_ex, :max_age)
       Helper.compile(:channel_sender_ex)
     end)
 
@@ -133,6 +134,53 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
     end
   end
 
+  test "Should process on_message and handle renew token" do
+    channel_ref = ChannelIDGenerator.generate_channel_id("a", "b")
+    secret = ChannelIDGenerator.generate_token(channel_ref, "a", "b")
+
+    msg = %{"payload" => "n_token::" <> secret}
+    connection_id = "my.connection"
+
+    with_mocks([
+      {ChannelWorker, [], [
+        get_socket: fn(_) -> {:ok, channel_ref} end,
+        save_socket: fn(_ref, _socket) -> :ok end,
+        disconnect_socket: fn(_) -> :ok end
+      ]}
+    ]) do
+      {:ok, result} = HeadlessChannelOperations.on_message(msg, connection_id)
+      assert ["", "", ":n_token", _secret] = Jason.decode!(result)
+      assert_called ChannelWorker.get_socket(:_)
+      assert_called ChannelWorker.save_socket(:_, :_)
+      assert_not_called ChannelWorker.disconnect_socket(:_)
+    end
+  end
+
+  test "Should process on_message and handle failure to renew token" do
+    channel_ref = ChannelIDGenerator.generate_channel_id("a", "b")
+    secret = ChannelIDGenerator.generate_token(channel_ref, "a", "b")
+
+    msg = %{"payload" => "n_token::" <> secret}
+    connection_id = "my.connection"
+
+    with_mocks([
+      {ChannelWorker, [], [
+        get_socket: fn(_) ->
+          Process.sleep(1100)
+          {:ok, channel_ref}
+        end,
+        save_socket: fn(_ref, _socket) -> :ok end,
+        disconnect_socket: fn(_) -> :ok end
+      ]}
+    ]) do
+      {:ok, result} = HeadlessChannelOperations.on_message(msg, connection_id)
+      assert ["", "", "AuthFailed", ""] = Jason.decode!(result)
+      assert_called ChannelWorker.get_socket(:_)
+      assert_not_called ChannelWorker.save_socket(:_, :_)
+      assert_called ChannelWorker.disconnect_socket(:_)
+    end
+  end
+
   test "Should process on_message and handle ack" do
     msg = %{"payload" => "Ack::abc"}
     connection_id = "my.connection"
@@ -151,7 +199,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
   test "Should process on_message and handle heartbeat" do
     msg = %{"payload" => "hb::1"}
     connection_id = "my.connection"
-    assert {:ok, "[\"\",1,\":hb\",\"\"]"} = HeadlessChannelOperations.on_message(msg, connection_id)
+    assert {:ok, "[\"\",\"1\",\":hb\",\"\"]"} = HeadlessChannelOperations.on_message(msg, connection_id)
   end
 
   test "Should process on_message and handle any other message" do

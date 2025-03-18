@@ -118,6 +118,10 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
       ["GET", "channel_#{channel_ref}"], # get socket id query
       ["GET", "message_#{message_id}"]
     ])
+  rescue
+    e ->
+      Logger.error(fn -> "Redis: Error while getting message: #{inspect(e)}" end)
+      {:error, :not_found}
   end
 
   def lookup_key(key) do
