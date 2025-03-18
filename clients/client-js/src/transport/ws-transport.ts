@@ -133,8 +133,7 @@ export class WsTransport implements Transport {
         } else if (message.event == RESPONSE_HB && message.correlation_id == this.pendingHeartbeatRef) {
             this.pendingHeartbeatRef = null;
         } else if (message.event == RESPONSE_NEW_TOKEN) {
-            this.actualToken = this.setToken(message.payload);
-            this.ackMessage(message);
+            this.setToken(message.payload);
             this.handleMessage(message);
         } else if (this.isActive) {
             this.ackMessage(message);
@@ -207,8 +206,7 @@ export class WsTransport implements Transport {
         if (this.actualToken) {
             const parts = this.actualToken.split(':');
             if (parts.length == 2) {
-                const token = parts[1];
-                const exp = parseInt(token);
+                const exp = parseInt(parts[0]);
                 const now = new Date().getTime();
                 const diff = exp - now - REFRESH_WINDOW;
                 console.log(`async-client. Refresh token will be handled in ${diff} ms`);
@@ -218,7 +216,9 @@ export class WsTransport implements Transport {
     }
 
     private sendRefreshToken() {
-        this.socket.send(`n_token::${this.actualToken}`)
+        if (this.actualToken) {
+            this.socket.send(`n_token::${this.actualToken}`);
+        }
     }
 
     //Testing Only

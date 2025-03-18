@@ -47,7 +47,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   def save_message(message_id, message) do
     Logger.debug(fn -> "Redis: Saving message [#{message_id}] : #{inspect(message)}" end)
     ttl = get_channel_data_ttl()
-    Redix.noreply_command(:redix_write, ["SETEX", "message_" <> message_id, ttl, Jason.encode!(message)])
+    Redix.noreply_command(:redix_write, ["SETEX", "message_" <> message_id, ttl, message])
   rescue
     e ->
       Logger.error(fn -> "Redis: Error while saving message: #{inspect(e)}" end)

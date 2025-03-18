@@ -70,6 +70,10 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
     {id, key, token}
   end
 
+  defp get_signed_headers("http://localhost" <> _part, _region, _service, _method, _payload) do
+    [{"Content-Type", @content_type}]
+  end
+
   defp get_signed_headers(endpoint, region, service, method, payload) do
     {access_key, secret_key, session_token} = get_creds()
 
@@ -101,7 +105,8 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
       {:ok, %Finch.Response{status: 204, body: _m, headers: _j, trailers: _t}} ->
         :ok
 
-      {:ok, %Finch.Response{status: status, body: body, headers: _j, trailers: _t}} ->
+      {:ok, %Finch.Response{status: status, body: body, headers: headers, trailers: _t}} ->
+        IO.inspect(headers)
         Logger.error("Error sending data #{inspect(status)}: #{inspect(body)}")
         {:error, body}
 

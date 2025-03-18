@@ -78,17 +78,16 @@ defmodule ChannelSenderEx.ApplicationConfig do
           "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc")
 
     apig_config = parse_api_gateway(config)
-    if apig_config[:domain] != nil do
-      # when using custom domain
-      Application.put_env(:channel_sender_ex, :api_gateway_connection,
-        "https://#{apig_config[:domain]}/#{apig_config[:stage]}/@connections/"
-      )
-    else
-      # when using default name
-      Application.put_env(:channel_sender_ex, :api_gateway_connection,
-        "https://#{apig_config[:api]}.execute-api.#{apig_config[:region]}.amazonaws.com/#{apig_config[:stage]}/@connections/"
-      )
-    end
+    endpoint = resolve_api_gateway_endpoint(
+      apig_config[:endpoint],
+      apig_config[:domain],
+      apig_config[:api],
+      apig_config[:region],
+      apig_config[:stage]
+    )
+    IO.inspect endpoint
+    Application.put_env(:channel_sender_ex, :api_gateway_connection, endpoint)
+
     Application.put_env(:channel_sender_ex, :api_id, apig_config[:api])
     Application.put_env(:channel_sender_ex, :api_region, apig_config[:region])
     Application.put_env(:channel_sender_ex, :api_stage, apig_config[:stage])
@@ -110,16 +109,23 @@ defmodule ChannelSenderEx.ApplicationConfig do
 
   defp parse_api_gateway(config) do
     apigateway = fetch(config, :channel_sender_ex, "api_gateway")
-    cfg = [
+    [
       api: Map.get(apigateway, "api", "000000"),
       region: Map.get(apigateway, "region", "us-east-1"),
-      stage: Map.get(apigateway, "stage", "dev")
+      stage: Map.get(apigateway, "stage", "dev"),
+      domain: Map.get(apigateway, "domain", nil),
+      endpoint: Map.get(apigateway, "endpoint", nil)
     ]
-    if Map.get(apigateway, "domain", "") != "" do
-      cfg ++ [domain: Map.get(apigateway, "domain")]
-    else
-      cfg
-    end
+  end
+
+  defp resolve_api_gateway_endpoint(endpoint, _domain, _api, _region, _stage) when is_binary(endpoint) do
+     endpoint
+  end
+  defp resolve_api_gateway_endpoint(_endpoint, domain, _api, _region, stage) when is_binary(domain) do
+    "https://#{domain}/#{stage}/@connections/"
+  end
+  defp resolve_api_gateway_endpoint(_endpoint, _domain, api, region, stage) do
+    "https://#{api}.execute-api.#{region}.amazonaws.com/#{stage}/@connections/"
   end
 
   defp parse_persistence(config) do

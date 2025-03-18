@@ -35,7 +35,7 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
   @spec verify_token(channel_ref(), channel_secret()) ::
           {:ok, application(), user_ref()} | {:error, token_error_reason()}
   def verify_token(channel_ref, channel_secret) do
-    case String.split(string, ":") do
+    case String.split(channel_secret, ":") do
       [_valid_until, token] ->
         verify_token_secret(channel_ref, token)
 

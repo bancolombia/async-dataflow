@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 const restApiServer = http.createServer(app);
 
-app.post('/:connectionId', async (req, res) => {
+app.post('/@connections/:connectionId', async (req, res) => {
     const ws = connections.getClient(req.params.connectionId);
     if (ws) {
         console.log(`forwarding message to ${req.params.connectionId}`);
@@ -17,7 +17,7 @@ app.post('/:connectionId', async (req, res) => {
         res.sendStatus(404);
     }
 });
-app.delete('/:connectionId', async (req, res) => {
+app.delete('/@connections/:connectionId', async (req, res) => {
     const ws = connections.getClient(req.params.connectionId);
     if (ws) {
         console.log(`closing connection ${req.params.connectionId}`);
@@ -29,7 +29,7 @@ app.delete('/:connectionId', async (req, res) => {
     }
 });
 
-app.get('/:connectionId', async (req, res) => {
+app.get('/@connections/:connectionId', async (req, res) => {
     const ws = connections.getClient(req.params.connectionId);
     if (ws) {
         console.log(`connection info ${req.params.connectionId} found`);
