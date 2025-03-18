@@ -81,7 +81,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   def on_message(%{"payload" => "hb::" <> hb_seq}, _connection_id) do
     # TODO: Should we add ttl to the persistence?
     CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :hb], %{count: 1})
-    {:ok, "[\"\",#{hb_seq},\":hb\",\"\"]"}
+    {:ok, "[\"\",\"#{hb_seq}\",\":hb\",\"\"]"}
   end
 
   def on_message(%{"payload" => "n_token::" <> old_token}, connection_id) do
