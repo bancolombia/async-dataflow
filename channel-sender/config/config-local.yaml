@@ -20,7 +20,7 @@ channel_sender_ex:
     # 
     # @connections endpoint for api gateway when using custom domain, put the fully qualified name ex: myapi.com
     #domain: myapi.com
-    endpoint: "http://localhost:3000/@connections/"
+    # endpoint: "http://localhost:3000/@connections/"
     # if not using custom domain or endpoint, provide the api id to set up the default endpoint
     api: "5nn096u8h6"
     region: "us-east-1"
