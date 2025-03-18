@@ -80,7 +80,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
   defp send_message({message, socket_id}) when is_binary(socket_id) and socket_id != "" do
     Logger.debug(fn ->
-      "MsgProcess: Sending message #{inspect(message)} to socket [#{socket_id}]"
+      "MsgProcess: Sending message to socket [#{socket_id}]"
     end)
 
     # sends to socket id
