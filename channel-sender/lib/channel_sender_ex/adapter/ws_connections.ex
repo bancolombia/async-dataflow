@@ -63,7 +63,7 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
       {"X-Amz-Security-Token", session_token},
       {"Content-Type", @content_type}
     ]
-    :aws_signature.sign_v4(
+    sig_headers = :aws_signature.sign_v4(
       access_key,
       secret_key,
       region,
@@ -75,7 +75,7 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
       payload,
       []
     )
-    {endpoint, headers, payload}
+    {endpoint, sig_headers, payload}
   end
 
   defp make_call({endpoint, headers, payload}, method) do
