@@ -31,9 +31,10 @@ defmodule ChannelSenderEx.Application do
 
   defp children(_no_start_param = false) do
     prometheus_port =
-      Application.get_env(:channel_sender_ex, :prometheus_ports, @default_prometheus_port)
+      Application.get_env(:channel_sender_ex, :prometheus_port, @default_prometheus_port)
 
-    pool_opts = Application.get_env(:channel_sender_ex, :channel_worker_pool, [])
+    channel_worker_pool_opts = Application.get_env(:channel_sender_ex, :channel_worker_pool, [])
+    finch_adapter_opts = Application.get_env(:channel_sender_ex, :api_adapter, [])
 
     [
       {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
@@ -50,8 +51,8 @@ defmodule ChannelSenderEx.Application do
          port: prometheus_port
        ]},
       # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()},
-      {Finch, name: AwsConnectionsFinch},
-      ChannelWorker.pool_child_spec(pool_opts)
+      finch_child_spec(finch_adapter_opts),
+      ChannelWorker.pool_child_spec(channel_worker_pool_opts)
     ] ++ ChannelPersistence.child_spec()
   end
 
@@ -62,5 +63,13 @@ defmodule ChannelSenderEx.Application do
 
     Logger.debug("Topology selected: #{inspect(topology)}")
     topology
+  end
+
+  defp finch_child_spec(opts) do
+    {Finch,
+    name: AwsConnectionsFinch,
+    pools: %{
+      :default => opts
+    }}
   end
 end

@@ -18,12 +18,12 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       &CT.handle_custom_event/4, nil)
     :telemetry.attach("vm-total_run_queue_lengths", [:vm, :total_run_queue_lengths],
       &CT.handle_custom_event/4, nil)
-    :telemetry.attach("adf-message-delivered", [:adf, :message, :delivered],
-      &CT.handle_custom_event/4, nil)
-    :telemetry.attach("adf-message-nodelivered", [:adf, :message, :nodelivered],
-      &CT.handle_custom_event/4, nil)
-    :telemetry.attach("adf-socket-failure", [:adf, :socket, :failure],
-      &CT.handle_custom_event/4, nil)
+    # :telemetry.attach("adf-message-delivered", [:adf, :message, :delivered],
+    #   &CT.handle_custom_event/4, nil)
+    # :telemetry.attach("adf-message-nodelivered", [:adf, :message, :nodelivered],
+    #   &CT.handle_custom_event/4, nil)
+    # :telemetry.attach("adf-socket-failure", [:adf, :socket, :failure],
+    #   &CT.handle_custom_event/4, nil)
   end
 
   def execute_custom_event(metric, value, metadata \\ %{}) when is_list(metric) do
@@ -59,22 +59,18 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       counter("elixir.adf.message.delivered.count", tags: [:service]),
       counter("elixir.adf.message.nodelivered.count", tags: [:service]),
 
-      counter("elixir.adf.persistence.get.count", tags: [:service]),
-      counter("elixir.adf.persistence.getmiss.count", tags: [:service]),
-      counter("elixir.adf.persistence.save.count", tags: [:service]),
-      counter("elixir.adf.persistence.delete.count", tags: [:service]),
-
-      counter("elixir.adf.socket.badrequest.count", tags: [:request_path, :status, :code, :service]),
-      counter("elixir.adf.socket.switchprotocol.count", tags: [:request_path, :status, :code, :service]),
-      counter("elixir.adf.socket.connection.count", tags: [:service]),
-      counter("elixir.adf.socket.disconnection.count", tags: [:service]),
-      counter("elixir.adf.socket_duration_milliseconds.count", tags: [:request_path, :service]),
-
-      sum("elixir.adf.channel.count", tags: [:service], reporter_options: [report_as: :counter]),
-      sum("elixir.adf.channel.waiting.count", tags: [:service], reporter_options: [report_as: :counter]),
-      sum("elixir.adf.channel.connected.count", tags: [:service], reporter_options: [report_as: :counter]),
-      sum("elixir.adf.channel.pending.send.count", tags: [:service], reporter_options: [report_as: :counter]),
-      sum("elixir.adf.channel.pending.ack.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.creation.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.deletion.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.gateway.connection.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.gateway.connection.fail.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.gateway.disconnection.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.geteway.message.auth.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.geteway.message.auth.fail.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.geteway.message.ack.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.geteway.message.hb.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.geteway.message.token.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.geteway.message.token.fail.count", tags: [:service], reporter_options: [report_as: :counter]),
+      sum("elixir.adf.channel.geteway.message.unknown.count", tags: [:service], reporter_options: [report_as: :counter]),
 
       # VM Metrics
       last_value("elixir.vm.memory.total", unit: {:byte, :kilobyte}, tags: [:service]),

@@ -9,7 +9,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Persistence.ChannelPersistence
-  # alias ChannelSenderEx.Utils.CustomTelemetry
+  alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [exp_back_off: 4]
 
   @default_redelivery_time_millis 900
@@ -33,7 +33,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
     end)
 
     schedule_work(0)
-    {:ok, {channel_ref, message_id, 0, get_param(:max_unacknowledged_retries, @default_retries)}}
+    {:ok, {channel_ref, message_id, 1, get_param(:max_unacknowledged_retries, @default_retries)}}
   end
 
   defp schedule_work(retries) do
@@ -42,10 +42,10 @@ defmodule ChannelSenderEx.Core.MessageProcess do
 
   @impl true
   def handle_info(:route_message, state) do
-    {channel_ref, message_id, _retries, _max_retries} = state
+    {channel_ref, message_id, retries, _max_retries} = state
 
     get_from_state(message_id, channel_ref)
-    |> send_message()
+    |> send_message(retries)
     |> schedule_or_stop(state)
   end
 
@@ -66,11 +66,11 @@ defmodule ChannelSenderEx.Core.MessageProcess do
     end
   end
 
-  defp send_message(msg = {:noop, _socket}) do
+  defp send_message(msg = {:noop, _socket}, _) do
     msg
   end
 
-  defp send_message(msg = {:error, reason}) do
+  defp send_message(msg = {:error, reason}, _) do
     Logger.error(fn ->
       "MsgProcess: Error delivering message: #{inspect(reason)}"
     end)
@@ -78,18 +78,19 @@ defmodule ChannelSenderEx.Core.MessageProcess do
     msg
   end
 
-  defp send_message({message, socket_id}) when is_binary(socket_id) and socket_id != "" do
+  defp send_message({message, socket_id}, retries) when is_binary(socket_id) and socket_id != "" do
     Logger.debug(fn ->
-      "MsgProcess: Sending message to socket [#{socket_id}]"
+      "MsgProcess: Sending Message #{message} to socket #{socket_id}, try ##{retries}"
     end)
-
+    CustomTelemetry.execute_custom_event([:adf, :message, :requested], %{count: 1})
     # sends to socket id
-    # TODO: handle errors
     case WsConnections.send_data(socket_id, message) do
       :ok ->
+        CustomTelemetry.execute_custom_event([:adf, :message, :delivered], %{count: 1})
         :ok
 
       {:error, reason} = e ->
+        CustomTelemetry.execute_custom_event([:adf, :message, :nodelivered], %{count: 1})
         Logger.error(fn ->
           "MsgProcess: Error sending data: #{inspect(reason)}"
         end)
@@ -110,14 +111,9 @@ defmodule ChannelSenderEx.Core.MessageProcess do
       Logger.warning(fn ->
         "MsgProcess: max retries for message [#{message_id}] on channel [#{channel_ref}]"
       end)
-
       ChannelPersistence.delete_message(message_id)
       {:stop, :normal, state}
     else
-      Logger.debug(fn ->
-        "MsgProcess: Message #{message_id} re-delivered (retry ##{retries + 1})..."
-      end)
-
       schedule_work(retries + 1)
       {:noreply, {channel_ref, message_id, retries + 1, max_retries}}
     end

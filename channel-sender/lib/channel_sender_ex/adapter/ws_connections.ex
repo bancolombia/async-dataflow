@@ -56,26 +56,33 @@ defmodule ChannelSenderEx.Adapter.WsConnections do
   end
 
   defp get_signed_headers(endpoint, region, service, method, payload) do
-    {access_key, secret_key, session_token} = get_creds()
+    get_creds()
+    |> build_pre_headers()
+    |> build_sig_headers(endpoint, region, service, method, payload)
+  end
 
-    headers = [
+  defp build_pre_headers(data = {_access_key, _secret_key, session_token}) do
+    Tuple.insert_at(data, 0, [
       {"host", "#{get_param(:api_id, "000")}.execute-api.#{get_param(:api_region, "us-east-1")}.amazonaws.com"},
       {"X-Amz-Security-Token", session_token},
       {"Content-Type", @content_type}
-    ]
-    sig_headers = :aws_signature.sign_v4(
-      access_key,
-      secret_key,
-      region,
-      service,
-      :calendar.universal_time(),
-      method,
-      endpoint,
-      headers,
-      payload,
-      []
-    )
-    {endpoint, sig_headers, payload}
+    ])
+  end
+
+  defp build_sig_headers({pre_headers, access_key, secret_key, _session_token}, endpoint, region, service, method, payload) do
+    {endpoint,
+      :aws_signature.sign_v4(
+        access_key,
+        secret_key,
+        region,
+        service,
+        :calendar.universal_time(),
+        method,
+        endpoint,
+        pre_headers,
+        payload,
+        []),
+      payload}
   end
 
   defp make_call({endpoint, headers, payload}, method) do

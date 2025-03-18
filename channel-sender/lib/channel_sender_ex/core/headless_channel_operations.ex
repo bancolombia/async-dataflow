@@ -3,8 +3,9 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   This module provides utility functions for managing channels.
   """
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Model.CreateChannelData
   alias ChannelSenderEx.Core.ChannelWorker
+  alias ChannelSenderEx.Model.CreateChannelData
+  alias ChannelSenderEx.Utils.CustomTelemetry
 
   require Logger
 
@@ -14,12 +15,14 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     with {:ok, app, user_ref} <- CreateChannelData.validate(create_request),
          {channel, secret} <- ChannelAuthenticator.create_channel_credentials(app, user_ref) do
       ChannelWorker.save_channel(channel, "")
+      CustomTelemetry.execute_custom_event([:adf, :channel, :creation], %{count: 1})
       {:ok, channel, secret}
     end
   end
 
   def delete_channel(channel) do
     Logger.debug(fn -> "ChannelOps: Requesting #{channel} deletion" end)
+    CustomTelemetry.execute_custom_event([:adf, :channel, :deletion], %{count: 1})
     ChannelWorker.delete_channel(channel)
   end
 
@@ -28,12 +31,14 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
       {:ok, _data} ->
         Logger.debug(fn -> "ChannelOps: Channel #{channel} exists" end)
         ChannelWorker.save_socket(channel, connection_id)
+        CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :connection], %{count: 1})
         {:ok, "OK"}
 
       {:error, reason} ->
         Logger.error(fn ->
           "ChannelOps: Channel #{channel} validation error: #{inspect(reason)}"
         end)
+        CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :connection, :fail], %{count: 1})
 
         # the channel does not exist, close the connection
         Task.start(fn ->
@@ -55,23 +60,27 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
 
       # update the channel process with the socket connection id
       ChannelWorker.save_socket(channel, connection_id)
+      CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :auth], %{count: 1})
 
       {:ok, "[\"\",\"\",\"AuthOk\",\"\"]"}
     else
       _ ->
         Logger.error(fn -> "ChannelOps: Unauthorized socket [#{connection_id}]" end)
         ChannelWorker.disconnect_socket(connection_id)
+        CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :auth, :fail], %{count: 1})
         {:unauthorized, "[\"\",\"\",\"AuthFailed\",\"\"]"}
     end
   end
 
   def on_message(%{"payload" => "Ack::" <> message_id}, connection_id) do
     ChannelWorker.ack_message(connection_id, message_id)
+    CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :ack], %{count: 1})
     {:ok, "[\"\",\"\",\":Ack\",\"\"]"}
   end
 
   def on_message(%{"payload" => "hb::" <> hb_seq}, _connection_id) do
     # TODO: Should we add ttl to the persistence?
+    CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :hb], %{count: 1})
     {:ok, "[\"\",#{hb_seq},\":hb\",\"\"]"}
   end
 
@@ -84,6 +93,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
 
       # Extend the channel process ttl with the new token
       ChannelWorker.save_socket(channel, connection_id)
+      CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :token], %{count: 1})
 
       {:ok, "[\"\",\"\",\":n_token\",\"#{new_token}\"]"}
     else
@@ -91,19 +101,21 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
         Logger.warning(fn ->
           "ChannelOps: Failed to renew channel_secret for socket #{connection_id} #{inspect(reason)}"
         end)
-
         ChannelWorker.disconnect_socket(connection_id)
+        CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :token, :fail], %{count: 1})
         {:ok, "[\"\",\"\",\"AuthFailed\",\"\"]"}
     end
   end
 
   def on_message(any, _connection_id) do
     Logger.error(fn -> "ChannelOps: Invalid message received: #{inspect(any)}" end)
+    CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :unknown], %{count: 1})
     {:ok, "[\"\",\"\",\"9999\",\"\"]"}
   end
 
   def on_disconnect(connection_id) do
     Logger.debug(fn -> "ChannelOps: on_disconnect received to socket [#{connection_id}]" end)
+    CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :disconnection], %{count: 1})
     ChannelWorker.disconnect_socket(connection_id)
   end
 end

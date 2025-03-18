@@ -90,6 +90,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     Application.put_env(:channel_sender_ex, :api_id, apig_config[:api])
     Application.put_env(:channel_sender_ex, :api_region, apig_config[:region])
     Application.put_env(:channel_sender_ex, :api_stage, apig_config[:stage])
+    Application.put_env(:channel_sender_ex, :api_adapter, apig_config[:adapter])
 
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
@@ -103,6 +104,10 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Logger.info("Succesfully loaded configuration: #{inspect(inspect(Application.get_all_env(:channel_sender_ex)))}")
     end
 
+    Application.put_env(:channel_sender_ex, :prometheus_port,
+      Map.get(fetch(config, :channel_sender_ex), "prometheus_port", 9568)
+    )
+
     config
   end
 
@@ -113,7 +118,8 @@ defmodule ChannelSenderEx.ApplicationConfig do
       region: Map.get(apigateway, "region", "us-east-1"),
       stage: Map.get(apigateway, "stage", "dev"),
       domain: Map.get(apigateway, "domain", nil),
-      endpoint: Map.get(apigateway, "endpoint", nil)
+      endpoint: Map.get(apigateway, "endpoint", nil),
+      adapter: parse_config_key(Map.get(apigateway, "adapter", %{"size" => 50})),
     ]
   end
 

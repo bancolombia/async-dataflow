@@ -192,7 +192,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
         {:route_message, message = %{"channel_ref" => channel_ref, "message_id" => msg_id}},
         state
       ) do
-    serialized = ProtocolMessage.to_socket_message(message) |> Jason.encode!()
+    serialized = ProtocolMessage.map_to_socket_message(message) |> Jason.encode!()
     ChannelPersistence.save_message(msg_id, serialized)
     MessageProcessSupervisor.start_message_process({channel_ref, msg_id})
     {:noreply, state}

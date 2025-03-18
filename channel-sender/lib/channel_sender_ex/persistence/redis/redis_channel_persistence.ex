@@ -3,7 +3,6 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @behaviour ChannelSenderEx.Persistence.ChannelPersistenceBehavior
 
   alias ChannelSenderEx.Persistence.RedisSupervisor
-  alias ChannelSenderEx.Utils.CustomTelemetry
   alias ChannelSenderEx.Core.ProtocolMessage
 
   require Logger
@@ -19,7 +18,6 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
       Logger.debug(fn -> "Redis: Saving channel [#{channel}] : socket[#{socket}]" end)
       ttl = get_channel_data_ttl()
       Redix.noreply_command(:redix_write, ["SETEX", "channel_#{channel}", ttl, socket])
-      CustomTelemetry.execute_custom_event([:adf, :persistence, :save], %{count: 1})
       :ok
   rescue
     e ->
@@ -57,7 +55,6 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @impl true
   @spec delete_channel(channel(), socket()) :: :ok
   def delete_channel(channel, socket) do
-    CustomTelemetry.execute_custom_event([:adf, :persistence, :delete], %{count: 1})
     case socket do
       "" ->
         Redix.noreply_command(:redix_write, ["DEL", "channel_#{channel}"])
@@ -76,7 +73,6 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @impl true
   @spec delete_socket(socket(), channel()) :: :ok
   def delete_socket(socket, channel) do
-    CustomTelemetry.execute_custom_event([:adf, :persistence, :delete], %{count: 1})
     case channel do
       "" ->
         Redix.noreply_command(:redix_write, ["DEL", "socket_#{socket}"])
@@ -96,7 +92,6 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @spec delete_message(message_id()) :: :ok
   def delete_message(message_id) do
     Logger.debug(fn -> "Redis: Deleting message [#{message_id}]" end)
-    CustomTelemetry.execute_custom_event([:adf, :persistence, :delete], %{count: 1})
     Redix.noreply_command(:redix_write, ["DEL", "message_#{message_id}"])
   rescue
     e ->
@@ -128,17 +123,14 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   def lookup_key(key) do
     Logger.debug(fn -> "Redis: Getting key: #{key}" end)
     with {:ok, data} when not is_nil(data) <- Redix.command(:redix_read, ["GET", key]) do
-      CustomTelemetry.execute_custom_event([:adf, :persistence, :get], %{count: 1})
       {:ok, data}
     else
       _ ->
         Logger.debug(fn -> "Redis: Key not found for: #{key}" end)
-        CustomTelemetry.execute_custom_event([:adf, :persistence, :getmiss], %{count: 1})
         {:error, :not_found}
     end
   rescue
     e ->
-      CustomTelemetry.execute_custom_event([:adf, :persistence, :getmiss], %{count: 1})
       Logger.error(fn -> "Redis: Error while getting key: #{inspect(e)}" end)
       {:error, :not_found}
   end

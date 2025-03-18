@@ -1,13 +1,14 @@
 channel_sender_ex:
   rest_port: 8081
+  prometheus_port: 9568
   secret_generator:
     base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
     salt: "socket auth"
     # Max time (in seconds) for a token to be valid
     max_age: 900
   
-  # initial time in seconds to wait before re-send a message not acked to a channel
-  initial_redelivery_time: 900
+  # initial time in milliseconds to wait before re-send a message not acked to a channel
+  initial_redelivery_time: 1200
 
   # Allowed max number of retries to re-send unack'ed message to a channel
   max_unacknowledged_retries: 15
@@ -25,6 +26,18 @@ channel_sender_ex:
     api: "5nn096u8h6"
     region: "us-east-1"
     stage: "dev"
+    #-----
+    # Http client to the @connections endpoint configuration. See https://hexdocs.pm/finch/Finch.html#start_link/1-pool-configuration-options
+    #-----
+    adapter:
+      # Number of connection pools to start (HTTP 1.1)
+      count: 1
+      # Number of connections to maintain in each pool. The default is 50. (HTTP 1.1)
+      size: 50 
+      # The maximum number of milliseconds an HTTP1 connection is allowed to be idle
+      conn_max_idle_time: 60000
+      # The maximum number of milliseconds that a pool can be idle before being terminated, used only by HTTP1 pools
+      pool_max_idle_time: 60000
 
   # strategy: Elixir.Cluster.Strategy.Kubernetes # topology for kubernetes
   # config: 
