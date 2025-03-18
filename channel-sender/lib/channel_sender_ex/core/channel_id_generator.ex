@@ -20,13 +20,9 @@ defmodule ChannelSenderEx.Core.ChannelIDGenerator do
 
   def generate_token(channel_ref, app_id, user_id) do
     {secret, salt} = get_secret_and_salt!()
-    signed_at = System.os_time(:millisecond)
     max_age = max_age()
-    valid_until = signed_at + max_age * @seconds_to_millis
-    opts = [signed_at: signed_at, max_age: max_age]
-
-    token = sign(secret, salt, {channel_ref, app_id, user_id}, opts)
-
+    valid_until = System.os_time(:millisecond) + max_age() * @seconds_to_millis
+    token = sign(secret, salt, {channel_ref, app_id, user_id}, max_age: max_age) # max age is expected in seconds
     "#{valid_until}:#{token}"
   end
 

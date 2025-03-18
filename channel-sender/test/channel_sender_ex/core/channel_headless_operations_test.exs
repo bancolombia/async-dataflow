@@ -142,7 +142,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
         ack_message: fn(_socket, _connection) -> :ok end,
       ]}
     ]) do
-      assert {:ok, ""} = HeadlessChannelOperations.on_message(msg, connection_id)
+      assert {:ok, "[\"\",\"\",\":Ack\",\"\"]"} = HeadlessChannelOperations.on_message(msg, connection_id)
       Process.sleep(100)
       assert_called ChannelWorker.ack_message(:_, :_)
     end
