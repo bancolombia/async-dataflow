@@ -25,7 +25,15 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   plug(:dispatch)
 
-  get("/health", do: send_resp(conn, 200, "UP"))
+  forward(
+    "/health",
+    to: PlugCheckup,
+    init_opts:
+      PlugCheckup.Options.new(
+        json_encoder: Jason,
+        checks: ChannelSenderEx.Transport.Rest.HealthCheck.checks()
+      )
+  )
   post("/ext/channel/create", do: create_channel(conn))
   post("/ext/channel/gateway/connect", do: connect_client(conn))
   post("/ext/channel/gateway/disconnect", do: disconnect_client(conn))

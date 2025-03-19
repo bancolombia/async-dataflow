@@ -39,6 +39,7 @@ defmodule ChannelSenderEx.MixProject do
       {:cowboy, "~> 2.13"},
       {:cowlib, "~> 2.14", override: true},
       {:plug_cowboy, "~> 2.7"},
+      {:plug_checkup, "~> 0.6"},
       {:elixir_uuid, "~> 1.2"},
       {:gen_state_machine, "~> 3.0"},
       {:jason, "~> 1.4"},

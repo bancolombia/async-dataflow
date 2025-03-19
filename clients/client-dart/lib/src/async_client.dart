@@ -24,6 +24,7 @@ class AsyncClient {
   static const String RESPONSE_NEW_TOKEN = ':n_token';
   static const String EVENT_KIND_SYSTEM = 'system_event';
   static const String EVENT_KIND_USER = 'user_event';
+  static const int REFRESH_WINDOW = 30000;
 
   final _log = Logger('AsyncClient');
   static final Random _random = Random.secure();
@@ -41,7 +42,7 @@ class AsyncClient {
   // ----
 
   AsyncClient(this._config) {
-    _currentToken = _config.channelSecret;
+    _setToken(_config.channelSecret);
 
     _subProtocols = [JSON_FLOW];
     if (_config.enableBinaryTransport) {
@@ -51,16 +52,13 @@ class AsyncClient {
     // creates localstream
     _localStream = StreamController(onListen: _onListen);
 
-    _connectRetryTimer = RetryTimer(
-      () async {
-        _openChannel();
-        _buildTransport();
-        _onListen();
+    _connectRetryTimer = RetryTimer(() async {
+      _openChannel();
+      _buildTransport();
+      _onListen();
 
-        return 1;
-      },
-      maxRetries: _config.maxRetries,
-    );
+      return 1;
+    }, maxRetries: _config.maxRetries);
   }
 
   void dispose() {
@@ -99,9 +97,9 @@ class AsyncClient {
 
           return [message, kind];
         })
-        .where((data) =>
-            data.last ==
-            EVENT_KIND_USER) // only allows passing user events from this point
+        .where(
+          (data) => data.last == EVENT_KIND_USER,
+        ) // only allows passing user events from this point
         .map((data) {
           // performs an ack of the user message received
           final message = data.first as ChannelMessage;
@@ -232,13 +230,34 @@ class AsyncClient {
   }
 
   void _handleCleanHeartBeat(ChannelMessage message) {
+    _log.info('async-client. hertbeat valid');
     _transport?.pendingHeartbeatRef = null;
   }
 
   // Function to handle the refreshed channel secret sent by the server
   void _handleNewToken(ChannelMessage message) {
-    _currentToken = message.payload;
+    _setToken(message.payload);
     _ackMessage(message);
+  }
+
+  void _setToken(String token) {
+    _currentToken = token;
+    try {
+      var parts = token.split(':');
+      if (parts.length > 1) {
+        var time = parts[0];
+        var expiresAt = int.parse(time);
+        var now = DateTime.now().millisecondsSinceEpoch;
+        var diff = expiresAt - now - REFRESH_WINDOW;
+        _log.fine('async-client. setup refresh token in $diff ms');
+        Timer(
+          Duration(milliseconds: diff),
+          () => _transport?.refreshToken(_currentToken),
+        );
+      }
+    } catch (e) {
+      _log.severe('async-client. Error preparing refresh token: $e');
+    }
   }
 
   void _ackMessage(ChannelMessage? message) {

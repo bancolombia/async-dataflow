@@ -36,24 +36,29 @@ defmodule ChannelSenderEx.Application do
     channel_worker_pool_opts = Application.get_env(:channel_sender_ex, :channel_worker_pool, [])
     finch_adapter_opts = Application.get_env(:channel_sender_ex, :api_adapter, [])
 
-    [
+    childs1 = [
       {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
       ChannelSenderEx.Core.MessageProcessSupervisor,
-      {Plug.Cowboy,
-       scheme: :http,
-       plug: RestController,
-       options: [
-         port: Application.get_env(:channel_sender_ex, :rest_port)
-       ]},
+      # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()},
+      finch_child_spec(finch_adapter_opts),
+      ChannelWorker.pool_child_spec(channel_worker_pool_opts)
+    ]
+
+    childs2 = [
       {TelemetryMetricsPrometheus,
        [
          metrics: CustomTelemetry.metrics(),
          port: prometheus_port
        ]},
-      # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()},
-      finch_child_spec(finch_adapter_opts),
-      ChannelWorker.pool_child_spec(channel_worker_pool_opts)
-    ] ++ ChannelPersistence.child_spec()
+      {Plug.Cowboy,
+       scheme: :http,
+       plug: RestController,
+       options: [
+         port: Application.get_env(:channel_sender_ex, :rest_port)
+       ]}
+    ]
+
+    childs1 ++ ChannelPersistence.child_spec() ++ childs2
   end
 
   defp topologies do
@@ -67,9 +72,9 @@ defmodule ChannelSenderEx.Application do
 
   defp finch_child_spec(opts) do
     {Finch,
-    name: AwsConnectionsFinch,
-    pools: %{
-      :default => opts
-    }}
+     name: AwsConnectionsFinch,
+     pools: %{
+       :default => opts
+     }}
   end
 end

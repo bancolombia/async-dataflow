@@ -35,16 +35,13 @@ defmodule ChannelSenderEx.Persistence.RedisSupervisor do
       socket_opts: resolve_socket_opts(ssl)
     ]
 
-    pool_size = Keyword.get(args, :pool_size, 1)
+    writer_opts = [common ++ [host: host, name: :redix_write]]
+    reader_opts = [common ++ [host: host_read, name: :redix_read]]
 
-    # TODO improve this
-    write = for index <- 0..(pool_size - 1) do
-      redis_child_spec(RedixWrite, index, [common ++ [host: host, name: :"redix_write#{index}"]])
-    end
-    read = for index <- 0..(pool_size - 1) do
-      redis_child_spec(RedixRead, index, [common ++ [host: host_read, name: :"redix_read#{index}"]])
-    end
-    children = write ++ read
+    children = [
+      redis_child_spec(RedixWrite, writer_opts),
+      redis_child_spec(RedixRead, reader_opts)
+    ]
 
     Supervisor.init(children, strategy: :one_for_one)
   end
@@ -61,9 +58,9 @@ defmodule ChannelSenderEx.Persistence.RedisSupervisor do
     []
   end
 
-  defp redis_child_spec(id, index, args) do
+  defp redis_child_spec(id, args) do
     %{
-      id: {id, index},
+      id: id,
       type: :worker,
       start: {Redix, :start_link, args}
     }

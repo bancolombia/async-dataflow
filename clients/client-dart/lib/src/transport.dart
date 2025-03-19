@@ -125,10 +125,12 @@ class Transport {
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
-    _heartbeatTimer =
-        Timer.periodic(Duration(milliseconds: _heartbeatIntervalMs), (Timer t) {
-      sendHeartbeat();
-    });
+    _heartbeatTimer = Timer.periodic(
+      Duration(milliseconds: _heartbeatIntervalMs),
+      (Timer t) {
+        sendHeartbeat();
+      },
+    );
   }
 
   void sendHeartbeat() {
@@ -148,6 +150,13 @@ class Transport {
     send('hb::$pendingHeartbeatRef');
   }
 
+  void refreshToken(currentToken) {
+    if (!isOpen()) {
+      return;
+    }
+    send('n_token::$currentToken');
+  }
+
   void _abnormalClose(reason) {
     _log.warning('async-client. Abnormal Close');
     _closeWasClean = false;
@@ -163,9 +172,10 @@ class Transport {
   }
 
   MessageDecoder _selectMessageDecoder() {
-    MessageDecoder decoder = getProtocol() == 'binary_flow'
-        ? BinaryDecoder()
-        : JsonDecoder() as MessageDecoder;
+    MessageDecoder decoder =
+        getProtocol() == 'binary_flow'
+            ? BinaryDecoder()
+            : JsonDecoder() as MessageDecoder;
     _log.finest('async-client. Decoder selected : $decoder');
 
     return decoder;
