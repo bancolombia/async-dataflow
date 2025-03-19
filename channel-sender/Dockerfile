@@ -6,21 +6,21 @@ FROM elixir:1.17.3-otp-27-alpine as build
 ARG BUILD_ENV=prod
 
 WORKDIR /build
+ENV MIX_ENV=${BUILD_ENV}
+
+RUN mix local.hex --force
+RUN mix local.rebar --force 
+COPY mix.exs mix.lock ./
+
+# Install dependencies and build Release
+RUN mix deps.get && mix deps.compile
 
 # Copy the source folder into the Docker image
 COPY . .
 
-RUN mix local.hex --force
-
-RUN mix local.rebar --force 
-
-# Install dependencies and build Release
-RUN export MIX_ENV=${BUILD_ENV} && \
-    mix deps.get && \
-    mix release channel_sender_ex
-
 # Extract Release archive to /rel for copying in next stage
-RUN RELEASE_FILE=`ls -d _build/${BUILD_ENV}/*.gz` && \
+RUN mix release channel_sender_ex && \
+    RELEASE_FILE=`ls -d _build/${BUILD_ENV}/*.gz` && \
     mkdir /export && \
     cp container_utils/runner.sh /export && \
     tar -xf "${RELEASE_FILE}" -C /export
