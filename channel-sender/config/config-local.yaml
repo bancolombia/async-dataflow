@@ -60,6 +60,7 @@ channel_sender_ex:
       ssl: false # Indicates if the connection to the persistence layer is encrypted
       host: "localhost" # Host of the persistence layer
       hostread: "localhost" # Host of the persistence layer for read operations
+      pool_size: 1 # Number of connections to the persistence layer (aplies to read/write connections)
       port: 6379 # Port of the persistence layer
     #   username: nil # Username to connect to the persistence layer
     #   password: nil # Password to connect to the persistence layer

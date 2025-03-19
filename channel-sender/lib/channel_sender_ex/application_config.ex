@@ -97,6 +97,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     persistence_cfg = parse_persistence(config)
     Application.put_env(:channel_sender_ex, :persistence, persistence_cfg)
     Application.put_env(:channel_sender_ex, :persistence_ttl, persistence_cfg[:ttl] || 900)
+    Application.put_env(:channel_sender_ex, :persistence_pool_size, get_in(persistence_cfg, [:config, :pool_size]) || 1)
 
     if config == %{} do
       Logger.warning("No valid configuration found!!!, Loading pre-defined default values : #{inspect(Application.get_all_env(:channel_sender_ex))}")

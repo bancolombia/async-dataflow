@@ -2,8 +2,9 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @moduledoc false
   @behaviour ChannelSenderEx.Persistence.ChannelPersistenceBehavior
 
-  alias ChannelSenderEx.Persistence.RedisSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.RulesProvider
+  alias ChannelSenderEx.Persistence.RedisSupervisor
 
   require Logger
 
@@ -17,7 +18,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   def save_channel(channel, socket \\ "") do
       Logger.debug(fn -> "Redis: Saving channel [#{channel}] : socket[#{socket}]" end)
       ttl = get_channel_data_ttl()
-      Redix.noreply_command(:redix_write, ["SETEX", "channel_#{channel}", ttl, socket])
+      Redix.noreply_command(get_conn(:redix_write), ["SETEX", "channel_#{channel}", ttl, socket])
       :ok
   rescue
     e ->
@@ -30,7 +31,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   def save_socket(channel, socket) do
     Logger.debug(fn -> "Redis: Saving socket [#{socket}] : channel[#{channel}]" end)
     ttl = get_channel_data_ttl()
-    Redix.noreply_pipeline(:redix_write, [
+    Redix.noreply_pipeline(get_conn(:redix_write), [
         ["SETEX", "channel_" <> channel, ttl, socket],
         ["SETEX", "socket_" <> socket, ttl, channel]
     ])
@@ -43,12 +44,12 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @impl true
   @spec save_message(message_id(), any()) :: :ok
   def save_message(message_id, message) do
-    Logger.debug(fn -> "Redis: Saving message [#{message_id}] : #{inspect(message)}" end)
+    Logger.debug(fn -> "Redis: Saving message id [#{message_id}]" end)
     ttl = get_channel_data_ttl()
-    Redix.noreply_command(:redix_write, ["SETEX", "message_" <> message_id, ttl, message])
+    Redix.noreply_command(get_conn(:redix_write), ["SETEX", "message_" <> message_id, ttl, message])
   rescue
     e ->
-      Logger.error(fn -> "Redis: Error while saving message: #{inspect(e)}" end)
+      Logger.error(fn -> "Redis: Error while saving message id [#{message_id}] : #{inspect(e)}" end)
       :ok
   end
 
@@ -57,9 +58,9 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   def delete_channel(channel, socket) do
     case socket do
       "" ->
-        Redix.noreply_command(:redix_write, ["DEL", "channel_#{channel}"])
+        Redix.noreply_command(get_conn(:redix_write), ["DEL", "channel_#{channel}"])
       _ ->
-        Redix.noreply_pipeline(:redix_write, [
+        Redix.noreply_pipeline(get_conn(:redix_write), [
           ["DEL", "channel_" <> channel],
           ["DEL", "socket_" <> socket]
         ])
@@ -75,9 +76,9 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   def delete_socket(socket, channel) do
     case channel do
       "" ->
-        Redix.noreply_command(:redix_write, ["DEL", "socket_#{socket}"])
+        Redix.noreply_command(get_conn(:redix_write), ["DEL", "socket_#{socket}"])
       _ ->
-        Redix.noreply_pipeline(:redix_write, [
+        Redix.noreply_pipeline(get_conn(:redix_write), [
           ["DEL", "socket_" <> socket],
           ["SETEX", "channel_" <> channel, get_channel_data_ttl(), ""]
         ])
@@ -92,7 +93,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @spec delete_message(message_id()) :: :ok
   def delete_message(message_id) do
     Logger.debug(fn -> "Redis: Deleting message [#{message_id}]" end)
-    Redix.noreply_command(:redix_write, ["DEL", "message_#{message_id}"])
+    Redix.noreply_command(get_conn(:redix_write), ["DEL", "message_#{message_id}"])
   rescue
     e ->
       Logger.error(fn -> "Redis: Error while deleting message data [#{message_id}]: #{inspect(e)}" end)
@@ -114,7 +115,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @impl true
   @spec get_message(message_id(), channel()) :: {:ok, list()}
   def get_message(message_id, channel_ref) do
-    Redix.pipeline(:redix_read, [
+    Redix.pipeline(get_conn(:redix_read), [
       ["GET", "channel_#{channel_ref}"], # get socket id query
       ["GET", "message_#{message_id}"]
     ])
@@ -126,7 +127,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
   def lookup_key(key) do
     Logger.debug(fn -> "Redis: Getting key: #{key}" end)
-    with {:ok, data} when not is_nil(data) <- Redix.command(:redix_read, ["GET", key]) do
+    with {:ok, data} when not is_nil(data) <- Redix.command(get_conn(:redix_read), ["GET", key]) do
       {:ok, data}
     else
       _ ->
@@ -152,4 +153,17 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
     Application.get_env(:channel_sender_ex, :persistence_ttl, 900)
   end
 
+  defp get_conn(source) do
+    i = Enum.random(0..get_pool_size() - 1)
+    case source do
+      :redix_write -> :"redix_write#{i}"
+      :redix_read -> :"redix_read#{i}"
+    end
+  end
+
+  defp get_pool_size() do
+    RulesProvider.get(:persistence_pool_size)
+  rescue
+    _e -> 1
+  end
 end
