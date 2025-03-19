@@ -27,6 +27,10 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   end
 
   def on_connect(channel, connection_id) do
+    Logger.debug(fn ->
+      "ChannelOps: on_connect event received on socket [#{connection_id}] and channel [#{channel}]"
+    end)
+
     case ChannelWorker.get_channel(channel) do
       {:ok, _data} ->
         Logger.debug(fn -> "ChannelOps: Channel #{channel} exists" end)
@@ -52,6 +56,10 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   end
 
   def on_message(%{"payload" => "Auth::" <> secret}, connection_id) do
+    Logger.debug(fn ->
+      "ChannelOps: Auth message received on socket [#{connection_id}]"
+    end)
+
     with {:ok, channel} <- ChannelWorker.get_socket(connection_id),
          {:ok, _application, _user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret) do
       Logger.debug(fn ->
@@ -73,18 +81,28 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   end
 
   def on_message(%{"payload" => "Ack::" <> message_id}, connection_id) do
+    Logger.debug(fn ->
+      "ChannelOps: Ack message received on socket [#{connection_id}] for message [#{message_id}]"
+    end)
     ChannelWorker.ack_message(connection_id, message_id)
     CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :ack], %{count: 1})
     {:ok, "[\"\",\"\",\":Ack\",\"\"]"}
   end
 
-  def on_message(%{"payload" => "hb::" <> hb_seq}, _connection_id) do
+  def on_message(%{"payload" => "hb::" <> hb_seq}, connection_id) do
+    Logger.debug(fn ->
+      "ChannelOps: Hb message received on socket [#{connection_id}]"
+    end)
+
     # TODO: Should we add ttl to the persistence?
     CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :hb], %{count: 1})
     {:ok, "[\"\",\"#{hb_seq}\",\":hb\",\"\"]"}
   end
 
   def on_message(%{"payload" => "n_token::" <> old_token}, connection_id) do
+    Logger.debug(fn ->
+      "ChannelOps: n_token message received on socket [#{connection_id}]"
+    end)
     with {:ok, channel} <- ChannelWorker.get_socket(connection_id),
          {:ok, new_token} <- ChannelAuthenticator.renew_channel_secret(channel, old_token) do
       Logger.debug(fn ->
@@ -107,14 +125,14 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
     end
   end
 
-  def on_message(any, _connection_id) do
-    Logger.error(fn -> "ChannelOps: Invalid message received: #{inspect(any)}" end)
+  def on_message(any, connection_id) do
+    Logger.error(fn -> "ChannelOps: Invalid message received on socket [#{connection_id}] : #{inspect(any)}" end)
     CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :message, :unknown], %{count: 1})
     {:ok, "[\"\",\"\",\"9999\",\"\"]"}
   end
 
   def on_disconnect(connection_id) do
-    Logger.debug(fn -> "ChannelOps: on_disconnect received to socket [#{connection_id}]" end)
+    Logger.debug(fn -> "ChannelOps: on_disconnect message received on socket [#{connection_id}]" end)
     CustomTelemetry.execute_custom_event([:adf, :channel, :gateway, :disconnection], %{count: 1})
     ChannelWorker.disconnect_socket(connection_id)
   end

@@ -74,9 +74,6 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp message_client(conn) do
     connection_id = get_header(conn, "connectionid")
-
-    Logger.debug("Rest Controller: Message signal on connection[#{connection_id}]")
-
     case HeadlessChannelOperations.on_message(conn.body_params, connection_id) do
       {:ok, message} ->
         conn

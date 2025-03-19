@@ -181,9 +181,13 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   end
 
   @impl true
-  def handle_cast({:ack_message, _connection_id, message_id}, state) do
-    Logger.debug(fn -> "ChWorker: Ack message #{message_id}" end)
-    ChannelPersistence.delete_message(message_id)
+  def handle_cast({:ack_message, connection_id, message_id}, state) do
+    if message_id != "" do
+      Logger.debug(fn -> "ChWorker: Ack message [#{message_id}]" end)
+      ChannelPersistence.delete_message(message_id)
+    else
+      Logger.warning("ChWorker: Invalid message id to ack on connection [#{connection_id}]")
+    end
     {:noreply, state}
   end
 
