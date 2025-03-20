@@ -111,6 +111,13 @@ defmodule ChannelSenderEx.Core.Channel do
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
   def waiting(:enter, _old_state, data) do
+
+    case Swarm.whereis_name(data.channel) do
+      :undefined ->
+        Swarm.register_name(data.channel, self())
+      _ -> :ok
+    end
+
     # time to wait for the socket to be open (or re-opened) and authenticated
     waiting_timeout = round(estimate_process_wait_time(data) * 1000)
     case waiting_timeout do

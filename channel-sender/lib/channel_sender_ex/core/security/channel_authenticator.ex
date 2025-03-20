@@ -3,7 +3,6 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   Channel Authentication logic
   """
   alias ChannelSenderEx.Core.ChannelIDGenerator
-  alias ChannelSenderEx.Core.ChannelSupervisor
 
   @type application() :: String.t()
   @type user_ref() :: String.t()
@@ -14,7 +13,8 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   @spec create_channel(application(), user_ref(), meta()) :: {channel_ref(), channel_secret()}
   def create_channel(application, user_ref, meta \\ []) do
     {channel_ref, _channel_secret} = credentials = create_channel_data_for(application, user_ref)
-    {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, application, user_ref, meta})
+    {:ok, pid} = Swarm.register_name(channel_ref, ChannelSenderEx.Core.ChannelSupervisor, :start_channel, [{channel_ref, application, user_ref, meta}])
+    Swarm.join(application, pid)
     credentials
   end
 

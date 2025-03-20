@@ -5,7 +5,6 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   require Logger
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
@@ -41,7 +40,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   """
   @spec deliver_to_app_channels(app_ref(), ProtocolMessage.t()) :: delivery_result()
   def deliver_to_app_channels(app_ref, message) do
-    ChannelRegistry.query_by_app(app_ref)
+    Swarm.members(app_ref)
     |> Stream.map(fn pid -> Channel.deliver_message(pid, message) end)
     |> Enum.frequencies()
   end
@@ -51,16 +50,14 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   No retries are performed since the message is delivered to existing and queriyable channels at the given time.
   """
   @spec deliver_to_user_channels(app_ref(), ProtocolMessage.t()) :: delivery_result()
-  def deliver_to_user_channels(user_ref, message) do
-    ChannelRegistry.query_by_user(user_ref)
-    |> Stream.map(fn pid -> Channel.deliver_message(pid, message) end)
-    |> Enum.frequencies()
+  def deliver_to_user_channels(_user_ref, _message) do
+    %{accepted_waiting: 0, accepted_connected: 0}
   end
 
   defp do_deliver_to_channel(channel_ref, message) do
-    case ChannelRegistry.lookup_channel_addr(channel_ref) do
+    case Swarm.whereis_name(channel_ref) do
       pid when is_pid(pid) -> Channel.deliver_message(pid, message)
-      :noproc ->
+      :undefined ->
         :retry
     end
   end
@@ -74,7 +71,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   end
 
   def do_delete_channel(channel_ref) do
-    case ChannelRegistry.lookup_channel_addr(channel_ref) do
+    case  Swarm.whereis_name(channel_ref) do
       pid when is_pid(pid) -> Channel.stop(pid)
       :noproc ->
         :retry

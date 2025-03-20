@@ -15,7 +15,6 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
       @__option__ unquote(option)
       @after_compile unquote(__MODULE__)
 
-      alias ChannelSenderEx.Core.ChannelRegistry
       import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
       alias ChannelSenderEx.Core.RulesProvider
 
@@ -107,10 +106,10 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
       end
 
       def check_channel_registered(channel_ref) do
-        case ChannelRegistry.lookup_channel_addr(channel_ref) do
-          :noproc ->
+        case Swarm.whereis_name(channel_ref) do
+          :undefined ->
             :retry
-          pid ->
+          pid when is_pid(pid) ->
             {:ok, pid}
         end
       end

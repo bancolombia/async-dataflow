@@ -7,7 +7,6 @@ defmodule ChannelSenderEx.Application do
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Transport.Rest.RestController
-  alias ChannelSenderEx.Utils.ClusterUtils
   alias ChannelSenderEx.Utils.CustomTelemetry
 
   use Application
@@ -17,7 +16,6 @@ defmodule ChannelSenderEx.Application do
 
     _config = ApplicationConfig.load()
 
-    ClusterUtils.discover_and_connect_local()
     Helper.compile(:channel_sender_ex)
     CustomTelemetry.custom_telemetry_events()
 
@@ -35,9 +33,7 @@ defmodule ChannelSenderEx.Application do
       false ->
         [
           {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
-          ChannelSenderEx.Core.ChannelRegistry,
           ChannelSenderEx.Core.ChannelSupervisor,
-          ChannelSenderEx.Core.NodeObserver,
           {Plug.Cowboy, scheme: :http, plug: RestController, options: [
             port: Application.get_env(:channel_sender_ex, :rest_port),
           ]},

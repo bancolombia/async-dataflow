@@ -5,7 +5,6 @@ defmodule ChannelSenderEx.Transport.Sse do
 
   require Logger
 
-  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.JsonEncoder
