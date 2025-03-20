@@ -11,6 +11,16 @@ void main() {
       }
     });
 
+    int _defaultJitterFn(int num) {
+      var randomFactor = 0.25;
+
+      return Utils.jitter(num, randomFactor);
+    }
+
+    test('Should generate exp backoff when current value is big', () {
+      var result = Utils.expBackoff(50, 10000, 100, _defaultJitterFn);
+      assert(result > 9000);
+    });
     test('Should generate Exp Backoff no Jitter', () {
       const expected = [
         [0, 10],

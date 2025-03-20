@@ -19,9 +19,10 @@ class Utils {
   ]) {
     Function curatedFn;
     curatedFn = jitterFn ?? _defaultJitterFn;
-    var base = initial * pow(2, actualRetry);
+    var base = initial << actualRetry;
     var willWait = 0;
-    willWait = base > max ? curatedFn(max) : curatedFn(base);
+    var isOverflowing = actualRetry > 58;
+    willWait = (base > max || isOverflowing) ? curatedFn(max) : curatedFn(base);
 
     return willWait.toInt();
   }
