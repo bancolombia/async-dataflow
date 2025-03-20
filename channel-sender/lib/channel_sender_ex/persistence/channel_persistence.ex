@@ -4,6 +4,7 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
   """
   alias ChannelSenderEx.Persistence.NoopChannelPersistence
   alias ChannelSenderEx.Persistence.RedisChannelPersistence
+  alias ChannelSenderEx.Persistence.RedisChannelPersistenceSync
 
   @behaviour ChannelSenderEx.Persistence.ChannelPersistenceBehavior
 
@@ -63,6 +64,10 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
     imp().child_spec()
   end
 
+  def health do
+    imp().health()
+  end
+
   defp imp do
     case Application.get_env(:channel_sender_ex, :persistence_module) do
       nil -> NoopChannelPersistence
@@ -73,6 +78,7 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
   defp resolve_module(_enabled? = false, _type), do: resolve_module(:noop)
   defp resolve_module(_enabled? = true, type), do: resolve_module(type)
   defp resolve_module(:redis), do: RedisChannelPersistence
+  defp resolve_module(:redis_sync), do: RedisChannelPersistenceSync
   defp resolve_module(:noop), do: NoopChannelPersistence
 
   defp enabled? do

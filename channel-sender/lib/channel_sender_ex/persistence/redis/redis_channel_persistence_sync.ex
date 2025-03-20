@@ -1,4 +1,4 @@
-defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
+defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceSync do
   @moduledoc false
   @behaviour ChannelSenderEx.Persistence.ChannelPersistenceBehavior
 
@@ -17,7 +17,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   def save_channel(channel, socket \\ "") do
     Logger.debug(fn -> "Redis: Saving channel [#{channel}] : socket[#{socket}]" end)
     ttl = get_channel_data_ttl()
-    Redix.noreply_command!(:redix_write, ["SETEX", "channel_#{channel}", ttl, socket])
+    Redix.command!(:redix_write, ["SETEX", "channel_#{channel}", ttl, socket])
     :ok
   rescue
     e ->
@@ -34,7 +34,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
     ttl = get_channel_data_ttl()
 
-    Redix.noreply_pipeline!(:redix_write, [
+    Redix.pipeline!(:redix_write, [
       ["SETEX", "channel_" <> channel, ttl, socket],
       ["SETEX", "socket_" <> socket, ttl, channel]
     ])
@@ -49,7 +49,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   def save_message(message_id, message) do
     Logger.debug(fn -> "Redis: Saving message [#{message_id}] : #{inspect(message)}" end)
     ttl = get_channel_data_ttl()
-    Redix.noreply_command!(:redix_write, ["SETEX", "message_" <> message_id, ttl, message])
+    Redix.command!(:redix_write, ["SETEX", "message_" <> message_id, ttl, message])
   rescue
     e ->
       Logger.error(fn -> "Redis: Error while saving message: #{inspect(e)}" end)
@@ -63,10 +63,10 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
     case socket do
       "" ->
-        Redix.noreply_command!(:redix_write, ["DEL", "channel_#{channel}"])
+        Redix.command!(:redix_write, ["DEL", "channel_#{channel}"])
 
       _ ->
-        Redix.noreply_pipeline!(:redix_write, [
+        Redix.pipeline!(:redix_write, [
           ["DEL", "channel_" <> channel],
           ["DEL", "socket_" <> socket]
         ])
@@ -87,10 +87,10 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
 
     case channel do
       "" ->
-        Redix.noreply_command!(:redix_write, ["DEL", "socket_#{socket}"])
+        Redix.command!(:redix_write, ["DEL", "socket_#{socket}"])
 
       _ ->
-        Redix.noreply_pipeline!(:redix_write, [
+        Redix.pipeline!(:redix_write, [
           ["DEL", "socket_" <> socket],
           ["SETEX", "channel_" <> channel, get_channel_data_ttl(), ""]
         ])
@@ -105,7 +105,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistence do
   @spec delete_message(message_id()) :: :ok
   def delete_message(message_id) do
     Logger.debug(fn -> "Redis: Deleting message [#{message_id}]" end)
-    Redix.noreply_command!(:redix_write, ["DEL", "message_#{message_id}"])
+    Redix.command!(:redix_write, ["DEL", "message_#{message_id}"])
   rescue
     e ->
       Logger.error(fn ->

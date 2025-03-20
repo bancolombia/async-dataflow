@@ -13,4 +13,6 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistenceBehavior do
   @callback delete_message(binary()) :: :ok
 
   @callback child_spec() :: [Supervisor.child_spec()] | []
+
+  @callback health() :: :ok | {:error, any()}
 end

@@ -41,4 +41,8 @@ defmodule ChannelSenderEx.Persistence.NoopChannelPersistence do
   @impl true
   @spec child_spec :: [Supervisor.child_spec()] | []
   def child_spec, do: []
+
+  @impl true
+  @spec health :: :ok | {:error, any()}
+  def health, do: :ok
 end
