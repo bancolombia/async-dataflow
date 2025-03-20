@@ -77,6 +77,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     Map.get(fetch(config, :channel_sender_ex, "secret_generator"), "base",
           "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc")
 
+    # Api gateway connections configuration
     apig_config = parse_api_gateway(config)
     endpoint = resolve_api_gateway_endpoint(
       apig_config[:endpoint],
@@ -86,14 +87,18 @@ defmodule ChannelSenderEx.ApplicationConfig do
       apig_config[:stage]
     )
     Application.put_env(:channel_sender_ex, :api_gateway_connection, endpoint)
-
     Application.put_env(:channel_sender_ex, :api_id, apig_config[:api])
     Application.put_env(:channel_sender_ex, :api_region, apig_config[:region])
     Application.put_env(:channel_sender_ex, :api_stage, apig_config[:stage])
     Application.put_env(:channel_sender_ex, :api_adapter, apig_config[:adapter])
 
+    # Poolboy configuration
+    Application.put_env(:channel_sender_ex, :channel_worker_pool, parse_poolboy_workers(config))
+
+    # Libcluster configuration
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
+    # Persistence configuration
     persistence_cfg = parse_persistence(config)
     Application.put_env(:channel_sender_ex, :persistence, persistence_cfg)
     Application.put_env(:channel_sender_ex, :persistence_ttl, persistence_cfg[:ttl] || 900)
@@ -121,6 +126,14 @@ defmodule ChannelSenderEx.ApplicationConfig do
       domain: Map.get(apigateway, "domain", nil),
       endpoint: Map.get(apigateway, "endpoint", nil),
       adapter: parse_config_key(Map.get(apigateway, "adapter", %{"size" => 50})),
+    ]
+  end
+
+  defp parse_poolboy_workers(config) do
+    workers = fetch(config, :channel_sender_ex, "channel_worker_pool")
+    [
+      size: Map.get(workers, "size", 80),
+      max_overflow: Map.get(workers, "max_overflow", 40)
     ]
   end
 

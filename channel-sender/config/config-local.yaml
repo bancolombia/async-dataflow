@@ -52,6 +52,11 @@ channel_sender_ex:
     # see https://github.com/bancolombia/async-dataflow/tree/master/channel-sender/deploy_samples/k8s
     # for more information about the kubernetes configuration with libcluser
 
+  # Number of workers to process the requests (Poolboy configuration)
+  channel_worker_pool:
+    size: 120
+    max_overflow: 50
+
   persistence:
     enabled: true # Indicates if the persistence layer is enabled
     type: :redis # Indicates the type of persistence layer
