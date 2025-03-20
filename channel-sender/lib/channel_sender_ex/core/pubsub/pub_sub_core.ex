@@ -73,7 +73,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   def do_delete_channel(channel_ref) do
     case  Swarm.whereis_name(channel_ref) do
       pid when is_pid(pid) -> Channel.stop(pid)
-      :noproc ->
+      :undefined ->
         :retry
     end
   end
