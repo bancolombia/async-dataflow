@@ -21,7 +21,7 @@ class Utils {
     curatedFn = jitterFn ?? _defaultJitterFn;
     var base = initial << actualRetry;
     var willWait = 0;
-    var isOverflowing = actualRetry > 58;
+    var isOverflowing = base <= 0;
     willWait = (base > max || isOverflowing) ? curatedFn(max) : curatedFn(base);
 
     return willWait.toInt();
