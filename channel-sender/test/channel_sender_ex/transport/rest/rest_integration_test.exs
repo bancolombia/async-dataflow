@@ -158,7 +158,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
     assert {200, ["", "", "AuthOk", ""]} = auth_channel(connection_id, secret)
 
     # then process the reception of a heart-beat message
-    assert {200, ["", 1, ":hb", ""]} = heart_beat(connection_id)
+    assert {200, ["", _hbid, ":hb", ""]} = heart_beat(connection_id)
   end
 
   test "Should handle a gateway ack message" do

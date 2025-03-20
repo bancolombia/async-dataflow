@@ -12,11 +12,23 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperations do
   # Convert this operations into a Behaviour
 
   def create_channel(create_request) do
-    with {:ok, app, user_ref} <- CreateChannelData.validate(create_request),
-         {channel, secret} <- ChannelAuthenticator.create_channel_credentials(app, user_ref) do
+    with {:ok, app, user_ref, external_ref} <- CreateChannelData.validate(create_request) do
+      {channel, secret} = case external_ref do
+        nil ->
+          ChannelAuthenticator.create_channel_credentials(app, user_ref)
+        _ ->
+          ChannelAuthenticator.create_channel_credentials(external_ref, app, user_ref)
+      end
+
       ChannelWorker.save_channel(channel, "")
+
       CustomTelemetry.execute_custom_event([:adf, :channel, :creation], %{count: 1})
       {:ok, channel, secret}
+
+    else
+      _ ->
+        Logger.error(fn -> "ChannelOps: Invalid request [#{inspect(create_request)}]" end)
+        {:error, "Invalid request"}
     end
   end
 
