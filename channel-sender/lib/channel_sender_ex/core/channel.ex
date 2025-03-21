@@ -2,7 +2,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @moduledoc """
   Main abstraction for modeling and active or temporarily idle async communication channel with an user.
   """
-  use GenStateMachine, callback_mode: [:state_functions, :state_enter]
+  use GenStateMachine, callback_mode: [:state_functions, :state_enter], restart: :transient
   require Logger
   alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.ChannelIDGenerator
@@ -110,6 +110,25 @@ defmodule ChannelSenderEx.Core.Channel do
   ############################################
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
+  def waiting({:cast, {:swarm, :end_handoff, handoff_state}}, _state) do
+    # Resume from the state given by :begin_handoff
+    {:next_state, :waiting, handoff_state}
+  end
+
+  def waiting({:call, _from}, {:swarm, :begin_handoff}, state) do
+    # Return the state so the new node can take over
+    {:reply, {:resume, state}, :handoff, state}
+  end
+
+  def waiting({:cast, _from}, {:swarm, :end_handoff}, state) do
+    # Return the state so the new node can take over
+    {:next_state, :waiting, state}
+  end
+
+  def waiting(:info, {:swarm, :die}, state) do
+    {:stop, :shutdown, state}
+  end
+
   def waiting(:enter, _old_state, data) do
 
     case Swarm.whereis_name(data.channel) do
@@ -123,6 +142,7 @@ defmodule ChannelSenderEx.Core.Channel do
     case waiting_timeout do
       0 ->
         Logger.info("Channel #{data.channel} will not remain in waiting state due calculated wait time is 0. Stopping now.")
+        Swarm.unregister_name(data.channel)
         {:stop, :normal, data}
       _ ->
         Logger.info("Channel #{data.channel} entering waiting state. Expecting a socket connection/authentication. max wait time: #{waiting_timeout} ms")
@@ -143,6 +163,7 @@ defmodule ChannelSenderEx.Core.Channel do
   ## authenticated in the given time
   def waiting(:state_timeout, :waiting_timeout, data) do
     Logger.warning("Channel #{data.channel} timed-out on waiting state for a socket connection and/or authentication")
+    Swarm.unregister_name(data.channel)
     {:stop, :normal, %{data | stop_cause: :waiting_timeout}}
   end
 
@@ -197,6 +218,7 @@ defmodule ChannelSenderEx.Core.Channel do
         {:twins_last_letter, %{pending_ack: pending_ack, pending_sending: pending_sending}},
         data
       ) do
+    Logger.warning(fn -> "Channel #{data.channel}, received twins_last_letter" end)
     new_data = %{
       data
       | pending_ack: BoundedMap.merge(pending_ack, data.pending_ack),
@@ -216,6 +238,25 @@ defmodule ChannelSenderEx.Core.Channel do
 
   @type call() :: {:call, GenServer.from()}
   @type state_return() :: :gen_statem.event_handler_result(Data.t())
+
+  def connected({:cast, {:swarm, :end_handoff, handoff_state}}, _state) do
+    # Resume from the state given by :begin_handoff
+    {:next_state, :connected, handoff_state}
+  end
+
+  def connected(:info, {:swarm, :die}, state) do
+    {:stop, :shutdown, state}
+  end
+
+  def connected({:call, _from}, {:swarm, :begin_handoff}, state) do
+    # Return the state so the new node can take over
+    {:reply, {:resume, state}, :handoff, state}
+  end
+
+  def connected({:cast, _from}, {:swarm, :end_handoff}, state) do
+    # Return the state so the new node can take over
+    {:next_state, :connected, state}
+  end
 
   def connected(:enter, _old_state, data) do
     refresh_timeout = calculate_refresh_token_timeout()
@@ -374,7 +415,27 @@ defmodule ChannelSenderEx.Core.Channel do
   ############################################
   ###           CLOSED STATE              ####
   ############################################
+  def closed({:cast, {:swarm, :end_handoff, handoff_state}}, _state) do
+    # Resume from the state given by :begin_handoff
+    {:next_state, :closed, handoff_state}
+  end
+
+  def closed({:call, _from}, {:swarm, :begin_handoff}, state) do
+    # Return the state so the new node can take over
+    {:reply, {:resume, state}, :handoff, state}
+  end
+
+  def closed({:cast, _from}, {:swarm, :end_handoff}, state) do
+    # Return the state so the new node can take over
+    {:next_state, :closed, state}
+  end
+
+  def closed(:info, {:swarm, :die}, state) do
+    {:stop, :shutdown, state}
+  end
+
   def closed(:enter, _old_state, data) do
+    Swarm.unregister_name(data.channel)
     {:stop, :normal, data}
   end
 
