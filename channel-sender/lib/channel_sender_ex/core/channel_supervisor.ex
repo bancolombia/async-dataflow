@@ -1,5 +1,6 @@
 defmodule ChannelSenderEx.Core.ChannelSupervisor do
   use DynamicSupervisor
+
   @moduledoc """
     Module to start supervised channels in a distributed way
   """
@@ -29,4 +30,33 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     DynamicSupervisor.start_child(__MODULE__, {Channel, args})
   end
 
+  @spec register_channel(channel_init_args()) :: any()
+  def register_channel(args = {channel_ref, application, _user_ref, _meta}) do
+    case Swarm.register_name(channel_ref, __MODULE__, :start_channel, [args]) do
+      {:ok, pid} ->
+        Swarm.join(application, pid)
+        {:ok, pid}
+
+      {:error, {:already_registered, pid}} ->
+        Swarm.join(application, pid)
+        {:ok, pid}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @spec register_channel_if_not_exists(channel_init_args()) :: any()
+  def register_channel_if_not_exists(args = {channel_ref, application, _user_ref, _meta}) do
+    case Swarm.whereis_name(channel_ref) do
+      pid when is_pid(pid) ->
+        {:existing, pid}
+
+      :undefined ->
+        register_channel(args)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 end

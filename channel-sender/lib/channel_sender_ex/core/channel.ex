@@ -9,6 +9,7 @@ defmodule ChannelSenderEx.Core.Channel do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Utils.CustomTelemetry
+  alias ChannelSenderEx.Core.ChannelSupervisor
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [exp_back_off: 4]
 
   @on_connected_channel_reply_timeout 2000
@@ -118,11 +119,13 @@ defmodule ChannelSenderEx.Core.Channel do
 
   def waiting({:call, _from}, {:swarm, :begin_handoff}, state) do
     # Return the state so the new node can take over
+    Logger.debug(fn -> "Channel #{state.channel} begin handoff in pid #{inspect(self())} at #{Node.self()}" end)
     {:reply, {:resume, state}, :handoff, state}
   end
 
   def waiting({:cast, _from}, {:swarm, :end_handoff}, state) do
     # Return the state so the new node can take over
+    Logger.debug(fn -> "Channel #{state.channel} end handoff in pid #{inspect(self())} at #{Node.self()}" end)
     {:next_state, :waiting, state}
   end
 
@@ -131,26 +134,15 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   def waiting(:enter, _old_state, data) do
-    case Swarm.whereis_name(data.channel) do
-      :undefined ->
-        Logger.debug("Channel #{data.channel} swarm re-registration")
-        Swarm.register_name(data.channel, self())
-
-      pid ->
-        Logger.debug("Channel #{data.channel} already swarm registered #{inspect(pid)}")
-        :ok
-    end
-
     # time to wait for the socket to be open (or re-opened) and authenticated
     waiting_timeout = round(estimate_process_wait_time(data) * 1000)
 
-    case waiting_timeout do
-      0 ->
-        Logger.info(
-          "Channel #{data.channel} will not remain in waiting state due calculated wait time is 0. Stopping now."
-        )
-
+    case check_process(waiting_timeout, data) do
+      :timeout ->
         Swarm.unregister_name(data.channel)
+        {:stop, :normal, data}
+
+      :registered ->
         {:stop, :normal, data}
 
       _ ->
@@ -160,6 +152,33 @@ defmodule ChannelSenderEx.Core.Channel do
 
         new_data = %{data | socket_stop_cause: nil}
         {:keep_state, new_data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
+    end
+  end
+
+  defp check_process(_waiting_tomeout = 0, %{channel: channel}) do
+    Logger.info(
+      "Channel #{channel} will not remain in waiting state due calculated wait time is 0. Stopping now."
+    )
+
+    :timeout
+  end
+
+  defp check_process(
+         _waiting_tomeout,
+         _data = %{channel: channel, application: application, user_ref: user_ref, meta: meta}
+       ) do
+    case ChannelSupervisor.register_channel_if_not_exists({channel, application, user_ref, meta}) do
+      {:existing, pid} ->
+        Logger.debug("Channel #{channel} already swarm registered with pid #{inspect(pid)}")
+        :existing
+
+      {:error, reason} ->
+        Logger.error("Channel #{channel} failed to register in swarm: #{inspect(reason)}")
+        :error
+
+      {:ok, pid} ->
+        Logger.debug("Channel #{channel} swarm re-registration with pid #{inspect(pid)} stoping self #{inspect(self())}")
+        :registered
     end
   end
 
@@ -275,11 +294,13 @@ defmodule ChannelSenderEx.Core.Channel do
 
   def connected({:call, _from}, {:swarm, :begin_handoff}, state) do
     # Return the state so the new node can take over
+    Logger.debug(fn -> "Channel #{state.channel} begin handoff in pid #{inspect(self())} at #{Node.self()}" end)
     {:reply, {:resume, state}, :handoff, state}
   end
 
   def connected({:cast, _from}, {:swarm, :end_handoff}, state) do
     # Return the state so the new node can take over
+    Logger.debug(fn -> "Channel #{state.channel} end handoff in pid #{inspect(self())} at #{Node.self()}" end)
     {:next_state, :connected, state}
   end
 
@@ -479,11 +500,13 @@ defmodule ChannelSenderEx.Core.Channel do
 
   def closed({:call, _from}, {:swarm, :begin_handoff}, state) do
     # Return the state so the new node can take over
+    Logger.debug(fn -> "Channel #{state.channel} begin handoff in pid #{inspect(self())} at #{Node.self()}" end)
     {:reply, {:resume, state}, :handoff, state}
   end
 
   def closed({:cast, _from}, {:swarm, :end_handoff}, state) do
     # Return the state so the new node can take over
+    Logger.debug(fn -> "Channel #{state.channel} end handoff in pid #{inspect(self())} at #{Node.self()}" end)
     {:next_state, :closed, state}
   end
 
