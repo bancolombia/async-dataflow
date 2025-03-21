@@ -40,7 +40,9 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
         pid
     end
   catch
-    _type, _err -> :noproc
+    _type, err ->
+      Logger.error("Error connecting socket to channel #{inspect(err)}")
+      :noproc
   end
 
 end

@@ -133,8 +133,11 @@ defmodule ChannelSenderEx.Core.Channel do
 
     case Swarm.whereis_name(data.channel) do
       :undefined ->
+        Logger.debug("Channel #{data.channel} swarm re-registration")
         Swarm.register_name(data.channel, self())
-      _ -> :ok
+      pid ->
+        Logger.debug("Channel #{data.channel} already swarm registered #{inspect(pid)}")
+        :ok
     end
 
     # time to wait for the socket to be open (or re-opened) and authenticated
