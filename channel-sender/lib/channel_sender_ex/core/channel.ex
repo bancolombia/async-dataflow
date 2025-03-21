@@ -58,7 +58,6 @@ defmodule ChannelSenderEx.Core.Channel do
         meta: meta
       }
     end
-
   end
 
   @doc """
@@ -80,7 +79,9 @@ defmodule ChannelSenderEx.Core.Channel do
   """
   @spec deliver_message(:gen_statem.server_ref(), ProtocolMessage.t()) :: deliver_response()
   def deliver_message(server, message) do
-    GenStateMachine.call(server, {:deliver_message, message},
+    GenStateMachine.call(
+      server,
+      {:deliver_message, message},
       get_param(:accept_channel_reply_timeout, 1_000)
     )
   end
@@ -130,11 +131,11 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   def waiting(:enter, _old_state, data) do
-
     case Swarm.whereis_name(data.channel) do
       :undefined ->
         Logger.debug("Channel #{data.channel} swarm re-registration")
         Swarm.register_name(data.channel, self())
+
       pid ->
         Logger.debug("Channel #{data.channel} already swarm registered #{inspect(pid)}")
         :ok
@@ -142,13 +143,21 @@ defmodule ChannelSenderEx.Core.Channel do
 
     # time to wait for the socket to be open (or re-opened) and authenticated
     waiting_timeout = round(estimate_process_wait_time(data) * 1000)
+
     case waiting_timeout do
       0 ->
-        Logger.info("Channel #{data.channel} will not remain in waiting state due calculated wait time is 0. Stopping now.")
+        Logger.info(
+          "Channel #{data.channel} will not remain in waiting state due calculated wait time is 0. Stopping now."
+        )
+
         Swarm.unregister_name(data.channel)
         {:stop, :normal, data}
+
       _ ->
-        Logger.info("Channel #{data.channel} entering waiting state. Expecting a socket connection/authentication. max wait time: #{waiting_timeout} ms")
+        Logger.info(
+          "Channel #{data.channel} entering waiting state. Expecting a socket connection/authentication. max wait time: #{waiting_timeout} ms"
+        )
+
         new_data = %{data | socket_stop_cause: nil}
         {:keep_state, new_data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
     end
@@ -158,6 +167,7 @@ defmodule ChannelSenderEx.Core.Channel do
     actions = [
       _reply = {:reply, from, :ok}
     ]
+
     Logger.info("Channel #{data.channel} stopping, reason: :explicit_close")
     {:next_state, :closed, %{data | stop_cause: :explicit_close}, actions}
   end
@@ -165,19 +175,26 @@ defmodule ChannelSenderEx.Core.Channel do
   ## stop the process with a timeout cause if the socket is not
   ## authenticated in the given time
   def waiting(:state_timeout, :waiting_timeout, data) do
-    Logger.warning("Channel #{data.channel} timed-out on waiting state for a socket connection and/or authentication")
+    Logger.warning(
+      "Channel #{data.channel} timed-out on waiting state for a socket connection and/or authentication"
+    )
+
     Swarm.unregister_name(data.channel)
     {:stop, :normal, %{data | stop_cause: :waiting_timeout}}
   end
 
   def waiting({:call, from}, {:socket_connected, socket_pid}, data) do
-    Logger.debug("Channel #{data.channel} received socket connected notification. Socket pid: #{inspect(socket_pid)}")
+    Logger.debug(
+      "Channel #{data.channel} received socket connected notification. Socket pid: #{inspect(socket_pid)}"
+    )
+
     socket_ref = Process.monitor(socket_pid)
     new_data = %{data | socket: {socket_pid, socket_ref}, socket_stop_cause: nil}
 
     actions = [
       _reply = {:reply, from, :ok}
     ]
+
     Logger.debug("Channel #{data.channel} authenticated. Leaving waiting state.")
     {:next_state, :connected, new_data, actions}
   end
@@ -193,6 +210,7 @@ defmodule ChannelSenderEx.Core.Channel do
       _reply = {:reply, from, :accepted_waiting},
       _postpone = :postpone
     ]
+
     Logger.debug("Channel #{data.channel} received a message while waiting for authentication")
     new_data = save_pending_send(data, message)
     {:keep_state, new_data, actions}
@@ -211,7 +229,10 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
-    Logger.warning("Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}")
+    Logger.warning(
+      "Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}"
+    )
+
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
@@ -222,6 +243,7 @@ defmodule ChannelSenderEx.Core.Channel do
         data
       ) do
     Logger.warning(fn -> "Channel #{data.channel}, received twins_last_letter" end)
+
     new_data = %{
       data
       | pending_ack: BoundedMap.merge(pending_ack, data.pending_ack),
@@ -267,7 +289,11 @@ defmodule ChannelSenderEx.Core.Channel do
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
   end
 
-  def connected({:call, from}, {:socket_connected, socket_pid}, data = %{socket: {old_socket_pid, old_socket_ref}}) do
+  def connected(
+        {:call, from},
+        {:socket_connected, socket_pid},
+        data = %{socket: {old_socket_pid, old_socket_ref}}
+      ) do
     Process.demonitor(old_socket_ref)
     send(old_socket_pid, :terminate_socket)
     socket_ref = Process.monitor(socket_pid)
@@ -295,15 +321,18 @@ defmodule ChannelSenderEx.Core.Channel do
 
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} sending message [:n_token] ref: #{msg_id}")
-    {:keep_state,
-      save_pending_ack(data, output), # new data
-      actions}
+
+    {
+      :keep_state,
+      # new data
+      save_pending_ack(data, output),
+      actions
+    }
   end
 
   ## Handle the case when a message delivery is requested.
-  #@spec connected(call(), {:deliver_message, ProtocolMessage.t()}, Data.t()) :: state_return()
+  # @spec connected(call(), {:deliver_message, ProtocolMessage.t()}, Data.t()) :: state_return()
   def connected({:call, from}, {:deliver_message, message}, data) do
-
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} sending message [user] ref: #{msg_id}")
 
@@ -322,19 +351,23 @@ defmodule ChannelSenderEx.Core.Channel do
 
     new_data =
       data
-      |> save_pending_ack(output) # save the message in the pending_ack map within the data
-      |> clear_pending_send(message) # deletes the message from the pending_sending map
+      # save the message in the pending_ack map within the data
+      |> save_pending_ack(output)
+      # deletes the message from the pending_sending map
+      |> clear_pending_send(message)
 
     {:keep_state, new_data, actions}
   end
 
   ## Handle the case when a message is acknowledged by the client.
-   def connected(:info, {:ack, message_ref, message_id}, data) do
+  def connected(:info, {:ack, message_ref, message_id}, data) do
     {_, new_data} = retrieve_pending_ack(data, message_ref)
 
     actions = [
-      _cancel_timer = {{:timeout, {:redelivery, message_ref}}, :cancel} # cancel the redelivery timer
+      # cancel the redelivery timer
+      _cancel_timer = {{:timeout, {:redelivery, message_ref}}, :cancel}
     ]
+
     Logger.debug("Channel #{data.channel} recv ack msg #{message_id}")
     {:keep_state, new_data, actions}
   end
@@ -345,32 +378,46 @@ defmodule ChannelSenderEx.Core.Channel do
     {message, new_data} = retrieve_pending_ack(data, ref)
 
     max_unacknowledged_retries = get_param(:max_unacknowledged_retries, 20)
+
     case retries do
       r when r >= max_unacknowledged_retries ->
         {message_id, _, _, _, _} = message
-        Logger.warning("Channel #{data.channel} reached max retries for message #{inspect(message_id)}")
+
+        Logger.warning(
+          "Channel #{data.channel} reached max retries for message #{inspect(message_id)}"
+        )
+
         {:keep_state, new_data}
 
       _ ->
         output = send(socket_pid, create_output_message(message, ref))
 
         # reschedule the timer to keep retrying to deliver the message
-        next_delay = round(exp_back_off(get_param(:initial_redelivery_time, 900), 3_000, retries, 0.2))
-        Logger.debug("Channel #{data.channel} redelivering message in #{next_delay} ms (retry #{retries})")
+        next_delay =
+          round(exp_back_off(get_param(:initial_redelivery_time, 900), 3_000, retries, 0.2))
+
+        Logger.debug(
+          "Channel #{data.channel} redelivering message in #{next_delay} ms (retry #{retries})"
+        )
+
         actions = [
           _timeout =
             {{:timeout, {:redelivery, ref}}, next_delay, retries + 1}
         ]
 
         {:keep_state, save_pending_ack(new_data, output), actions}
-      end
+    end
   end
 
   ## Handle info notification when socket process terminates. This method is called because the socket is monitored.
   ## via Process.monitor(socket_pid) in the waited/connected state.
   def connected(:info, {:DOWN, _ref, :process, _object, reason}, data) do
     new_data = %{data | socket: nil, socket_stop_cause: reason}
-    Logger.warning("Channel #{data.channel} detected socket close/disconnection. Will enter :waiting state")
+
+    Logger.warning(
+      "Channel #{data.channel} detected socket close/disconnection. Will enter :waiting state"
+    )
+
     {:next_state, :waiting, new_data, []}
   end
 
@@ -380,7 +427,10 @@ defmodule ChannelSenderEx.Core.Channel do
         {:EXIT, _, {:name_conflict, {c_ref, _}, _, new_pid}},
         data = %{channel: c_ref}
       ) do
-        Logger.warning("Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}")
+    Logger.warning(
+      "Channel #{data.channel}, stopping process #{inspect(self())} in status :waiting due to :name_conflict, and starting new process #{inspect(new_pid)}"
+    )
+
     send(new_pid, {:twins_last_letter, data})
     {:stop, :normal, %{data | stop_cause: :name_conflict}}
   end
@@ -394,11 +444,14 @@ defmodule ChannelSenderEx.Core.Channel do
 
   # capture any other info message
   def connected(
-    :info,
-    info_payload,
-    data
-  ) do
-    Logger.warning("Channel #{data.channel} receceived unknown info message #{inspect(info_payload)}")
+        :info,
+        info_payload,
+        data
+      ) do
+    Logger.warning(
+      "Channel #{data.channel} receceived unknown info message #{inspect(info_payload)}"
+    )
+
     {:keep_state_and_data, :postpone}
   end
 
@@ -406,6 +459,7 @@ defmodule ChannelSenderEx.Core.Channel do
     actions = [
       _reply = {:reply, from, :ok}
     ]
+
     Logger.debug("Channel #{data.channel} stopping, reason: :explicit_close")
     {:next_state, :closed, %{data | stop_cause: :explicit_close}, actions}
   end
@@ -446,11 +500,15 @@ defmodule ChannelSenderEx.Core.Channel do
   def terminate(reason, state, data) do
     CustomTelemetry.execute_custom_event([:adf, :channel], %{count: -1})
     level = if reason == :normal, do: :info, else: :warning
-    Logger.log(level,
-    """
-    Channel #{data.channel} terminating, from state #{inspect(state)}
-    and reason #{inspect(reason)}. Data: #{inspect(data)}
-    """)
+
+    Logger.log(
+      level,
+      """
+      Channel #{data.channel} terminating, from state #{inspect(state)}
+      and reason #{inspect(reason)}. Data: #{inspect(data)}
+      """
+    )
+
     :ok
   end
 
@@ -471,8 +529,12 @@ defmodule ChannelSenderEx.Core.Channel do
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} saving pending ack #{msg_id}")
     # ! add a metric here to increment pending ack count
-    #CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :ack], %{count: 1})
-    %{data | pending_ack: BoundedMap.put(pending_ack, ref, message, get_param(:max_unacknowledged_queue, 100))}
+    # CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :ack], %{count: 1})
+    %{
+      data
+      | pending_ack:
+          BoundedMap.put(pending_ack, ref, message, get_param(:max_unacknowledged_queue, 100))
+    }
   end
 
   @spec retrieve_pending_ack(Data.t(), reference()) :: {ProtocolMessage.t(), Data.t()}
@@ -480,11 +542,15 @@ defmodule ChannelSenderEx.Core.Channel do
   defp retrieve_pending_ack(data = %{pending_ack: pending_ack}, ref) do
     case BoundedMap.pop(pending_ack, ref) do
       {:noop, _} ->
-        Logger.warning("Channel #{data.channel} received ack for unknown message ref #{inspect(ref)}")
+        Logger.warning(
+          "Channel #{data.channel} received ack for unknown message ref #{inspect(ref)}"
+        )
+
         {:noop, data}
+
       {message, new_pending_ack} ->
         # ! add a metric here to decrement pending ack count
-        #CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :ack], %{count: -1})
+        # CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :ack], %{count: -1})
         {message, %{data | pending_ack: new_pending_ack}}
     end
   end
@@ -495,21 +561,24 @@ defmodule ChannelSenderEx.Core.Channel do
     {msg_id, _, _, _, _} = message
     Logger.debug("Channel #{data.channel} saving pending msg #{msg_id}")
     # ! add a metric here to increment pending send count
-    #CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :send], %{count: 1})
+    # CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :send], %{count: 1})
     %{
       data
-      | pending_sending: BoundedMap.put(pending_sending, msg_id, message, get_param(:max_pending_queue, 100))
+      | pending_sending:
+          BoundedMap.put(pending_sending, msg_id, message, get_param(:max_pending_queue, 100))
     }
   end
 
   defp clear_pending_send(data = %{pending_sending: pending}, message) do
     case BoundedMap.size(pending) do
-      0 -> data
+      0 ->
+        data
+
       _ ->
         {message_id, _, _, _, _} = message
         Logger.debug("Channel #{data.channel} clearing pending msg #{message_id}")
         # ! add a metric here to decrement pending send count
-        #CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :send], %{count: -1})
+        # CustomTelemetry.execute_custom_event([:adf, :channel, :pending, :send], %{count: -1})
         %{data | pending_sending: BoundedMap.delete(pending, message_id)}
     end
   end
@@ -533,6 +602,7 @@ defmodule ChannelSenderEx.Core.Channel do
     case socket_clean_disconnection?(data) do
       true ->
         get_param(:channel_shutdown_on_clean_close, 30)
+
       false ->
         # this time will also apply when socket the first time connected
         get_param(:channel_shutdown_on_disconnection, 300)
@@ -552,5 +622,4 @@ defmodule ChannelSenderEx.Core.Channel do
   rescue
     _e -> def
   end
-
 end
