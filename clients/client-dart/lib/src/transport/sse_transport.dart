@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
+import 'package:flutter_client_sse/retry_options.dart';
 import 'package:logging/logging.dart';
 
 import '../../channel_sender_client.dart';
@@ -57,13 +58,15 @@ class SSETransport implements Transport {
       header: {
         'Authorization': 'Bearer $currentToken',
       },
-      maxRetryTime: 5000,
-      minRetryTime: 50,
-      maxRetry: _config.maxRetries ?? 5,
-      limitReachedCallback: () async {
-        _onResponseError(
-            Exception('async-client. SSE limit reached'), StackTrace.current);
-      },
+      retryOptions: RetryOptions(
+        maxRetryTime: 6000,
+        minRetryTime: 50,
+        maxRetry: _config.maxRetries ?? 5,
+        limitReachedCallback: () async {
+          _onResponseError(
+              Exception('async-client. SSE limit reached'), StackTrace.current);
+        },
+      ),
     );
 
     _localStream = StreamController(onListen: _onListen);
