@@ -28,7 +28,8 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
         join: fn(_, _) -> :ok end
       ]},
       {ChannelSupervisor, [], [
-        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
+        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end,
+        register_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
       ]}
     ]) do
       assert {_, _} = ChannelAuthenticator.create_channel("App1", "User1")
@@ -42,7 +43,8 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
         join: fn(_, _) -> :ok end
       ]},
       {ChannelSupervisor, [], [
-        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
+        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end,
+        register_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
       ]}
     ]) do
       {ref , secret} = ChannelAuthenticator.create_channel("App1", "User1")

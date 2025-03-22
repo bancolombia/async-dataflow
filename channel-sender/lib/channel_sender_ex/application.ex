@@ -9,6 +9,8 @@ defmodule ChannelSenderEx.Application do
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Utils.CustomTelemetry
 
+  @default_prometheus_port 9568
+
   use Application
   require Logger
 
@@ -29,6 +31,9 @@ defmodule ChannelSenderEx.Application do
   end
 
   defp children(no_start_param) do
+    prometheus_port =
+      Application.get_env(:channel_sender_ex, :prometheus_port, @default_prometheus_port)
+
     case no_start_param do
       false ->
         [
@@ -37,7 +42,11 @@ defmodule ChannelSenderEx.Application do
           {Plug.Cowboy, scheme: :http, plug: RestController, options: [
             port: Application.get_env(:channel_sender_ex, :rest_port),
           ]},
-          {TelemetryMetricsPrometheus, [metrics: CustomTelemetry.metrics()]},
+          {TelemetryMetricsPrometheus,
+          [
+            metrics: CustomTelemetry.metrics(),
+            port: prometheus_port
+          ]},
           # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()}
         ]
       true ->

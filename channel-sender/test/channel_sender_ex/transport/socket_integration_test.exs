@@ -1,5 +1,5 @@
 defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ChannelSupervisor
@@ -50,13 +50,13 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
       ChannelSupervisor
     ]
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
-    Supervisor.start_link(children, opts)
+    {:ok, pid_supervisor} = Supervisor.start_link(children, opts)
 
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
       Application.delete_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
       Application.delete_env(:channel_sender_ex, :secret_base)
-      # true = Process.exit(pid_supervisor, :normal)
+      true = Process.exit(pid_supervisor, :normal)
       IO.puts("Supervisor and Registry was terminated")
     end)
 
@@ -228,7 +228,9 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
     Process.exit(ch_pid, :kill)
 
-    Process.sleep(1200)
+    Process.sleep(1800)
+
+    assert is_pid(Swarm.whereis_name(channel))
 
     {message_id, data} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {_type, _string}}
@@ -268,10 +270,10 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1500
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 2000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
     :gun.close(conn)

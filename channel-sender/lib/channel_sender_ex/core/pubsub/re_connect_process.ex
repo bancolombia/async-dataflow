@@ -35,6 +35,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
       :undefined ->
         :noproc
       pid when is_pid(pid) ->
+        Logger.debug(fn -> "Connecting socket #{inspect(pid)} to channel #{channel_ref}" end)
         timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
         Channel.socket_connected(pid, socket_pid, timeout)
         pid

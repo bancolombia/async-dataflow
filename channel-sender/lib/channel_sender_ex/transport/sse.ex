@@ -75,8 +75,11 @@ defmodule ChannelSenderEx.Transport.Sse do
   end
 
   def info(:terminate_socket, req, state) do
-    # check if we need to do something with the new_socket_pid
-    Logger.info("Sse for channel xxxxxx : received terminate_socket message")
+    ch = case get_channel_from_qs(req) do
+      {:error, _} -> ""
+      val -> val
+    end
+    Logger.debug(fn -> "Sse for channel [#{inspect(ch)}] : received terminate_socket message" end)
     {:ok, req, state}
   end
 

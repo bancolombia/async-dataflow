@@ -112,6 +112,34 @@ defmodule ChannelSenderEx.Core.Channel do
   ############################################
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
+
+  defp check_process(_waiting_tomeout = 0, %{channel: channel}) do
+    Logger.info(
+      "Channel #{channel} will not remain in waiting state due calculated wait time is 0. Stopping now."
+    )
+
+    :timeout
+  end
+
+  defp check_process(
+         _waiting_tomeout,
+         _data = %{channel: channel, application: application, user_ref: user_ref, meta: meta}
+       ) do
+    case ChannelSupervisor.register_channel_if_not_exists({channel, application, user_ref, meta}) do
+      {:existing, pid} ->
+        Logger.debug("Channel #{channel} already swarm registered with pid #{inspect(pid)}")
+        :existing
+
+      {:error, reason} ->
+        Logger.error("Channel #{channel} failed to register in swarm: #{inspect(reason)}")
+        :error
+
+      {:ok, pid} ->
+        Logger.debug("Channel #{channel} swarm re-registration with pid #{inspect(pid)} stoping self #{inspect(self())}")
+        :registered
+    end
+  end
+
   def waiting({:cast, {:swarm, :end_handoff, handoff_state}}, _state) do
     # Resume from the state given by :begin_handoff
     {:next_state, :waiting, handoff_state}
@@ -152,33 +180,6 @@ defmodule ChannelSenderEx.Core.Channel do
 
         new_data = %{data | socket_stop_cause: nil}
         {:keep_state, new_data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
-    end
-  end
-
-  defp check_process(_waiting_tomeout = 0, %{channel: channel}) do
-    Logger.info(
-      "Channel #{channel} will not remain in waiting state due calculated wait time is 0. Stopping now."
-    )
-
-    :timeout
-  end
-
-  defp check_process(
-         _waiting_tomeout,
-         _data = %{channel: channel, application: application, user_ref: user_ref, meta: meta}
-       ) do
-    case ChannelSupervisor.register_channel_if_not_exists({channel, application, user_ref, meta}) do
-      {:existing, pid} ->
-        Logger.debug("Channel #{channel} already swarm registered with pid #{inspect(pid)}")
-        :existing
-
-      {:error, reason} ->
-        Logger.error("Channel #{channel} failed to register in swarm: #{inspect(reason)}")
-        :error
-
-      {:ok, pid} ->
-        Logger.debug("Channel #{channel} swarm re-registration with pid #{inspect(pid)} stoping self #{inspect(self())}")
-        :registered
     end
   end
 

@@ -109,6 +109,11 @@ defmodule ChannelSenderEx.ApplicationConfig do
     Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection,
       Map.get(channel_wait_times, "on_disconnection", 300))
 
+
+    Application.put_env(:channel_sender_ex, :prometheus_port,
+      Map.get(fetch(config, :channel_sender_ex), "prometheus_port", 9568)
+    )
+
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
     if config == %{} do

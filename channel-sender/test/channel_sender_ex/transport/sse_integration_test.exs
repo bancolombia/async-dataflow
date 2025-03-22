@@ -26,6 +26,8 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
         "socket auth"
     })
 
+    {:ok, _} = Application.ensure_all_started(:swarm)
+    {:ok, _} = Application.ensure_all_started(:libcluster)
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
@@ -38,8 +40,11 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
       event_name: "event.example"
     }
 
-    {:ok, pid_supervisor} =
-      DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+    children = [
+      ChannelSupervisor
+    ]
+    opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
+    {:ok, pid_supervisor} = Supervisor.start_link(children, opts)
 
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)

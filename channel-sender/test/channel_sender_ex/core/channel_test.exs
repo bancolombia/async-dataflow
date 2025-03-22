@@ -1,7 +1,7 @@
 Code.compiler_options(ignore_module_conflict: true)
 
 defmodule ChannelSenderEx.Core.ChannelTest do
-  use ExUnit.Case, sync: true
+  use ExUnit.Case
   import Mock
 
   alias ChannelSenderEx.Core.Channel
