@@ -11,6 +11,11 @@ void main() {
       }
     });
 
+    test('Should generate exp backoff when current value is big', () {
+      var result = Utils.expBackoff(50, 10000, 100);
+      assert(result == 10000);
+    });
+
     test('Should generate Exp Backoff no Jitter', () {
       const expected = [
         [0, 10],
