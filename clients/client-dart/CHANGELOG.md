@@ -1,5 +1,5 @@
 # CHANGELOG
-## [3.0.0] 
+## [3.0.0-beta] 
 - Support SSE protocol
 ## [2.0.4] 
 - Fix overflow of exp Backoff

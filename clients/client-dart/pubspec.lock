@@ -225,9 +225,11 @@ packages:
   flutter_client_sse:
     dependency: "direct main"
     description:
-      path: "/Users/sagarci/Documents/development/open-source/flutter_client_sse"
-      relative: false
-    source: path
+      path: "."
+      ref: "feat/retry"
+      resolved-ref: "03468b369dbdc8580afac9f0861a92e5227dacc1"
+      url: "https://github.com/santitigaga/flutter_client_sse"
+    source: git
     version: "2.0.3"
   flutter_lints:
     dependency: "direct dev"
