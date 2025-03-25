@@ -13,6 +13,7 @@ defmodule ChannelSenderEx.Core.Channel do
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [exp_back_off: 4]
 
   @on_connected_channel_reply_timeout 2000
+  @token_remaining_life_to_renovate 40 # 40% of token life remaining will signal a renovation action
 
   @type delivery_ref() :: {pid(), reference()}
   @type output_message() :: {delivery_ref(), ProtocolMessage.t()}
@@ -33,6 +34,7 @@ defmodule ChannelSenderEx.Core.Channel do
             stop_cause: atom(),
             socket_stop_cause: atom(),
             user_ref: String.t(),
+            token_expiry: integer(),
             meta: String.t()
           }
 
@@ -44,6 +46,7 @@ defmodule ChannelSenderEx.Core.Channel do
               stop_cause: nil,
               socket_stop_cause: nil,
               user_ref: "",
+              token_expiry: 0,
               meta: nil
 
     def new(channel, application, user_ref, meta) do
@@ -56,6 +59,7 @@ defmodule ChannelSenderEx.Core.Channel do
         stop_cause: nil,
         socket_stop_cause: nil,
         user_ref: user_ref,
+        token_expiry: 0,
         meta: meta
       }
     end
@@ -102,7 +106,10 @@ defmodule ChannelSenderEx.Core.Channel do
   @impl GenStateMachine
   @doc false
   def init({channel, application, user_ref, meta}) do
+
     data = Data.new(channel, application, user_ref, meta)
+      |> Map.put(:token_expiry, calculate_token_expiration_time())
+
     Logger.debug("Channel #{channel} created. Data: #{inspect(data)}")
     Process.flag(:trap_exit, true)
     CustomTelemetry.execute_custom_event([:adf, :channel], %{count: 1})
@@ -330,26 +337,37 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   def connected(:state_timeout, :refresh_token_timeout, data) do
-    refresh_timeout = calculate_refresh_token_timeout()
-    message = new_token_message(data)
+    if calculate_token_remaining_life(data.token_expiry) < @token_remaining_life_to_renovate do
+      message = new_token_message(data)
+      {msg_id, _, _, _, _} = message
 
-    {:deliver_msg, {_, ref}, _} = output = send_message(data, message)
+      {:deliver_msg, {_, ref}, _} = output = send_message(data, message)
 
-    actions = [
-      _redelivery_timeout =
-        {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 900), 0},
-      _refresh_timeout = {:state_timeout, refresh_timeout, :refresh_token_timeout}
-    ]
+      actions = [
+        _redelivery_timeout =
+          {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 900), 0},
+        _refresh_timeout = {:state_timeout, calculate_refresh_token_timeout(), :refresh_token_timeout}
+      ]
 
-    {msg_id, _, _, _, _} = message
-    Logger.debug("Channel #{data.channel} sending message [:n_token] ref: #{msg_id}")
+      Logger.debug("Channel #{data.channel} sending message [:n_token] ref: #{msg_id}")
+      {
+        :keep_state,
+        # new data
+        save_pending_ack(%{data | token_expiry: calculate_token_expiration_time()}, output),
+        actions
+      }
 
-    {
-      :keep_state,
-      # new data
-      save_pending_ack(data, output),
-      actions
-    }
+    else
+      Logger.debug("Channel #{data.channel} token holds > #{@token_remaining_life_to_renovate}% life, not updating")
+      {
+        :keep_state_and_data,
+        [
+          _refresh_timeout = {:state_timeout, calculate_refresh_token_timeout(), :refresh_token_timeout}
+        ]
+      }
+    end
+
+
   end
 
   ## Handle the case when a message delivery is requested.
@@ -612,13 +630,25 @@ defmodule ChannelSenderEx.Core.Channel do
     {:deliver_msg, {self(), ref}, message}
   end
 
+  defp calculate_token_expiration_time() do
+    token_life_millis = (get_param(:max_age, 900) * 1000) -
+       (get_param(:min_disconnection_tolerance, 50) * 1000)
+    :erlang.system_time(:millisecond) + token_life_millis
+  end
+
+  defp calculate_token_remaining_life(token_expiry) do
+    current_time = :erlang.system_time(:millisecond)
+    diff_seconds = (token_expiry - current_time) / 1000
+    (diff_seconds * 100) / get_param(:max_age, 900)
+  end
+
   @spec calculate_refresh_token_timeout() :: integer()
   @compile {:inline, calculate_refresh_token_timeout: 0}
   defp calculate_refresh_token_timeout do
     token_validity = get_param(:max_age, 900)
     tolerance = get_param(:min_disconnection_tolerance, 50)
-    min_timeout = token_validity / 2
-    round(max(min_timeout, token_validity - tolerance) * 1000)
+    min_timeout = (token_validity - tolerance) / 5
+    round(min_timeout * 1000)
   end
 
   defp estimate_process_wait_time(data) do
