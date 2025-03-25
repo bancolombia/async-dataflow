@@ -35,6 +35,21 @@ class DefaultTransportStrategy {
       }
       _currentTransport = _transportTypes.first == TransportType.ws ? _buildWSTransport() : _buildSSETransport();
     }
+  
+  Future<bool> connect() async {
+    bool connected =  await _currentTransport.connect();
+    if (!connected) {
+      await iterateTransport();
+      connected = await _currentTransport.connect();
+    }
+
+    return connected;
+  }
+
+  Future<void> disconnect() async {
+    await _currentTransport.disconnect();
+    _currentTransport = NoopTransport();
+  }
 
   Transport getTransport() {
     return _currentTransport;
@@ -54,21 +69,12 @@ class DefaultTransportStrategy {
     if (_currentTransportIndex >= _transportTypes.length) {
       _currentTransportIndex = 0;
     }
-    _log.finest('[async-client][DefaultTransportStrategy] transport index iterated: $_currentTransportIndex');
+    _log.finest('[async-client][DefaultTransportStrategy] next transport type will be : $_transportTypes[_currentTransportIndex]');
 
     await _currentTransport.disconnect();
     _currentTransport = _transportTypes[_currentTransportIndex] == TransportType.ws ? _buildWSTransport() : _buildSSETransport();
 
     _log.finest('[async-client][DefaultTransportStrategy] iterating ended: = ${_currentTransport.name()}');      
-  }
-  
-  Future<bool> connect() async {
-    return await _currentTransport.connect();
-  }
-
-  Future<void> disconnect() async {
-    await _currentTransport.disconnect();
-    _currentTransport = NoopTransport();
   }
 
   Stream<ChannelMessage> get stream => getTransport().stream;
@@ -92,4 +98,5 @@ class DefaultTransportStrategy {
       _config,
     );
   }
+
 }

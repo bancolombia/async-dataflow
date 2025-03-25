@@ -123,7 +123,7 @@ class SSETransport implements Transport {
 
     if (_messageDedup.contains(message.messageId??'')) {
       _log.warning('[async-client][SSETransport] message deduped: ${message.messageId}');
-      
+
       return;
     } else {
       _messageDedup.add(message.messageId??'');
@@ -166,7 +166,9 @@ class SSETransport implements Transport {
     await _eventStreamSub?.cancel();
     _eventStreamSub = null;
     _eventSource = null;
+    SSEClient.unsubscribeFromSSE();
+    _log.info('[async-client][SSETransport] disconnect() finished');    
     
-    return Future.value();
+    return;
   }
 }
