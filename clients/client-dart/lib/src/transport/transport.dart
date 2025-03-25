@@ -2,7 +2,7 @@ import '../../channel_sender_client.dart';
 
 abstract class Transport {
   TransportType name();
-  void connect();
+  Future<bool> connect();
   Future<void> disconnect();
   bool isOpen();
   Stream<ChannelMessage> get stream;

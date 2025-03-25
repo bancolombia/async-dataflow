@@ -35,7 +35,7 @@ class _RequestPageState extends State<RequestPage> {
           InputField(
             textEditingController: textEditingController,
             labelText: "Delay in ms",
-            icon: Icons.lock_clock_outlined,
+            icon: Icons.timelapse,
           ),
           const SizedBox(height: 10),
           Row(
@@ -49,6 +49,13 @@ class _RequestPageState extends State<RequestPage> {
               Button(text: "Re-Connect", onTap: () => homeHelper.connect()),
               const SizedBox(width: 10),
               Button(text: "Disconnect", onTap: () => homeHelper.disconnect()),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Button(text: "Switch Protocol", onTap: () => homeHelper.switchProtocols()),
             ],
           ),
           const SizedBox(height: 10),

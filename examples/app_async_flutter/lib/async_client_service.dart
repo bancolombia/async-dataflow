@@ -42,14 +42,26 @@ class AsyncClientService extends InheritedWidget {
   final AppConfig appConfig;
 
   void _handleEvent(dynamic msg) {
+     // The client app can subscrtibe to bussines events with different names
     if (msg.event == 'businessEvent') {
       responsesNotifier.addResponse(
           'Message from async dataflow, title: ${msg.payload['title']} detail: ${msg.payload['detail']}');
     }
 
+     // Another bussines event
     if (msg.event == 'ch-ms-async-callback.svp.reply') {
       responsesNotifier.addResponse(
           'Message from async dataflow, title: ${msg.payload['data']['reply']['messageData']['title']} detail: ${msg.payload['data']['reply']['messageData']['detail']}');
+    }
+
+    if (msg.event == ':n_token') {
+      // The client app can also subscrtibe to this ADF internal event to listen
+      // when connector receives a new token from the backend.
+      // This is useful if client gets disconnected and needs to reconnect
+      // wont use an expired token, but always use the active token.
+      prefs.setString('channelSecret', msg.payload).then((onValue) {
+        _log.info("Channel secret updated");
+      });
     }
   }
 
@@ -61,6 +73,10 @@ class AsyncClientService extends InheritedWidget {
     prefs = await SharedPreferences.getInstance();
     await deleteChannelCreated();
     asyncClient.disconnect();
+  }
+
+  Future<void> switchProtocols() async {
+    asyncClient.switchProtocols();
   }
 
   Future<void> deleteChannelCreated() async {
@@ -88,6 +104,7 @@ class AsyncClientService extends InheritedWidget {
     print(appConfig.transports.join(","));
 
     await prefs.setString('socketUrl', appConfig.socketUrl);
+    await prefs.setString('sseUrl', appConfig.sseUrl ?? '');
     await prefs.setString('apiBusiness', appConfig.businessUrl);
     await prefs.setString(
         'heartbeatInterval', appConfig.heartbeatInterval.toString());
@@ -104,6 +121,7 @@ class AsyncClientService extends InheritedWidget {
     if (channelCredential != null) {
       final conf = AsyncConfig(
           socketUrl: appConfig.socketUrl,
+          sseUrl: appConfig.sseUrl,
           enableBinaryTransport: false,
           channelRef: channelCredential.channelRef,
           channelSecret: channelCredential.channelSecret,
@@ -114,12 +132,18 @@ class AsyncClientService extends InheritedWidget {
           }).toList());
 
       asyncClient = AsyncClient(conf);
-      asyncClient.connect();
-      asyncClient.subscribeToMany(eventListen, (eventResult) {
-        _handleEvent(eventResult);
-      }, onError: (err) {
-        _handleEvent(err);
-      });
+      bool connected = await asyncClient.connect();
+      if (connected) {
+        _log.info("Connected to ADF");
+        asyncClient.subscribeToMany(eventListen, (eventResult) {
+          _handleEvent(eventResult);
+        }, onError: (err) {
+          _handleEvent(err);
+        });
+      } else {
+        _log.severe("Not connected");
+      }
+
     } else {
       throw Exception("AsyncClient could not be initialized");
     }

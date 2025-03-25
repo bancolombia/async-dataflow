@@ -49,12 +49,6 @@ void main() {
           protocols: ['json_flow'], headers: headers);
       final channel = IOWebSocketChannel(webSocket);
 
-      late StreamController<ChannelMessage> localStream;
-
-      localStream = StreamController(onListen: () {
-        log.finest('OnListen');
-      });
-
       var signalSocketCloseFn = (int code, String reason) {
         log.finest('socket closed');
       };
@@ -62,17 +56,19 @@ void main() {
         log.severe('socket error');
       };
       AsyncConfig config = AsyncConfig(
-          socketUrl: 'ws://localhost:8082',
+          socketUrl: 'ws://localhost:${server.port}',
           channelRef: 'channelRef',
-          channelSecret: 'channelSecret',
-          heartbeatInterval: 1000);
+          channelSecret: 'SFMy',
+          heartbeatInterval: 1000,);
 
       var transport =
           WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
       String? hbCounter;
 
-      localStream.stream.listen((message) {
-        log.fine('Received $message');
+      await transport.connect();
+
+      transport.stream.listen((message) {
+        log.fine('<-- client received : $message');
         if (message.event == 'AuthOk') {
           transport.resetHeartbeat();
         } else if (message.event == ':hb') {
@@ -85,7 +81,6 @@ void main() {
         log.warning('Subscription for "xxxx" terminated.');
       });
       transport.webSocketCh = channel;
-      transport.localStream = localStream;
 
       expect(transport, isNotNull);
       expect(transport.isOpen(), true);
@@ -137,11 +132,13 @@ void main() {
           socketUrl: 'ws://localhost:8686',
           channelRef: 'channelRef',
           channelSecret: 'channelSecret',
-          heartbeatInterval: 1000);
+          heartbeatInterval: 1000,);
 
       var transport =
           WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
-      transport.connect();
+
+      await transport.connect();
+
       transport.stream.listen(
         (event) {},
       );

@@ -11,10 +11,12 @@ class AppConfig extends InheritedWidget {
     required this.logNotifier,
     required this.transports,
     required Widget child,
+    this.sseUrl
   }) : super(key: key, child: child);
 
   String businessUrl;
   String socketUrl;
+  String? sseUrl;
   int heartbeatInterval;
   int maxRetries;
   List<String> transports;
@@ -31,11 +33,13 @@ class AppConfig extends InheritedWidget {
       required int maxRetries,
       required String socketUrl,
       required String businessUrl,
-      required List<String> transports}) {
+      required List<String> transports,
+      String? sseUrl}) {
     this.heartbeatInterval = heartbeatInterval;
     this.maxRetries = maxRetries;
     this.socketUrl = socketUrl;
     this.businessUrl = businessUrl;
     this.transports = transports;
+    this.sseUrl = sseUrl;
   }
 }

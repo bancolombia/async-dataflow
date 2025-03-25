@@ -18,6 +18,7 @@ class _ConfigPageState extends State<ConfigPage> {
   TextEditingController maxRetriesController = TextEditingController();
   TextEditingController apiBusinessController = TextEditingController();
   TextEditingController socketController = TextEditingController();
+  TextEditingController sseController = TextEditingController();
   late AsyncClientService asyncClientService;
   List<String> selectedTransports = [];
 
@@ -27,8 +28,9 @@ class _ConfigPageState extends State<ConfigPage> {
     heartbeatController.text =
         AppConfig.of(context).heartbeatInterval.toString();
     maxRetriesController.text = AppConfig.of(context).maxRetries.toString();
-    apiBusinessController.text = AppConfig.of(context).socketUrl;
-    socketController.text = AppConfig.of(context).businessUrl;
+    apiBusinessController.text = AppConfig.of(context).businessUrl;
+    socketController.text = AppConfig.of(context).socketUrl;
+    sseController.text = AppConfig.of(context).sseUrl ?? '';
     selectedTransports = AppConfig.of(context).transports;
   }
 
@@ -44,21 +46,27 @@ class _ConfigPageState extends State<ConfigPage> {
           InputField(
               textEditingController: heartbeatController,
               labelText: "Heartbeat delay in ms",
-              icon: Icons.lock_clock_outlined),
+              icon: Icons.timelapse),
           const SizedBox(height: 20),
           InputField(
               textEditingController: maxRetriesController,
               labelText: "max retries to connect",
-              icon: Icons.plus_one),
+              icon: Icons.numbers),
           const SizedBox(height: 20),
           InputField(
-              textEditingController: apiBusinessController,
+              textEditingController: socketController,
               labelText: "Socket url",
               keyboardType: TextInputType.url,
               icon: Icons.connect_without_contact_sharp),
           const SizedBox(height: 20),
           InputField(
-              textEditingController: socketController,
+              textEditingController: sseController,
+              labelText: "SSE url",
+              keyboardType: TextInputType.url,
+              icon: Icons.http),
+          const SizedBox(height: 20),          
+          InputField(
+              textEditingController: apiBusinessController,
               labelText: "api Business url",
               keyboardType: TextInputType.url,
               icon: Icons.api),
@@ -119,8 +127,9 @@ class _ConfigPageState extends State<ConfigPage> {
                 AppConfig.of(context).updateConfig(
                     heartbeatInterval: int.parse(heartbeatController.text),
                     maxRetries: int.parse(maxRetriesController.text),
-                    socketUrl: apiBusinessController.text,
-                    businessUrl: socketController.text,
+                    socketUrl: socketController.text,
+                    sseUrl: sseController.text,
+                    businessUrl: apiBusinessController.text,
                     transports: selectedTransports);
 
                 asyncClientService.saveConfig();

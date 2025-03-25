@@ -1,12 +1,9 @@
 import 'dart:async';
 
 import 'package:logging/logging.dart';
-
 import 'async_config.dart';
 import 'model/channel_message.dart';
-import 'transport/sse_transport.dart';
-import 'transport/transport.dart';
-import 'transport/ws_transport.dart';
+import 'transport/default_transport_strategy.dart';
 
 /// Async Data Flow Low Level Client
 ///
@@ -18,36 +15,58 @@ class AsyncClient {
   final _log = Logger('AsyncClient');
   final AsyncConfig _config;
 
-  Transport? _currentTransport;
-  int _currentTransportIndex = 0;
-  int _retriesByTransport = 0;
+  late DefaultTransportStrategy _transportStrategy;
+
+  // this stream is used to expose the events to the user
+  // and abstract the stream from the transport layers.
+  late StreamController<ChannelMessage> _eventStreamController;
 
   AsyncClient(this._config) {
-    _currentTransport = getTransport();
-  }
-
-  Transport getTransport() {
-    TransportType transport = _config.transports[_currentTransportIndex];
-    _log.info(
-      'async-client. transports defined:  ${_config.transports.join(', ')}',
+    _transportStrategy = DefaultTransportStrategy(
+      _config,
+      _onTransportClose,
+      _onTransportError,
     );
-    _log.info(
-      'async-client. will instantiate transport: $transport',
-    );
-    if (transport == TransportType.ws) {
-      return _buildWSTransport();
-    } else if (transport == TransportType.sse) {
-      return _buildSSETransport();
-    }
-    throw Exception('async-client. No transport available:  $transport');
+    _eventStreamController = StreamController<ChannelMessage>.broadcast();
   }
 
   // Opens up the connection and performs auth flow.
-
-  void connect() {
+  Future<bool> connect() async {
     closeWasClean = false;
-    _currentTransport?.connect();
+    bool connected = await _transportStrategy.connect();
+    if (connected) {
+      _log.info('[async-client][Main] Connected to the server');
+      _listenToTransportStream();
+
+      return true;
+    } else {
+      _log.severe('[async-client][Main] Could not connect to the server');
+
+      return false;
+    }
   }
+
+  // Listens to the transport stream and pipes the messages
+  // to the event stream.
+  void _listenToTransportStream() {
+    try {
+      _transportStrategy.stream.listen(
+        (message) {
+          _eventStreamController.add(message);
+        },
+        onError: (error, stacktrace) {
+          _log.severe('[async-client][Main] Error in transport stream: $error');
+        },
+        onDone: () {
+          _log.info('[async-client][Main] Transport stream closed');
+        },
+      );
+    } catch (e) {
+      _log.severe('[async-client][Main] Error in transport stream: $e');
+    }
+  }
+
+  Stream<ChannelMessage> get eventStream => _eventStreamController.stream;
 
   StreamSubscription<ChannelMessage>? subscribeTo(
     String eventFilter,
@@ -77,7 +96,7 @@ class AsyncClient {
       throw ArgumentError('Invalid onData function');
     }
 
-    return _currentTransport?.stream.listen(
+    return eventStream.listen(
       (message) {
         if (eventFilters.contains(message.event)) {
           onData(message);
@@ -90,39 +109,30 @@ class AsyncClient {
       },
       onDone: () {
         _log.warning(
-          'async-client. Subscription for "$eventFilters" terminated.',
+          '[async-client][Main] Subscription for "$eventFilters" terminated.',
         );
       },
     );
   }
 
-  Transport _buildWSTransport() {
-    return WSTransport(
-      _onTransportClose,
-      _onTransportError,
-      _config,
-    );
-  }
-
-  Transport _buildSSETransport() {
-    return SSETransport(
-      _onTransportClose,
-      _onTransportError,
-      _config,
-    );
-  }
-
   bool isOpen() {
-    return _currentTransport?.isOpen() ?? false;
+    return _transportStrategy.getTransport().isOpen();
   }
+
+  Future<bool> switchProtocols() async {
+    // reconnect using (potentially) a different transport. It depends on the strategy.
+    await _transportStrategy.iterateTransport();
+    
+    return await connect();
+  } 
 
   Future<bool> disconnect() async {
     closeWasClean = true;
-    _log.finer('async-client. disconnect() called');
+    _log.finer('[async-client][Main] disconnect() called');
 
-    await _currentTransport?.disconnect();
-    _log.finer('async-client. async-client. disconnect() called end');
-
+    await _transportStrategy.disconnect();
+    _log.finer('[async-client][Main] async-client. disconnect() called end');
+    
     return true;
   }
 
@@ -130,24 +140,9 @@ class AsyncClient {
 
   void _onTransportError(Object error) async {
     _log.severe(
-      'async-client. Transport error: ${_currentTransport?.name()} $error',
+      '[async-client][Main] Transport signaled error: ${_transportStrategy.getTransport().name()} $error',
     );
-    _retriesByTransport++;
-    await _currentTransport?.disconnect();
-    _currentTransportIndex =
-        (_currentTransportIndex + 1) % _config.transports.length;
 
-    if (!isOpen()) {
-      _log.severe(
-        'async-client. Transport error and channel is not open, Scheduling reconnect $_retriesByTransport of ${_config.maxRetries}...',
-      );
-      if (_retriesByTransport <= (_config.maxRetries ?? 10)) {
-        _currentTransport = getTransport();
-        connect();
-      } else {
-        _log.severe('async-client. stopping transport retries for ',
-            _config.transports.join(', '));
-      }
-    }
+    await switchProtocols();
   }
 }

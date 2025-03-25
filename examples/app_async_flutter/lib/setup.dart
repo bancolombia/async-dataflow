@@ -15,6 +15,7 @@ class Setup {
       heartbeatInterval: int.parse(getEnvironment(prefs, 'heartbeatInterval')),
       maxRetries: int.parse(getEnvironment(prefs, 'maxRetries')),
       socketUrl: getEnvironment(prefs, 'socketUrl'),
+      sseUrl: getEnvironment(prefs, 'sseUrl'),
       transports: getEnvironments(prefs, 'transports'),
       logNotifier: logNotifier,
       child: const MyApp(),

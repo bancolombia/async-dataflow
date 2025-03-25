@@ -23,4 +23,8 @@ class HomeHelper {
   Future<void> connect() async {
     await asyncClientService.initAsyncClient();
   }
+
+  Future<void> switchProtocols() async {
+    await asyncClientService.switchProtocols();
+  }
 }
