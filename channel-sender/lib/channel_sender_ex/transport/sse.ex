@@ -70,7 +70,13 @@ defmodule ChannelSenderEx.Transport.Sse do
   def info({:deliver_msg, {pid, ref}, message = {msg_id, _, _, _, _}}, req, state) do
     {:ok, {:text, response}} = JsonEncoder.encode_message(message)
     send_event(req, response)
-    send(pid, {:ack, ref, msg_id})
+    #send ack later to increase success rate of message delivery
+    Process.send_after(self(), {:ack, ref, msg_id, pid}, 2500)
+    {:ok, req, state}
+  end
+
+  def info({:ack, ref, msg_id, chpid}, req, state) do
+    send(chpid, {:ack, ref, msg_id})
     {:ok, req, state}
   end
 
