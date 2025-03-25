@@ -269,8 +269,10 @@ defmodule ChannelSenderEx.Transport.Socket do
   @compile {:inline, auth_ok_frame: 1}
   defp auth_ok_frame(encoder) do
     encoder.simple_frame("AuthOk")
-    rescue
-      _e -> {:close, @invalid_secret_code, "Invalid token for channel"}
+  rescue
+    e ->
+      Logger.error("Socket unable to send auth ok frame: #{inspect(e)}")
+      {:close, @invalid_secret_code, "Invalid token for channel"}
   end
 
   defp ws_opts do
