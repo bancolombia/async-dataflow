@@ -42,7 +42,10 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
         {:ok, pid}
 
       {:error, reason} ->
-        Logger.error(fn -> "Channel Supervisor, failed to register channel with args: #{inspect(args)}" end)
+        Logger.error(fn ->
+          "Channel Supervisor, failed to register channel with args: #{inspect(args)}, reason: #{inspect(reason)}"
+        end)
+
         {:error, reason}
     end
   end
@@ -52,7 +55,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     case Swarm.whereis_name(channel_ref) do
       pid when is_pid(pid) ->
         Logger.debug(fn -> "Channel Supervisor, channel exists : #{inspect(pid)}" end)
-        {:existing, pid}
+        {:ok, pid}
 
       :undefined ->
         register_channel(args)
