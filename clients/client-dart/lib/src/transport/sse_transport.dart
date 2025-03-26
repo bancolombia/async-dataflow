@@ -127,17 +127,17 @@ class SSETransport implements Transport {
 
     if (message.event == RESPONSE_NEW_TOKEN) {
       _handleNewToken(message);
-    } 
+    }
 
-    if (_messageDedup.contains(message.messageId??'')) {
-      _log.warning('[async-client][SSETransport] message deduped: ${message.messageId}');
+    if (_messageDedup.contains(message.messageId ?? '')) {
+      _log.warning(
+          '[async-client][SSETransport] message deduped: ${message.messageId}');
 
       return;
     } else {
-      _messageDedup.add(message.messageId??'');
+      _messageDedup.add(message.messageId ?? '');
       _broadCastStream.add(message);
     }
-
   }
 
   String sseUrl() {
@@ -146,8 +146,7 @@ class SSETransport implements Transport {
       url = _config.sseUrl ?? '';
       url = '$url?channel=${_config.channelRef}';
       _log.info('[async-client][SSETransport] url is $url');
-    }
-    else {
+    } else {
       if (_config.socketUrl.startsWith('ws')) {
         url = _config.socketUrl
             .replaceFirstMapped('ws:', (match) => 'http:')

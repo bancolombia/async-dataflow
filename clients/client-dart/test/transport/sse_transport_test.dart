@@ -45,7 +45,7 @@ void main() {
 
       var transport =
           SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
-      transport.connect();
+      await transport.connect();
       transport.stream.listen(
         (event) {},
       );
@@ -89,7 +89,7 @@ void main() {
           SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
       transport.eventSource = stream;
 
-      transport.connect();
+      await transport.connect();
       transport.stream.listen((event) {
         log.info('event: $event');
       });
@@ -126,7 +126,7 @@ void main() {
           SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
       transport.eventSource = stream;
 
-      transport.connect();
+      await transport.connect();
       transport.stream.listen((event) {
         log.info('event: $event');
       });
