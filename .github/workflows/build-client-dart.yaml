@@ -5,6 +5,7 @@ on:
       - 'clients/client-dart/**' 
     branches:
       - master
+      - feature/*
 jobs:
   build:
     permissions:
