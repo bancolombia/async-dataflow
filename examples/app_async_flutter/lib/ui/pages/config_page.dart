@@ -40,8 +40,10 @@ class _ConfigPageState extends State<ConfigPage> {
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InputField(
               textEditingController: heartbeatController,
@@ -143,6 +145,7 @@ class _ConfigPageState extends State<ConfigPage> {
               text: 'Save')
         ],
       ),
+      )
     );
   }
 }

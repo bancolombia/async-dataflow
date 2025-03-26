@@ -60,7 +60,7 @@ class _RequestPageState extends State<RequestPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Button(text: "Switch Protocol", onTap: () => homeHelper.switchProtocols()),
+              Button(text: "Switch Prot", onTap: () => homeHelper.switchProtocols()),
               const SizedBox(width: 10),
               Button(text: "Disconnect", onTap: () => homeHelper.disconnect()),
             ],
