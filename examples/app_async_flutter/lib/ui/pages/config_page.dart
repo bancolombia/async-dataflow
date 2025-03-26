@@ -70,7 +70,7 @@ class _ConfigPageState extends State<ConfigPage> {
               labelText: "api Business url",
               keyboardType: TextInputType.url,
               icon: Icons.api),
-          const SizedBox(height: 20),
+          const SizedBox(height: 5),
           //create checkboxes
           const Text('Transports'),
           Row(
@@ -94,7 +94,7 @@ class _ConfigPageState extends State<ConfigPage> {
                 )
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 5),
           const Text('Show all logs'),
           Switch(
             value: AppConfig.of(context).logNotifier.level == LogLevel.all,
@@ -112,7 +112,7 @@ class _ConfigPageState extends State<ConfigPage> {
           ),
           const Text(
               'If you disable this option, will set the log level to info'),
-          const SizedBox(height: 40),
+          const SizedBox(height: 5),
           Button(
               onTap: () {
                 if (selectedTransports.isEmpty) {

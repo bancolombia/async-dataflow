@@ -54,8 +54,6 @@ class _RequestPageState extends State<RequestPage> {
                       homeHelper.callAsyncBackend(textEditingController)),
               const SizedBox(width: 10),
               Button(text: "Re-Connect", onTap: () => homeHelper.connect()),
-              const SizedBox(width: 10),
-              Button(text: "Disconnect", onTap: () => homeHelper.disconnect()),
             ],
           ),
           const SizedBox(height: 10),
@@ -63,6 +61,8 @@ class _RequestPageState extends State<RequestPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Button(text: "Switch Protocol", onTap: () => homeHelper.switchProtocols()),
+              const SizedBox(width: 10),
+              Button(text: "Disconnect", onTap: () => homeHelper.disconnect()),
             ],
           ),
           const SizedBox(height: 10),
