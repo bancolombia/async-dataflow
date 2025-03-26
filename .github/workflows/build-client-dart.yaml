@@ -2,7 +2,8 @@ name: "flutter-actions"
 on:
   pull_request:
     paths:
-      - 'clients/client-dart/**' 
+      - 'clients/client-dart/**'
+      - '.github/**/*dart*'
     branches:
       - master
       - feature/*
