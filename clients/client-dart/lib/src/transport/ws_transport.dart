@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter_client_sse/utils.dart';
+import 'package:client_sse/utils.dart';
 import 'package:logging/logging.dart';
 
 import '../../channel_sender_client.dart';
@@ -65,14 +65,18 @@ class WSTransport implements Transport {
     currentToken = _config.channelSecret;
     _subProtocols = configSubProtocol();
     // _localStream = StreamController(onListen: _onListen);
-    _broadCastStream = StreamController<ChannelMessage>.broadcast(); // subscribers stream of data
-    
+    _broadCastStream = StreamController<
+        ChannelMessage>.broadcast(); // subscribers stream of data
+
     _connectRetryTimer = RetryTimer(
       () async {
         return await connect();
       },
       () async {
-        _onSocketError(MaxRetriesException('[async-client][WSTransport] Max retries reached'), StackTrace.current);
+        _onSocketError(
+            MaxRetriesException(
+                '[async-client][WSTransport] Max retries reached'),
+            StackTrace.current);
       },
       maxRetries: _config.maxRetries,
     );
@@ -86,10 +90,10 @@ class WSTransport implements Transport {
   @override
   Future<bool> connect() async {
     _log.finer('[async-client][WSTransport] connect() started.');
-    
+
     if (isOpen()) {
-      _log.info('[async-client][WSTransport] socket already created');      
-      
+      _log.info('[async-client][WSTransport] socket already created');
+
       return false;
     }
 
@@ -100,13 +104,15 @@ class WSTransport implements Transport {
         // _webSocketCh = _openChannel();
         await _openChannel();
         msgDecoder = _selectMessageDecoder();
-        _log.info('[async-client][WSTransport] New websocket connection ${_config.channelRef}');
+        _log.info(
+            '[async-client][WSTransport] New websocket connection ${_config.channelRef}');
         _onListen();
         connected = true;
         attempts = 0;
         break;
-      } on Exception catch (e, stackTrace) {
-        _log.warning('[async-client][WSTransport] Error connecting to server: $e | try: $attempts');
+      } on Exception catch (e) {
+        _log.warning(
+            '[async-client][WSTransport] Error connecting to server: $e | try: $attempts');
         int wait = Utils.expBackoff(500, 2000, attempts);
         attempts++;
         await Future.delayed(Duration(milliseconds: wait));
@@ -124,7 +130,7 @@ class WSTransport implements Transport {
     await close(SOCKET_NORMAL_CLOSE, 'Client disconnect');
     await _socketStreamSub?.cancel();
     _socketStreamSub = null;
-    _webSocketCh.close(1001, 'Client disconnect');
+    await _webSocketCh.close(1001, 'Client disconnect');
 
     return;
   }
@@ -134,12 +140,11 @@ class WSTransport implements Transport {
     bool isOpen = false;
     try {
       isOpen = _webSocketCh.readyState == 1;
-    }
-    catch (e) {
+    } catch (e) {
       isOpen = false;
     }
 
-    return isOpen;  
+    return isOpen;
   }
 
   @override
@@ -160,7 +165,8 @@ class WSTransport implements Transport {
       _heartbeatTimer?.cancel();
     }
     if (!isOpen()) {
-      _log.finest('[async-client][WSTransport] close() innecesary, already closed.');
+      _log.finest(
+          '[async-client][WSTransport] close() innecesary, already closed.');
 
       return;
     }
@@ -173,7 +179,8 @@ class WSTransport implements Transport {
   }
 
   StreamSubscription subscribe({required bool cancelOnErrorFlag}) {
-    _log.finest('[async-client][WSTransport] Creating stream from socket, with cancelOnErrorFlag=$cancelOnErrorFlag');
+    _log.finest(
+        '[async-client][WSTransport] Creating stream from socket, with cancelOnErrorFlag=$cancelOnErrorFlag');
 
     try {
       _socketStreamSub = _webSocketCh.listen(
@@ -188,16 +195,17 @@ class WSTransport implements Transport {
         },
         onDone: () {
           _log.finest('[async-client][WSTransport] Stream from socket DONE.');
-          _onSocketClose(
-              _webSocketCh.closeCode ?? SOCKET_NORMAL_CLOSE, _webSocketCh.closeReason ?? '');
+          _onSocketClose(_webSocketCh.closeCode ?? SOCKET_NORMAL_CLOSE,
+              _webSocketCh.closeReason ?? '');
         },
         cancelOnError: cancelOnErrorFlag,
       );
     } catch (e) {
-      _log.severe('[async-client][WSTransport] Error subscribing to socket: $e');
+      _log.severe(
+          '[async-client][WSTransport] Error subscribing to socket: $e');
     }
 
-    return  _socketStreamSub!;
+    return _socketStreamSub!;
   }
 
   void send(String message) {
@@ -206,7 +214,7 @@ class WSTransport implements Transport {
   }
 
   void _onData(dynamic data) {
-    _log.finest('[async-client][WSTransport] Received raw from Server: $data');  
+    _log.finest('[async-client][WSTransport] Received raw from Server: $data');
     if (!_checkValidInputFrame(data)) {
       _log.warning('[async-client][WSTransport] Invalid frame received: $data');
 
@@ -231,11 +239,11 @@ class WSTransport implements Transport {
       _ackMessage(message);
       // then stream
       _broadCastStream.add(message);
-    } else if (kind == EVENT_KIND_SYSTEM && message.event == RESPONSE_NEW_TOKEN) {
+    } else if (kind == EVENT_KIND_SYSTEM &&
+        message.event == RESPONSE_NEW_TOKEN) {
       // just stream it, so app can handle it
       _broadCastStream.add(message);
     }
-
   }
 
   bool _checkValidInputFrame(dynamic data) {
@@ -253,7 +261,8 @@ class WSTransport implements Transport {
       heartbeatTimer.cancel();
     }
 
-    if (_reconnectionAttempts > (_config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES)) {
+    if (_reconnectionAttempts >
+        (_config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES)) {
       _log.warning('[async-client][WSTransport] Max retries reached');
       _signalSocketError(error);
     } else {
@@ -271,19 +280,25 @@ class WSTransport implements Transport {
       _heartbeatTimer?.cancel();
     }
     int reasonCode = extractCode(reason);
-    bool shouldRetry = code > SOCKET_GOING_AWAY || (code == SOCKET_GOING_AWAY && reasonCode >= SENDER_INVALID_REF);
+    bool shouldRetry = code > SOCKET_GOING_AWAY ||
+        (code == SOCKET_GOING_AWAY && reasonCode >= SENDER_INVALID_REF);
     _log.info('[async-client][WSTransport] shouldRetry: $shouldRetry');
 
     if (!_closeWasClean &&
         shouldRetry &&
         reason != 'Invalid token for channel') {
-      _log.info('[async-client][WSTransport] Scheduling reconnect, clean: $_closeWasClean');
+      _log.info(
+          '[async-client][WSTransport] Scheduling reconnect, clean: $_closeWasClean');
       _connectRetryTimer.schedule();
     } else {
-      _log.info('[async-client][WSTransport] Not scheduling reconnect, clean: $_closeWasClean');
+      _log.info(
+          '[async-client][WSTransport] Not scheduling reconnect, clean: $_closeWasClean');
       disconnect();
 
-      _signalSocketClose(code, reason,);
+      _signalSocketClose(
+        code,
+        reason,
+      );
     }
   }
 
@@ -319,7 +334,7 @@ class WSTransport implements Transport {
     _log.warning('[async-client][WSTransport] Abnormal Close');
     _closeWasClean = false;
     const heartbeatCode = 3051;
-    
+
     _webSocketCh.close(heartbeatCode, reason);
   }
 
@@ -379,16 +394,17 @@ class WSTransport implements Transport {
     try {
       _webSocketCh = await _sockOpen();
       int state = _webSocketCh.readyState;
-      _log.finest('[async-client][WSTransport] initial webSocket state: $state');
-
+      _log.finest(
+          '[async-client][WSTransport] initial webSocket state: $state');
     } on WebSocketException catch (e) {
-      _log.warning('[async-client][WSTransport] _openChannel() Error opening WebSocket: $e');
+      _log.warning(
+          '[async-client][WSTransport] _openChannel() Error opening WebSocket: $e');
       throw Exception('Network error');
     } catch (e) {
-      _log.warning('[async-client][WSTransport] _openChannel() Unknown Error opening WebSocket: $e');
+      _log.warning(
+          '[async-client][WSTransport] _openChannel() Unknown Error opening WebSocket: $e');
       rethrow;
     }
-
   }
 
   Future<WebSocket> _sockOpen() async {
@@ -402,10 +418,12 @@ class WSTransport implements Transport {
       );
     } on WebSocketException catch (e) {
       // this will only catch synchronous errors
-      _log.warning('[async-client][WSTransport] _sockOpen() Error opening WebSocket: $e');
+      _log.warning(
+          '[async-client][WSTransport] _sockOpen() Error opening WebSocket: $e');
       throw Exception('Network error');
     } catch (e) {
-      _log.warning('[async-client][WSTransport] _sockOpen() Unknown Error opening WebSocket: $e');
+      _log.warning(
+          '[async-client][WSTransport] _sockOpen() Unknown Error opening WebSocket: $e');
       throw Exception('Unknown error');
     }
   }

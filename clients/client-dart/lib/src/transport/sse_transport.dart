@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:flutter_client_sse/retry_options.dart';
+import 'package:client_sse/constants/sse_request_type_enum.dart';
+import 'package:client_sse/flutter_client_sse.dart';
+import 'package:client_sse/retry_options.dart';
 import 'package:logging/logging.dart';
 
 import '../../channel_sender_client.dart';
@@ -40,7 +40,8 @@ class SSETransport implements Transport {
     this._config,
   ) {
     currentToken = _config.channelSecret;
-    _broadCastStream = StreamController<ChannelMessage>.broadcast(); // subscribers stream of data
+    _broadCastStream = StreamController<
+        ChannelMessage>.broadcast(); // subscribers stream of data
   }
 
   @override
@@ -72,7 +73,10 @@ class SSETransport implements Transport {
         maxRetry: _config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES,
         limitReachedCallback: () async {
           _onResponseError(
-              MaxRetriesException('[async-client][SSETransport] Max retries reached'), StackTrace.current,);
+            MaxRetriesException(
+                '[async-client][SSETransport] Max retries reached'),
+            StackTrace.current,
+          );
         },
       ),
     );
@@ -119,17 +123,17 @@ class SSETransport implements Transport {
 
     if (message.event == RESPONSE_NEW_TOKEN) {
       _handleNewToken(message);
-    } 
+    }
 
-    if (_messageDedup.contains(message.messageId??'')) {
-      _log.warning('[async-client][SSETransport] message deduped: ${message.messageId}');
+    if (_messageDedup.contains(message.messageId ?? '')) {
+      _log.warning(
+          '[async-client][SSETransport] message deduped: ${message.messageId}');
 
       return;
     } else {
-      _messageDedup.add(message.messageId??'');
+      _messageDedup.add(message.messageId ?? '');
       _broadCastStream.add(message);
     }
-
   }
 
   String sseUrl() {
@@ -138,8 +142,7 @@ class SSETransport implements Transport {
       url = _config.sseUrl ?? '';
       url = '$url?channel=${_config.channelRef}';
       _log.info('[async-client][SSETransport] url is $url');
-    }
-    else {
+    } else {
       if (_config.socketUrl.startsWith('ws')) {
         url = _config.socketUrl
             .replaceFirstMapped('ws:', (match) => 'http:')
@@ -167,8 +170,8 @@ class SSETransport implements Transport {
     _eventStreamSub = null;
     _eventSource = null;
     SSEClient.unsubscribeFromSSE();
-    _log.info('[async-client][SSETransport] disconnect() finished');    
-    
+    _log.info('[async-client][SSETransport] disconnect() finished');
+
     return;
   }
 }

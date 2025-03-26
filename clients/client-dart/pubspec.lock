@@ -137,6 +137,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.2"
+  client_sse:
+    dependency: "direct main"
+    description:
+      name: client_sse
+      sha256: f0ba7718fe67a0a8c15c725bafeaa6cc00cd8ae1fc0686b41eb7a2d23f2708d9
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0-beta"
   code_builder:
     dependency: transitive
     description:
@@ -222,15 +230,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_client_sse:
-    dependency: "direct main"
-    description:
-      path: "."
-      ref: "feat/retry"
-      resolved-ref: "03468b369dbdc8580afac9f0861a92e5227dacc1"
-      url: "https://github.com/santitigaga/flutter_client_sse"
-    source: git
-    version: "2.0.3"
   flutter_lints:
     dependency: "direct dev"
     description:

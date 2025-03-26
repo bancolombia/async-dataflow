@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:channel_sender_client/src/transport/sse_transport.dart';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
+import 'package:client_sse/flutter_client_sse.dart';
 import 'package:logging/logging.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';
@@ -46,7 +46,7 @@ void main() {
 
       var transport =
           SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
-      transport.connect();
+      await transport.connect();
       transport.stream.listen(
         (event) {},
       );
@@ -90,7 +90,7 @@ void main() {
           SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
       transport.eventSource = stream;
 
-      transport.connect();
+      await transport.connect();
       transport.stream.listen((event) {
         log.info('event: $event');
       });
@@ -127,7 +127,7 @@ void main() {
           SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
       transport.eventSource = stream;
 
-      transport.connect();
+      await transport.connect();
       transport.stream.listen((event) {
         log.info('event: $event');
       });
