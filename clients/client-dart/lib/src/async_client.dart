@@ -126,6 +126,10 @@ class AsyncClient {
     return await connect();
   } 
 
+  String getCurrentTransportType() {
+    return _transportStrategy.getTransport().name().toString();
+  }
+
   Future<bool> disconnect() async {
     closeWasClean = true;
     _log.finer('[async-client][Main] disconnect() called');

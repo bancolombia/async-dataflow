@@ -1,6 +1,7 @@
 import 'package:logging/logging.dart';
 import '../async_config.dart';
 import '../model/channel_message.dart';
+import '../utils/utils.dart';
 import 'invalid_strategy_exception.dart';
 import 'noop_transport.dart';
 import 'sse_transport.dart';
@@ -15,6 +16,8 @@ import 'ws_transport.dart';
 /// in case of failure.
 class DefaultTransportStrategy {
 
+  static const int RETRY_DEFAULT_MAX_RETRIES = 5;
+
   final _log = Logger('DefaultTransportStrategy');
   
   final AsyncConfig _config;
@@ -24,6 +27,7 @@ class DefaultTransportStrategy {
   int _currentTransportIndex = 0;
   late Transport _currentTransport;
   late List<TransportType> _transportTypes;
+  late int retries = 1;
 
   DefaultTransportStrategy(this._config,
     this._signalClose,
@@ -37,11 +41,18 @@ class DefaultTransportStrategy {
     }
   
   Future<bool> connect() async {
-    bool connected =  await _currentTransport.connect();
-    if (!connected) {
+    var connected =  await _currentTransport.connect();
+    while (!connected && retries <= (_config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES)) {
+      _log.severe('[async-client][DefaultTransportStrategy] Transport could not get a connection retry #$retries');
+      int wait = Utils.expBackoff(400, 2000, retries);
+      retries++;
+      await Future.delayed(Duration(milliseconds: wait));
       await iterateTransport();
       connected = await _currentTransport.connect();
     }
+
+    //reset 
+    retries = 1;
 
     return connected;
   }
@@ -55,26 +66,27 @@ class DefaultTransportStrategy {
     return _currentTransport;
   }
 
-  Future<void> iterateTransport() async {
+  Future<TransportType> iterateTransport() async {
     _log.finest('[async-client][DefaultTransportStrategy] iterating transport');      
 
     if (_transportTypes.length == 1) {
       _log.warning('[async-client][DefaultTransportStrategy] one transport strategy can not iterate');
       _currentTransportIndex = 0;
 
-      return;
+      return _currentTransport.name();
     }
 
     _currentTransportIndex = _currentTransportIndex + 1;
     if (_currentTransportIndex >= _transportTypes.length) {
       _currentTransportIndex = 0;
     }
-    _log.finest('[async-client][DefaultTransportStrategy] next transport type will be : $_transportTypes[_currentTransportIndex]');
 
     await _currentTransport.disconnect();
     _currentTransport = _transportTypes[_currentTransportIndex] == TransportType.ws ? _buildWSTransport() : _buildSSETransport();
 
-    _log.finest('[async-client][DefaultTransportStrategy] iterating ended: = ${_currentTransport.name()}');      
+    _log.finest('[async-client][DefaultTransportStrategy] iterating ended, new transport = ${_currentTransport.name()}');  
+
+    return _currentTransport.name();
   }
 
   Stream<ChannelMessage> get stream => getTransport().stream;

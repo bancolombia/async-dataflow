@@ -20,6 +20,15 @@ class ResponsesNotifier extends ChangeNotifier {
   }
 }
 
+class CurrentTransportNotifier extends ChangeNotifier {
+  String currentTransport = '';
+  void setTransport(String name) {
+    currentTransport = name.split('.').last;
+    print('updating transport $currentTransport');
+    notifyListeners();
+  }
+}
+
 class AsyncClientService extends InheritedWidget {
   AsyncClientService(
       {Key? key,
@@ -39,6 +48,7 @@ class AsyncClientService extends InheritedWidget {
 
   late SharedPreferences prefs;
   ResponsesNotifier responsesNotifier = ResponsesNotifier();
+  CurrentTransportNotifier currentTransportNotifier = CurrentTransportNotifier();
   final AppConfig appConfig;
 
   void _handleEvent(dynamic msg) {
@@ -72,11 +82,13 @@ class AsyncClientService extends InheritedWidget {
   Future<void> closeSession() async {
     prefs = await SharedPreferences.getInstance();
     await deleteChannelCreated();
-    asyncClient.disconnect();
+    await asyncClient.disconnect();
+    currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
   }
 
   Future<void> switchProtocols() async {
-    asyncClient.switchProtocols();
+    await asyncClient.switchProtocols();
+    currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
   }
 
   Future<void> deleteChannelCreated() async {
@@ -134,6 +146,7 @@ class AsyncClientService extends InheritedWidget {
       asyncClient = AsyncClient(conf);
       bool connected = await asyncClient.connect();
       if (connected) {
+        currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
         _log.info("Connected to ADF");
         asyncClient.subscribeToMany(eventListen, (eventResult) {
           _handleEvent(eventResult);

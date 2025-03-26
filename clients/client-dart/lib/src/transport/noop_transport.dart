@@ -5,25 +5,25 @@ class NoopTransport implements Transport {
 
   @override
   Future<bool> connect() {
-    throw UnsupportedError('No transport selected');
+    return Future.value(false);
   }
 
   @override
   Future<void> disconnect() {
-    throw UnsupportedError('No transport selected');
+    return Future.value(null);
   }
 
   @override
   bool isOpen() {
-    throw UnsupportedError('No transport selected');
+    return false;
   }
 
   @override
   TransportType name() {
-    throw UnsupportedError('No transport selected');
+    return TransportType.none;
   }
 
   @override
-  Stream<ChannelMessage> get stream => throw UnsupportedError('No transport selected');
+  Stream<ChannelMessage> get stream => Stream.empty();
 
 }

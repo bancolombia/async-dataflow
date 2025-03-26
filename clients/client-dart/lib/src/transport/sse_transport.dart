@@ -1,13 +1,11 @@
 import 'dart:async';
-
-import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:flutter_client_sse/retry_options.dart';
+import 'package:eventflux/eventflux.dart';
 import 'package:logging/logging.dart';
 
 import '../../channel_sender_client.dart';
 import '../decoder/json_decoder.dart';
 import '../decoder/message_decoder.dart';
+import '../utils/retry_timer.dart';
 import 'capped_list.dart';
 import 'max_retries_exception.dart';
 import 'transport.dart';
@@ -20,7 +18,9 @@ class SSETransport implements Transport {
 
   static const int RETRY_DEFAULT_MAX_RETRIES = 5;
   static const int RETRY_DEFAULT_MAX_TIME = 2000;
-  static const int RETRY_DEFAULT_MIN_TIME = 200;
+  static const int RETRY_DEFAULT_MIN_TIME = 350;
+
+  static const int SSE_OK_CLOSE_CODE = 200;
 
   final _log = Logger('SSETransport');
 
@@ -29,8 +29,8 @@ class SSETransport implements Transport {
   final AsyncConfig _config;
 
   late String currentToken;
-  Stream<SSEModel>? _eventSource;
-  StreamSubscription<SSEModel>? _eventStreamSub;
+  late RetryTimer _connectRetryTimer;
+
   late StreamController<ChannelMessage> _broadCastStream;
   final CappedList<String> _messageDedup = CappedList<String>(50);
 
@@ -41,54 +41,58 @@ class SSETransport implements Transport {
   ) {
     currentToken = _config.channelSecret;
     _broadCastStream = StreamController<ChannelMessage>.broadcast(); // subscribers stream of data
+
+    _connectRetryTimer = RetryTimer(
+      () async {
+        return await connect();
+      },
+      () async {
+        _signalSSEError(MaxRetriesException('[async-client][SSETransport] Max retries reached'));
+      },
+      initialWait: RETRY_DEFAULT_MIN_TIME,
+      maxWait: RETRY_DEFAULT_MAX_TIME,
+      maxRetries: _config.maxRetries,
+    );
   }
 
   @override
   TransportType name() {
     return TransportType.sse;
   }
-
-  set eventSource(Stream<SSEModel> value) {
-    _eventSource = value;
-  }
-
-  // set localStream(StreamController<ChannelMessage> value) {
-  //   _localStream = value;
-  // }
-
+  
   @override
   Future<bool> connect() async {
     _log.finer('[async-client][SSETransport] connect() started.');
 
-    _eventSource ??= SSEClient.subscribeToSSE(
-      method: SSERequestType.GET,
-      url: sseUrl(),
+    EventFlux.instance.connect(
+      EventFluxConnectionType.get,
+      sseUrl(),
       header: {
         'Authorization': 'Bearer $currentToken',
+        'Accept': 'text/event-stream',
       },
-      retryOptions: RetryOptions(
-        maxRetryTime: RETRY_DEFAULT_MAX_TIME,
-        minRetryTime: RETRY_DEFAULT_MIN_TIME,
-        maxRetry: _config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES,
-        limitReachedCallback: () async {
-          _onResponseError(
-              MaxRetriesException('[async-client][SSETransport] Max retries reached'), StackTrace.current,);
-        },
+      multipartRequest: false,
+      onSuccessCallback: (EventFluxResponse? response) {
+        response?.stream?.listen((data) {
+          _onData(data.data);
+        });
+      },
+      onError: (error) {
+        _onResponseError(error, StackTrace.current);
+      },
+      onConnectionClose: () {
+        _log.warning('[async-client][SSETransport] onConnectionClose called');
+        _signalSSEClose(0, '');
+      },
+      autoReconnect: true, // Keep the party going, automatically!
+      reconnectConfig: ReconnectConfig(
+          mode: ReconnectMode.linear, // or exponential,
+          interval: Duration(seconds: 2),
+          maxAttempts: _config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES, // or -1 for infinite,
+          onReconnect: () {
+            _log.info('[async-client][SSETransport] onReconnect Called');
+          }
       ),
-    );
-
-    _eventStreamSub = _eventSource!.listen(
-      (data) {
-        _onData(data);
-      },
-      onError: (error, stacktrace) {
-        _onResponseError(error, stacktrace);
-      },
-      onDone: () {
-        _log.warning('[async-client][SSETransport] done');
-        _signalSSEClose(0, 'done');
-      },
-      cancelOnError: true,
     );
 
     _log.finest('[async-client][SSETransport] connect() called');
@@ -103,19 +107,23 @@ class SSETransport implements Transport {
   }
 
   void _onResponseError(error, stackTrace) {
-    _log.severe('[async-client][SSETransport] response error $error');
+    var parsedException = error as EventFluxException;
 
-    _signalSSEError({'origin': 'sse', 'code': 1, 'message': error});
+    // close code 200 is ok to ignore
+    if (parsedException.statusCode != SSE_OK_CLOSE_CODE) {
+      _log.severe('[async-client][SSETransport] Error in SSE connection: ${parsedException.statusCode}, ${parsedException.reasonPhrase}');
+      EventFlux.instance.disconnect().then((_) => _connectRetryTimer.schedule());
+      // _signalSSEError({'origin': 'sse', 'code': parsedException.statusCode, 'message': Exception(parsedException.reasonPhrase)});    
+    }
   }
 
   int extractCode(String stringCode) {
     return int.tryParse(stringCode) ?? 0;
   }
 
-  void _onData(SSEModel data) {
+  void _onData(String data) {
     _log.finest('[async-client][SSETransport] Received raw from Server: $data');
-    var message = msgDecoder.decode(data.data);
-    _log.finest('[async-client][SSETransport] Received Decoded: $message');
+    var message = msgDecoder.decode(data);
 
     if (message.event == RESPONSE_NEW_TOKEN) {
       _handleNewToken(message);
@@ -163,12 +171,9 @@ class SSETransport implements Transport {
   @override
   Future<void> disconnect() async {
     _log.info('[async-client][SSETransport] disconnect() called');
-    await _eventStreamSub?.cancel();
-    _eventStreamSub = null;
-    _eventSource = null;
-    SSEClient.unsubscribeFromSSE();
+    await EventFlux.instance.disconnect();
     _log.info('[async-client][SSETransport] disconnect() finished');    
-    
+
     return;
   }
 }

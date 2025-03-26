@@ -38,6 +38,13 @@ class _RequestPageState extends State<RequestPage> {
             icon: Icons.timelapse,
           ),
           const SizedBox(height: 10),
+          AnimatedBuilder(
+            animation: asyncClientService.currentTransportNotifier,
+            builder: (context, _) {
+              return Text('Current transport: ${asyncClientService.currentTransportNotifier.currentTransport}');
+            },
+          ),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

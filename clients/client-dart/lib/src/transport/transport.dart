@@ -11,6 +11,7 @@ abstract class Transport {
 enum TransportType {
   ws,
   sse,
+  none,
 }
 
 TransportType transportFromString(String typeString) {

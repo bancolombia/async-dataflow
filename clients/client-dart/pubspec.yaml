@@ -14,11 +14,14 @@ dependencies:
   uuid: ^3.0.5
   build_runner: ^2.2.0
   # flutter_client_sse: ^2.0.3
-  flutter_client_sse:
-    git: 
-      url: https://github.com/santitigaga/flutter_client_sse
-      ref: feat/retry
-
+  # flutter_client_sse:
+  #   git: 
+  #     url: https://github.com/santitigaga/flutter_client_sse
+  #     ref: feat/retry
+  # flutter_client_sse:
+  #   path: '/Users/gabrimar/desarrollo/flutter_client_sse'
+  eventflux: ^2.2.1
+  
 dependency_overrides:
   http: ^1.1.0 
   

@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:channel_sender_client/src/transport/sse_transport.dart';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:logging/logging.dart';
 import 'package:mockito/mockito.dart';
 import 'package:test/test.dart';

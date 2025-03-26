@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter_client_sse/utils.dart';
 import 'package:logging/logging.dart';
 
 import '../../channel_sender_client.dart';
@@ -11,6 +10,7 @@ import '../decoder/binary_decoder.dart';
 import '../decoder/json_decoder.dart';
 import '../decoder/message_decoder.dart';
 import '../utils/retry_timer.dart';
+import '../utils/utils.dart';
 import 'max_retries_exception.dart';
 import 'transport.dart';
 
@@ -120,13 +120,14 @@ class WSTransport implements Transport {
   @override
   Future<void> disconnect() async {
     _log.info('[async-client][WSTransport] disconnect() called.');
-    _connectRetryTimer.reset();
-    await close(SOCKET_NORMAL_CLOSE, 'Client disconnect');
-    await _socketStreamSub?.cancel();
-    _socketStreamSub = null;
-    _webSocketCh.close(1001, 'Client disconnect');
-
-    return;
+    try {
+      _connectRetryTimer.reset();
+      await _socketStreamSub?.cancel();
+      _socketStreamSub = null;
+      await close(SOCKET_NORMAL_CLOSE, 'Client disconnect');
+    } catch (e) {
+      _log.warning('[async-client][WSTransport] Error disconnecting: $e');
+    }
   }
 
   @override
@@ -365,16 +366,6 @@ class WSTransport implements Transport {
     }
   }
 
-  // IOWebSocketChannel _openChannel() {
-  //   var url = '${_config.socketUrl}?channel=${_config.channelRef}';
-
-  //   return IOWebSocketChannel.connect(
-  //     url,
-  //     protocols: _subProtocols,
-  //     headers: _buildHeaders(),
-  //   );
-  // }
-
   Future<void> _openChannel() async {
     try {
       _webSocketCh = await _sockOpen();
@@ -388,7 +379,6 @@ class WSTransport implements Transport {
       _log.warning('[async-client][WSTransport] _openChannel() Unknown Error opening WebSocket: $e');
       rethrow;
     }
-
   }
 
   Future<WebSocket> _sockOpen() async {
