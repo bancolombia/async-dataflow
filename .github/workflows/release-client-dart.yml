@@ -15,10 +15,13 @@ jobs:
         working-directory: clients/client-dart
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: dart-lang/setup-dart@d6a63dab3335f427404425de0fbfed4686d93c4f
+      - uses: actions/checkout@v4
+      - name: Setup Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+            sdk: 3.2.0
       - name: Setup Flutter SDK
-        uses: flutter-actions/setup-flutter@v2
+        uses: flutter-actions/setup-flutter@v4
         with:
           channel: stable
           version: 3.10.6
