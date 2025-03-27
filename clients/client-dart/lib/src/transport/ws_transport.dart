@@ -44,6 +44,7 @@ class WSTransport implements Transport {
   late List<String> _subProtocols;
   late StreamController<ChannelMessage> _broadCastStream;
   StreamSubscription? _socketStreamSub;
+  late bool streamDone = false;
   late RetryTimer _connectRetryTimer;
 
   int _ref = 0;
@@ -108,6 +109,7 @@ class WSTransport implements Transport {
             '[async-client][WSTransport] New websocket connection ${_config.channelRef}');
         _onListen();
         connected = true;
+        streamDone = false;
         attempts = 0;
         break;
       } on Exception catch (e) {
@@ -127,6 +129,7 @@ class WSTransport implements Transport {
   Future<void> disconnect() async {
     _log.info('[async-client][WSTransport] disconnect() called.');
     try {
+      streamDone = true;
       _connectRetryTimer.reset();
       await _socketStreamSub?.cancel();
       _socketStreamSub = null;
@@ -140,7 +143,7 @@ class WSTransport implements Transport {
   bool isOpen() {
     bool isOpen = false;
     try {
-      isOpen = _webSocketCh.readyState == 1;
+      isOpen = !streamDone && _webSocketCh.readyState == WebSocket.open;
     } catch (e) {
       isOpen = false;
     }
@@ -162,6 +165,7 @@ class WSTransport implements Transport {
   Future close(int code, String reason) async {
     _log.finest('[async-client][WSTransport] close() called.');
     _closeWasClean = true;
+    streamDone = true;
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
@@ -195,6 +199,9 @@ class WSTransport implements Transport {
           _onSocketError(error, stackTrace);
         },
         onDone: () {
+          streamDone = true;
+          _webSocketCh.close();
+
           _log.finest('[async-client][WSTransport] Stream from socket DONE.');
           _onSocketClose(_webSocketCh.closeCode ?? SOCKET_NORMAL_CLOSE,
               _webSocketCh.closeReason ?? '');
@@ -384,9 +391,8 @@ class WSTransport implements Transport {
   Future<void> _openChannel() async {
     try {
       _webSocketCh = await _sockOpen();
-      int state = _webSocketCh.readyState;
       _log.finest(
-          '[async-client][WSTransport] initial webSocket state: $state');
+          '[async-client][WSTransport] initial webSocket state: ${_webSocketCh.readyState}');
     } on WebSocketException catch (e) {
       _log.warning(
           '[async-client][WSTransport] _openChannel() Error opening WebSocket: $e');
