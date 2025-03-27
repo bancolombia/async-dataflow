@@ -40,14 +40,16 @@ class SSETransport implements Transport {
     this._config,
   ) {
     currentToken = _config.channelSecret;
-    _broadCastStream = StreamController<ChannelMessage>.broadcast(); // subscribers stream of data
+    _broadCastStream = StreamController<
+        ChannelMessage>.broadcast(); // subscribers stream of data
 
     _connectRetryTimer = RetryTimer(
       () async {
         return await connect();
       },
       () async {
-        _signalSSEError(MaxRetriesException('[async-client][SSETransport] Max retries reached'));
+        _signalSSEError(MaxRetriesException(
+            '[async-client][SSETransport] Max retries reached'));
       },
       initialWait: RETRY_DEFAULT_MIN_TIME,
       maxWait: RETRY_DEFAULT_MAX_TIME,
@@ -59,7 +61,7 @@ class SSETransport implements Transport {
   TransportType name() {
     return TransportType.sse;
   }
-  
+
   @override
   Future<bool> connect() async {
     _log.finer('[async-client][SSETransport] connect() started.');
@@ -86,12 +88,17 @@ class SSETransport implements Transport {
       },
       autoReconnect: true, // Keep the party going, automatically!
       reconnectConfig: ReconnectConfig(
-          mode: ReconnectMode.linear, // or exponential,
-          interval: Duration(seconds: 2),
-          maxAttempts: _config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES, // or -1 for infinite,
-          onReconnect: () {
-            _log.info('[async-client][SSETransport] onReconnect Called');
-          }
+        mode: ReconnectMode.linear, // or exponential,
+        interval: Duration(seconds: 2),
+        maxAttempts: _config.maxRetries ??
+            RETRY_DEFAULT_MAX_RETRIES, // or -1 for infinite,
+        onReconnect: () {
+          _log.info('[async-client][SSETransport] onReconnect Called');
+        },
+        reconnectHeader: () => Future.value({
+          'Authorization': 'Bearer $currentToken',
+          'Accept': 'text/event-stream',
+        }),
       ),
     );
 
@@ -111,9 +118,12 @@ class SSETransport implements Transport {
 
     // close code 200 is ok to ignore
     if (parsedException.statusCode != SSE_OK_CLOSE_CODE) {
-      _log.severe('[async-client][SSETransport] Error in SSE connection: ${parsedException.statusCode}, ${parsedException.reasonPhrase}');
-      EventFlux.instance.disconnect().then((_) => _connectRetryTimer.schedule());
-      // _signalSSEError({'origin': 'sse', 'code': parsedException.statusCode, 'message': Exception(parsedException.reasonPhrase)});    
+      _log.severe(
+          '[async-client][SSETransport] Error in SSE connection: ${parsedException.statusCode}, ${parsedException.reasonPhrase}');
+      EventFlux.instance
+          .disconnect()
+          .then((_) => _connectRetryTimer.schedule());
+      // _signalSSEError({'origin': 'sse', 'code': parsedException.statusCode, 'message': Exception(parsedException.reasonPhrase)});
     }
   }
 
@@ -171,8 +181,8 @@ class SSETransport implements Transport {
   Future<void> disconnect() async {
     _log.info('[async-client][SSETransport] disconnect() called');
     await EventFlux.instance.disconnect();
-    _log.info('[async-client][SSETransport] disconnect() finished');    
-
+    _connectRetryTimer.reset();
+    _log.info('[async-client][SSETransport] disconnect() finished');
     return;
   }
 }
