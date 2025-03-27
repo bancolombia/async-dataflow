@@ -120,9 +120,18 @@ class SSETransport implements Transport {
     if (parsedException.statusCode != SSE_OK_CLOSE_CODE) {
       _log.severe(
           '[async-client][SSETransport] Error in SSE connection: ${parsedException.statusCode}, ${parsedException.reasonPhrase}');
-      EventFlux.instance
-          .disconnect()
-          .then((_) => _connectRetryTimer.schedule());
+      EventFlux.instance.disconnect().then((_) {
+        if (!_connectRetryTimer.isActive()) {
+          _connectRetryTimer.schedule();
+        } else {
+          _log.warning(
+              '[async-client][SSETransport] Retry timer is already active. Waiting for it to finish.');
+        }
+      }, onError: (e) {
+        _log.severe(
+            '[async-client][SSETransport] Error calling EventFlux.disconnect(): $e');
+      });
+
       // _signalSSEError({'origin': 'sse', 'code': parsedException.statusCode, 'message': Exception(parsedException.reasonPhrase)});
     }
   }
