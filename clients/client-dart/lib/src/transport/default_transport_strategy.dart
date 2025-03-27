@@ -69,24 +69,32 @@ class DefaultTransportStrategy {
   Future<TransportType> iterateTransport() async {
     _log.finest('[async-client][DefaultTransportStrategy] iterating transport');      
 
+    if (_transportTypes.isEmpty) {
+      throw InvalidStrategyException('Invalid or empty transport list for the strategy');
+    }
+
     if (_transportTypes.length == 1) {
       _log.warning('[async-client][DefaultTransportStrategy] one transport strategy can not iterate');
       _currentTransportIndex = 0;
 
       return _currentTransport.name();
     }
+    else {
 
-    _currentTransportIndex = _currentTransportIndex + 1;
-    if (_currentTransportIndex >= _transportTypes.length) {
-      _currentTransportIndex = 0;
+      _currentTransportIndex++;
+      if (_currentTransportIndex >= _transportTypes.length) {
+        _currentTransportIndex = 0;
+      }
+
+      await _currentTransport.disconnect();
+      
+      _currentTransport = _transportTypes[_currentTransportIndex] == TransportType.ws ? _buildWSTransport() : _buildSSETransport();
+
+      _log.finest('[async-client][DefaultTransportStrategy] iterating ended, new transport = ${_currentTransport.name()}');  
+
+      return _currentTransport.name();
     }
 
-    await _currentTransport.disconnect();
-    _currentTransport = _transportTypes[_currentTransportIndex] == TransportType.ws ? _buildWSTransport() : _buildSSETransport();
-
-    _log.finest('[async-client][DefaultTransportStrategy] iterating ended, new transport = ${_currentTransport.name()}');  
-
-    return _currentTransport.name();
   }
 
   Stream<ChannelMessage> get stream => getTransport().stream;

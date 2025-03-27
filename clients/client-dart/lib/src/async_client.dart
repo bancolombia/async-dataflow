@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'async_config.dart';
 import 'model/channel_message.dart';
 import 'transport/default_transport_strategy.dart';
+import 'transport/transport.dart';
 
 /// Async Data Flow Low Level Client
 ///
@@ -120,9 +121,18 @@ class AsyncClient {
   }
 
   Future<bool> switchProtocols() async {
+
+    TransportType currentTransportType = _transportStrategy.getTransport().name();
+
     // reconnect using (potentially) a different transport. It depends on the strategy.
-    await _transportStrategy.iterateTransport();
-    
+    TransportType newTransportType = await _transportStrategy.iterateTransport();
+
+    if (newTransportType == currentTransportType)  {
+      _log.severe('[async-client][Main] Not switching protocols. Transport is the same');
+      
+      return false;
+    }
+
     return await connect();
   } 
 
