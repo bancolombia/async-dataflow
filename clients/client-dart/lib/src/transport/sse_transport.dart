@@ -27,7 +27,6 @@ class SSETransport implements Transport {
   final Function(int, String) _signalSSEClose;
   final Function(Object) _signalSSEError;
   final AsyncConfig _config;
-
   late String currentToken;
   late RetryTimer _connectRetryTimer;
 
@@ -42,7 +41,6 @@ class SSETransport implements Transport {
     currentToken = _config.channelSecret;
     _broadCastStream = StreamController<
         ChannelMessage>.broadcast(); // subscribers stream of data
-
     _connectRetryTimer = RetryTimer(
       () async {
         return await connect();
@@ -132,7 +130,6 @@ class SSETransport implements Transport {
             '[async-client][SSETransport] Error calling EventFlux.disconnect(): $e');
       });
 
-      // _signalSSEError({'origin': 'sse', 'code': parsedException.statusCode, 'message': Exception(parsedException.reasonPhrase)});
     }
   }
 

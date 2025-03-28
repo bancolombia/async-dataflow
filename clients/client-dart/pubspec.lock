@@ -366,14 +366,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.4"
-  mockito:
+  mocktail:
     dependency: "direct dev"
     description:
-      name: mockito
-      sha256: dd61809f04da1838a680926de50a9e87385c1de91c6579629c3d1723946e8059
+      name: mocktail
+      sha256: "890df3f9688106f25755f26b1c60589a92b3ab91a22b8b224947ad041bf172d8"
       url: "https://pub.dev"
     source: hosted
-    version: "5.4.0"
+    version: "1.0.4"
   node_preamble:
     dependency: transitive
     description:
@@ -491,14 +491,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  source_gen:
-    dependency: transitive
-    description:
-      name: source_gen
-      sha256: "373f96cf5a8744bc9816c1ff41cf5391bbdbe3d7a96fe98c622b6738a8a7bd33"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.3.2"
   source_map_stack_trace:
     dependency: transitive
     description:
@@ -639,10 +631,10 @@ packages:
     dependency: transitive
     description:
       name: watcher
-      sha256: "6a7f46926b01ce81bfc339da6a7f20afbe7733eff9846f6d6a5466aa4c6667c0"
+      sha256: "69da27e49efa56a15f8afe8f4438c4ec02eff0a117df1b22ea4aad194fe1c104"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.2"
+    version: "1.1.1"
   web_socket_channel:
     dependency: "direct main"
     description:

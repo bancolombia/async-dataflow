@@ -19,7 +19,4 @@ class CappedList<T> {
     _list.clear();
   }
 
-  List<T> toList() {
-    return List.unmodifiable(_list);
-  }
 }

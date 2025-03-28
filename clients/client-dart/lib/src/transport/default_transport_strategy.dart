@@ -27,20 +27,35 @@ class DefaultTransportStrategy {
   int _currentTransportIndex = 0;
   late Transport _currentTransport;
   late List<TransportType> _transportTypes;
+  late Map<TransportType, dynamic> _transportBuilders;
   late int retries = 1;
 
   DefaultTransportStrategy(this._config,
     this._signalClose,
     this._signalError,) {
+      _transportBuilders = _defaultTransportBuilders();
+      _build();
+    }
+  
+  DefaultTransportStrategy.custom(this._config,
+    this._signalClose,
+    this._signalError,
+    this._transportBuilders,) {
+      _build();
+    }
+
+  void _build() {
       _transportTypes = _config.transports;
       _log.finest('[async-client][DefaultTransportStrategy] selected transports $_transportTypes');      
       if (_transportTypes.isEmpty) {
         throw InvalidStrategyException('Invalid or empty transport list for the strategy');
       }
-      _currentTransport = _transportTypes.first == TransportType.ws ? _buildWSTransport() : _buildSSETransport();
-    }
-  
+      _currentTransport = _buildTransport(_transportTypes.first);
+  }
+
   Future<bool> connect() async {
+    _log.finest('[async-client][DefaultTransportStrategy] Calling connect on transport ${_currentTransport.name()}');
+
     var connected =  await _currentTransport.connect();
     while (!connected && retries <= (_config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES)) {
       _log.severe('[async-client][DefaultTransportStrategy] Transport could not get a connection retry #$retries');
@@ -88,7 +103,7 @@ class DefaultTransportStrategy {
 
       await _currentTransport.disconnect();
       
-      _currentTransport = _transportTypes[_currentTransportIndex] == TransportType.ws ? _buildWSTransport() : _buildSSETransport();
+      _currentTransport = _buildTransport(_transportTypes[_currentTransportIndex]);
 
       _log.finest('[async-client][DefaultTransportStrategy] iterating ended, new transport = ${_currentTransport.name()}');  
 
@@ -99,24 +114,29 @@ class DefaultTransportStrategy {
 
   Stream<ChannelMessage> get stream => getTransport().stream;
 
-  Transport _buildWSTransport() {
-    _log.finest('[async-client][DefaultTransportStrategy] Building transport of type $TransportType.ws');
-
-    return WSTransport(
-      _signalClose,
-      _signalError,
-      _config,
-    );
+  Map<TransportType, dynamic> _defaultTransportBuilders() {
+    return <TransportType, dynamic>{
+      TransportType.ws: () => WSTransport(
+        _signalClose,
+        _signalError,
+        _config,
+      ),
+        TransportType.sse: () => SSETransport(
+        _signalClose,
+        _signalError,
+        _config,
+      ),
+    };
   }
 
-  Transport _buildSSETransport() {
-    _log.finest('[async-client][DefaultTransportStrategy] Building transport of type $TransportType.sse');
+  Transport _buildTransport(TransportType transportType) {
+    _log.finest('[async-client][DefaultTransportStrategy] Building transport of type ${transportType.toString()}');
 
-    return SSETransport(
-      _signalClose,
-      _signalError,
-      _config,
-    );
+    if (_transportBuilders.containsKey(transportType)) {
+      return _transportBuilders[transportType]!();
+    } else {
+      throw InvalidStrategyException('Invalid transport type $transportType');
+    }
   }
 
 }
