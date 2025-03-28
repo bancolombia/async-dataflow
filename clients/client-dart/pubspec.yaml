@@ -1,6 +1,6 @@
 name: channel_sender_client
 description: Client for Async DataFlow Channel Sender
-version: 3.0.0-1-beta
+version: 3.0.0-2-beta
 homepage: https://github.com/bancolombia/async-dataflow
 repository: https://github.com/bancolombia/async-dataflow.git
 
