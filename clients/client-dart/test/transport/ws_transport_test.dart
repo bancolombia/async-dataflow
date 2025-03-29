@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:channel_sender_client/src/transport/ws_transport.dart';
@@ -19,6 +20,36 @@ void main() {
     });
 
     final log = Logger('WS TransportTest');
+
+    test('Should connect and disconnect', () async {
+      server = await HttpServer.bind('localhost', 8686);
+      addTearDown(server.close);
+
+      server.transform(WebSocketTransformer()).listen((WebSocket serverSocket) {
+        serverSocket.listen((request) {});
+      });
+
+      var signalSocketCloseFn = (int code, String reason) {
+        log.finest('socket closed');
+      };
+      var signalSocketErrorFn = (error) {
+        log.severe('socket error');
+      };
+
+      AsyncConfig config = AsyncConfig(
+          socketUrl: 'ws://localhost:${server.port}',
+          channelRef: 'channelRef',
+          channelSecret: 'SFMy',
+          heartbeatInterval: 1000,);
+
+      var transport =
+          WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
+
+      expect(await transport.connect(), true);
+
+      await transport.disconnect();
+
+    });
 
     test('Should send/receive auth and heartbeat', () async {
       server = await HttpServer.bind('localhost', 8686);
@@ -148,5 +179,51 @@ void main() {
 
       await transport.disconnect();
     });
+
+    test('Should handle socket DONE signal and retries', () async {
+      server = await HttpServer.bind(
+        'localhost',
+        8686,
+      );
+      addTearDown(server.close);
+
+      server.transform(WebSocketTransformer()).listen((WebSocket channel) {
+        channel.listen((request) async {
+          await Future.delayed(Duration(milliseconds: 200), () {
+            // final error = Exception('This is a test error');
+            // final stackTrace = StackTrace.current;
+            channel.close(1002, 'Test error');
+          });
+        });
+      });
+
+      var signalSocketCloseFn = (int code, String reason) {
+        log.finest('socket closed');
+      };
+
+      bool onErrorCalled = false;
+      var signalSocketErrorFn = (error) {
+        log.severe('socket error');
+        assert(error.message == 'Max retries reached');
+        onErrorCalled = true;
+      };
+
+      AsyncConfig config = AsyncConfig(
+          socketUrl: 'ws://localhost:8686',
+          channelRef: 'channelRef',
+          channelSecret: 'channelSecret',
+          maxRetries: 2,
+          heartbeatInterval: 1000,);
+
+      var transport =
+          WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
+
+      expect(await transport.connect(), true);
+
+      await Future.delayed(const Duration(seconds: 2));
+
+      expect(onErrorCalled, true);
+    });
+
   });
 }
