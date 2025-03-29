@@ -1,3 +1,7 @@
 class MaxRetriesException implements Exception {
-  MaxRetriesException(String message);
+  final String message;
+  MaxRetriesException(this.message);
+
+  @override
+  String toString() => 'MaxRetriesException: $message';
 }

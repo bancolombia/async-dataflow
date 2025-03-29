@@ -70,13 +70,13 @@ class WSTransport implements Transport {
         ChannelMessage>.broadcast(); // subscribers stream of data
 
     _connectRetryTimer = RetryTimer(
-      () async {
+      () async { // action callback
         return await connect();
       },
-      () async {
+      () async { // limit reached callback
         _onSocketError(
           MaxRetriesException(
-            '[async-client][WSTransport] Max retries reached',
+            'Max retries reached',
           ),
           StackTrace.current,
         );
@@ -124,6 +124,12 @@ class WSTransport implements Transport {
         await Future.delayed(Duration(milliseconds: wait));
       }
     }
+    
+    if (connected && _connectRetryTimer.isActive()) {
+      _log.finer('[async-client][WSTransport] connect() resetting timer.');
+      _connectRetryTimer.reset();
+    }
+
     _log.finer('[async-client][WSTransport] connect() finished.');
 
     return connected;
@@ -270,13 +276,21 @@ class WSTransport implements Transport {
   }
 
   void _onSocketError(Exception error, StackTrace stackTrace) {
-    _log.severe('[async-client][WSTransport] onSocketError: $error');
+    _log.severe('[async-client][WSTransport] onSocketError: ${error.toString()}');
+
+    if (error is MaxRetriesException) {
+      _log.severe('[async-client][WSTransport] Max retries reached');
+      _signalSocketError(error);
+
+      return; 
+    } 
 
     var heartbeatTimer = _heartbeatTimer;
     if (heartbeatTimer != null) {
       heartbeatTimer.cancel();
     }
 
+    _log.info('reconnection attempts: $_reconnectionAttempts');
     if (_reconnectionAttempts >
         (_config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES)) {
       _log.warning('[async-client][WSTransport] Max retries reached');
@@ -471,11 +485,6 @@ class WSTransport implements Transport {
     subscribe(cancelOnErrorFlag: true);
     send('Auth::$currentToken');
     _log.finest('[async-client][WSTransport] _onListen() call ends');
-  }
-
-  void dispose() {
-    _log.finest('[async-client][WSTransport] local stream dispose');
-    _broadCastStream.close();
   }
 
   int extractCode(String stringCode) {
