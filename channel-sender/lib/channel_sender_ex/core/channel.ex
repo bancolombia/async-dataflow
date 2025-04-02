@@ -159,6 +159,12 @@ defmodule ChannelSenderEx.Core.Channel do
     end
   end
 
+  def waiting(:cast, {:swarm, :resolve_conflict, data}, state) do
+    Logger.debug(fn ->
+      "Channel #{state.channel} :swarm, :resolve_conflict in pid #{inspect(self())} at #{Node.self()}. state: waiting."
+    end)
+    {:keep_state, data}
+  end
 
   def waiting(:cast, {:swarm, :end_handoff, _data}, state) do
     Logger.debug(fn ->
@@ -307,6 +313,13 @@ defmodule ChannelSenderEx.Core.Channel do
 
   @type call() :: {:call, GenServer.from()}
   @type state_return() :: :gen_statem.event_handler_result(Data.t())
+
+  def connected(:cast, {:swarm, :resolve_conflict, data}, state) do
+    Logger.debug(fn ->
+      "Channel #{state.channel} :swarm, :resolve_conflict in pid #{inspect(self())} at #{Node.self()}. state: connected."
+    end)
+    {:keep_state, data}
+  end
 
   def connected(:info, {:swarm, :die}, state) do
     Logger.debug(fn ->
@@ -537,6 +550,14 @@ defmodule ChannelSenderEx.Core.Channel do
   ############################################
   ###           CLOSED STATE              ####
   ############################################
+
+  def closed(:cast, {:swarm, :resolve_conflict, data}, state) do
+    Logger.debug(fn ->
+      "Channel #{state.channel} :swarm, :resolve_conflict in pid #{inspect(self())} at #{Node.self()}. state: closed."
+    end)
+    {:keep_state, data}
+  end
+
   def closed({:call, from}, {:swarm, :begin_handoff}, state) do
     # Return the state so the new node can take over
     Logger.debug(fn ->
