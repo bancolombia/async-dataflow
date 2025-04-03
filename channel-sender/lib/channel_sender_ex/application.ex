@@ -41,6 +41,8 @@ defmodule ChannelSenderEx.Application do
           ChannelSenderEx.Core.ChannelSupervisor,
           {Plug.Cowboy, scheme: :http, plug: RestController, options: [
             port: Application.get_env(:channel_sender_ex, :rest_port),
+            protocol_options: Application.get_env(:channel_sender_ex, :cowboy_protocol_options),
+            transport_options: Application.get_env(:channel_sender_ex, :cowboy_transport_options),
           ]},
           {TelemetryMetricsPrometheus,
           [

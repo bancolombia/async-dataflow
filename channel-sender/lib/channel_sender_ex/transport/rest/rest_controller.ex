@@ -12,8 +12,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   require Logger
 
-  @metadata_headers_max 3
-  @metadata_headers_prefix "x-meta-"
+  # @metadata_headers_max 3
+  # @metadata_headers_prefix "x-meta-"
 
   plug(Plug.Telemetry, event_prefix: [:channel_sender_ex, :plug])
   plug(CORSPlug)
@@ -35,11 +35,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp create_channel(conn) do
     # collect metadata from headers, up to 3 metadata fields
-    metadata = conn.req_headers
-    |> Enum.filter(fn {key, _} -> String.starts_with?(key, @metadata_headers_prefix) end)
-    |> Enum.map(fn {key, value} -> {String.replace(key, @metadata_headers_prefix, ""), String.slice(value, 0, 50)} end)
-    |> Enum.take(@metadata_headers_max)
-    route_create(conn.body_params, metadata, conn)
+    # metadata = conn.req_headers
+    # |> Enum.filter(fn {key, _} -> String.starts_with?(key, @metadata_headers_prefix) end)
+    # |> Enum.map(fn {key, value} -> {String.replace(key, @metadata_headers_prefix, ""), String.slice(value, 0, 50)} end)
+    # |> Enum.take(@metadata_headers_max)
+    route_create(conn.body_params, [], conn)
   end
 
   @spec route_create(map(), list(), Plug.Conn.t()) :: Plug.Conn.t()
@@ -55,11 +55,10 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     case is_valid do
       true ->
         {channel_ref, channel_secret} = ChannelAuthenticator.create_channel(application_ref, user_ref, metadata)
-        response = %{channel_ref: channel_ref, channel_secret: channel_secret}
 
         conn
         |> put_resp_header("content-type", "application/json")
-        |> send_resp(200, Jason.encode!(response))
+        |> send_resp(200, Jason.encode!(%{channel_ref: channel_ref, channel_secret: channel_secret}))
 
       false ->
         invalid_body(conn)
@@ -77,6 +76,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     case channel do
       nil ->
         invalid_body(conn)
+
+      "" ->
+          invalid_body(conn)
 
       _ ->
         route_close(channel, conn)

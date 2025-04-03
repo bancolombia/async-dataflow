@@ -61,6 +61,18 @@ channel_sender_ex:
     on_clean_close: 300
     on_disconnection: 900
 
+  cowboy:
+    # https://ninenines.eu/docs/en/cowboy/2.12/manual/cowboy_http/
+    protocol_options:
+      active_n: 4000
+      max_keepalive: 15000
+      request_timeout: 10000
+      idle_timeout: 120000
+    # https://ninenines.eu/docs/en/ranch/1.7/manual/ranch/
+    transport_options:
+      num_acceptors: 1000
+      max_connections: :infinity
+
   no_start: false
   topology:
     strategy: Elixir.Cluster.Strategy.Gossip # for local development
