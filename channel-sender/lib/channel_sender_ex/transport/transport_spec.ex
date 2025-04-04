@@ -17,6 +17,7 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
 
       import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
       alias ChannelSenderEx.Core.RulesProvider
+      alias ChannelSenderEx.Core.ChannelSupervisor
 
       require Logger
 
@@ -106,7 +107,7 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
       end
 
       def check_channel_registered(channel_ref) do
-        case Swarm.whereis_name(channel_ref) do
+        case ChannelSupervisor.whereis_channel(channel_ref) do
           :undefined ->
             :retry
           pid when is_pid(pid) ->

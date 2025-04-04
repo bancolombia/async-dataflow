@@ -99,7 +99,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {_conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
 
     # call for stop
-    channel_pid = Swarm.whereis_name(channel)
+    channel_pid = ChannelSupervisor.whereis_channel(channel)
     :ok = Channel.stop(channel_pid)
 
     Process.sleep(100)
@@ -113,7 +113,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   } do
 
     # call for stop
-    channel_pid = Swarm.whereis_name(channel)
+    channel_pid = ChannelSupervisor.whereis_channel(channel)
     :ok = Channel.stop(channel_pid)
 
     Process.sleep(200)
@@ -169,7 +169,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     assert {:accepted_connected, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
 
-    channel_pid = Swarm.whereis_name(channel)
+    channel_pid = ChannelSupervisor.whereis_channel(channel)
     :gun.close(conn)
 
     Process.sleep(500)
@@ -186,13 +186,13 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Helper.compile(:channel_sender_ex, channel_shutdown_on_disconnection: 1)
 
     {channel, _secret} = ChannelAuthenticator.create_channel("App1", "User1234")
-    channel_pid = Swarm.whereis_name(channel)
+    channel_pid = ChannelSupervisor.whereis_channel(channel)
 
     ref = Process.monitor(channel_pid)
     assert_receive {:DOWN, ^ref, :process, ^channel_pid, :normal}, 1200
     Process.sleep(300)
 
-    assert :undefined == Swarm.whereis_name(channel)
+    assert :undefined == ChannelSupervisor.whereis_channel(channel)
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
       Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)

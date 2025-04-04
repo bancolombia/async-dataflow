@@ -2,6 +2,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   @moduledoc false
 
   alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Core.ChannelSupervisor
 
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
   require Logger
@@ -31,7 +32,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   end
 
   def connect_socket_to_channel(channel_ref, socket_pid) do
-    case  Swarm.whereis_name(channel_ref) do
+    case  ChannelSupervisor.whereis_channel(channel_ref) do
       :undefined ->
         :noproc
       pid when is_pid(pid) ->

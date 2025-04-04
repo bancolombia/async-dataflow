@@ -34,11 +34,11 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   def register_channel(args = {channel_ref, application, _user_ref, _meta}) do
     case Swarm.register_name(channel_ref, __MODULE__, :start_channel, [args]) do
       {:ok, pid} ->
-        Swarm.join(application, pid)
+        # Swarm.join(application, pid)
         {:ok, pid}
 
       {:error, {:already_registered, pid}} ->
-        Swarm.join(application, pid)
+        # Swarm.join(application, pid)
         {:ok, pid}
 
       {:error, reason} ->
@@ -60,5 +60,20 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
       :undefined ->
         register_channel(args)
     end
+  end
+
+  @spec unregister_channel(channel_ref()) :: any()
+  def unregister_channel(channel_ref) do
+    Swarm.unregister_name(channel_ref)
+  end
+
+  @spec whereis_channel(channel_ref()) :: pid() | :undefined
+  def whereis_channel(channel_ref) do
+    Swarm.whereis_name(channel_ref)
+  end
+
+  @spec app_members(application()) :: list()
+  def app_members(application) do
+    Swarm.members(application)
   end
 end

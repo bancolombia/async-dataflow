@@ -194,7 +194,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
     case check_process(waiting_timeout, data) do
       :timeout ->
-        Swarm.unregister_name(data.channel)
+        ChannelSupervisor.unregister_channel(data.channel)
         {:stop, :normal, data}
 
       :registered ->
@@ -226,7 +226,7 @@ defmodule ChannelSenderEx.Core.Channel do
       "Channel #{data.channel} timed-out on waiting state for a socket connection and/or authentication"
     )
 
-    Swarm.unregister_name(data.channel)
+    ChannelSupervisor.unregister_channel(data.channel)
     {:stop, :normal, %{data | stop_cause: :waiting_timeout}}
   end
 
@@ -593,7 +593,7 @@ defmodule ChannelSenderEx.Core.Channel do
     Logger.debug(fn ->
       "Channel #{data.channel} enter state closed."
     end)
-    Swarm.unregister_name(data.channel)
+    ChannelSupervisor.unregister_channel(data.channel)
     {:stop, :normal, data}
   end
 

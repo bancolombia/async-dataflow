@@ -200,9 +200,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
     Task.start(fn ->
-      new_msg = message
-      |> Map.drop([:channel_ref])
-      |> ProtocolMessage.to_protocol_message
+      new_msg = ProtocolMessage.to_protocol_message(message)
 
       PubSubCore.deliver_to_channel(channel_ref, new_msg)
     end)
@@ -211,9 +209,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp perform_delivery({:ok, message}, %{"app_ref" => app_ref}) do
     Task.start(fn ->
-      new_msg = message
-      |> Map.drop([:app_ref])
-      |> ProtocolMessage.to_protocol_message
+      new_msg = ProtocolMessage.to_protocol_message(message)
       PubSubCore.deliver_to_app_channels(app_ref, new_msg)
     end)
 
@@ -222,9 +218,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp perform_delivery({:ok, message}, %{"user_ref" => user_ref}) do
     Task.start(fn ->
-      new_msg = message
-      |> Map.drop([:user_ref])
-      |> ProtocolMessage.to_protocol_message
+      new_msg = ProtocolMessage.to_protocol_message(message)
       PubSubCore.deliver_to_user_channels(user_ref, new_msg)
     end)
 

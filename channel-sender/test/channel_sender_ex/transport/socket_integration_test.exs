@@ -224,13 +224,13 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {_type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    ch_pid = Swarm.whereis_name(channel)
+    ch_pid = ChannelSupervisor.whereis_channel(channel)
 
     Process.exit(ch_pid, :kill)
 
     Process.sleep(1800)
 
-    assert is_pid(Swarm.whereis_name(channel))
+    assert is_pid(ChannelSupervisor.whereis_channel(channel))
 
     {message_id, data} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {_type, _string}}

@@ -6,6 +6,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
 
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.ProtocolMessage
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
 
@@ -40,7 +41,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   """
   @spec deliver_to_app_channels(app_ref(), ProtocolMessage.t()) :: delivery_result()
   def deliver_to_app_channels(app_ref, message) do
-    Swarm.members(app_ref)
+    ChannelSupervisor.app_members(app_ref)
     |> Stream.map(fn pid -> Channel.deliver_message(pid, message) end)
     |> Enum.frequencies()
   end
@@ -55,7 +56,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   end
 
   defp do_deliver_to_channel(channel_ref, message) do
-    case Swarm.whereis_name(channel_ref) do
+    case ChannelSupervisor.whereis_channel(channel_ref) do
       pid when is_pid(pid) -> Channel.deliver_message(pid, message)
       :undefined ->
         :retry
@@ -71,7 +72,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   end
 
   def do_delete_channel(channel_ref) do
-    case  Swarm.whereis_name(channel_ref) do
+    case  ChannelSupervisor.whereis_channel(channel_ref) do
       pid when is_pid(pid) -> Channel.stop(pid)
       :undefined ->
         :retry
