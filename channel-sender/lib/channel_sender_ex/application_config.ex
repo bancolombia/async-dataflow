@@ -114,6 +114,13 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Map.get(fetch(config, :channel_sender_ex), "prometheus_port", 9568)
     )
 
+    Application.put_env(:channel_sender_ex, :cowboy_protocol_options,
+      parse_cowboy_protocol_opts(get_in(config, [:channel_sender_ex, "cowboy", "protocol_options"]))
+    )
+    Application.put_env(:channel_sender_ex, :cowboy_transport_options,
+      parse_cowboy_transport_opts(get_in(config, [:channel_sender_ex, "cowboy", "transport_options"]))
+    )
+
     config
   end
 
@@ -154,6 +161,31 @@ defmodule ChannelSenderEx.ApplicationConfig do
       type: process_param(Map.get(persistence, "type", ":none")),
       config: parse_config_key(Map.get(persistence, "config", %{}))
     ]
+  end
+
+  defp parse_cowboy_protocol_opts(opts) do
+    case opts do
+      nil ->
+        [
+          active_n: 1_000,
+          max_keepalive: 5_000,
+          request_timeout: 10_000
+        ]
+      _ ->
+        parse_config_key(opts)
+    end
+  end
+
+  defp parse_cowboy_transport_opts(opts) do
+    case opts do
+      nil ->
+        [
+          num_acceptors: 200,
+          max_connections: 16_384
+        ]
+      _ ->
+        parse_config_key(opts)
+    end
   end
 
   defp parse_libcluster_topology(config) do

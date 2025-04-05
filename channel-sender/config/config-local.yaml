@@ -72,6 +72,18 @@ channel_sender_ex:
       # secret: "redis-secret" # Secret to connect to the persistence layer secret can be json like: {"username": "", "password": "", "host": "", "hostread", "port": 0, "ssl": false}
       # if secret is provided, the other fields can be overwritten by the secret but only if there are present in the secret
 
+  cowboy:
+    # https://ninenines.eu/docs/en/cowboy/2.12/manual/cowboy_http/
+    protocol_options:
+      active_n: 4000
+      max_keepalive: 15000
+      request_timeout: 10000
+      idle_timeout: 120000
+    # https://ninenines.eu/docs/en/ranch/1.7/manual/ranch/
+    transport_options:
+      num_acceptors: 1000
+      max_connections: :infinity
+
 logger:
   level: debug
 

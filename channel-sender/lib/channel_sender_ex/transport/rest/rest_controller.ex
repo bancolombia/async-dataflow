@@ -124,6 +124,9 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       nil ->
         invalid_body(conn)
 
+      "" ->
+        invalid_body(conn)
+
       _ ->
         route_close(channel, conn)
     end
