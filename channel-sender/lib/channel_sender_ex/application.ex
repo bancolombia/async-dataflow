@@ -50,14 +50,16 @@ defmodule ChannelSenderEx.Application do
          metrics: CustomTelemetry.metrics(),
          port: prometheus_port
        ]},
-      {Plug.Cowboy,
-       scheme: :http,
-       plug: RestController,
-       options: [
-         port: Application.get_env(:channel_sender_ex, :rest_port),
-         protocol_options: Application.get_env(:channel_sender_ex, :cowboy_protocol_options),
-         transport_options: Application.get_env(:channel_sender_ex, :cowboy_transport_options),
-       ]}
+       {Bandit, [
+        plug: RestController,
+        scheme: :http,
+        port: Application.get_env(:channel_sender_ex, :rest_port),
+        http_1_options: [
+          enabled: true
+        ],
+        http_2_options: [
+          enabled: true
+        ]]}
     ]
 
     childs1 ++ ChannelPersistence.child_spec() ++ childs2

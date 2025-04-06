@@ -54,8 +54,8 @@ channel_sender_ex:
 
   # Number of workers to process the requests (Poolboy configuration)
   channel_worker_pool:
-    size: 120
-    max_overflow: 50
+    size: 1200
+    max_overflow: 200
 
   persistence:
     enabled: true # Indicates if the persistence layer is enabled
