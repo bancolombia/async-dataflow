@@ -40,7 +40,7 @@ defmodule ChannelSenderEx.MixProject do
       {:elixir_uuid, "~> 1.2"},
       {:jason, "~> 1.4"},
       {:cors_plug, "~> 3.0"},
-      {:horde, "~> 0.9"},
+      {:swarm, "~> 3.4.0"},
       {:plug_crypto, "~> 2.1"},
       {:finch, "~> 0.19"},
       {:libcluster, "~> 3.5"},

@@ -2,7 +2,7 @@ defmodule ChannelSenderEx.Core.MessageProcess do
   @moduledoc """
   Main abstraction for modeling a message delivery process.
   """
-  use GenServer
+  use GenServer, restart: :transient
   require Logger
 
   alias ChannelSenderEx.Adapter.WsConnections

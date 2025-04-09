@@ -198,7 +198,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
       ) do
     serialized = ProtocolMessage.map_to_socket_message(message) |> Jason.encode!()
     ChannelPersistence.save_message(msg_id, serialized)
-    MessageProcessSupervisor.start_message_process({channel_ref, msg_id})
+    MessageProcessSupervisor.start_process_cluster({channel_ref, msg_id})
     {:noreply, state}
   end
 

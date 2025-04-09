@@ -52,6 +52,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
       conn
       |> put_resp_header("content-type", "application/json")
+      |> put_resp_header("connection", "keep-alive")
+      |> put_resp_header("keep-alive", "timeout=5, max=200")
       |> send_resp(200, response)
     else
       {:error, _message} -> invalid_body(conn)
@@ -204,6 +206,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   defp build_and_send_response({202, body}, conn) do
     conn
     |> put_resp_header("content-type", "application/json")
+    |> put_resp_header("connection", "keep-alive")
+    |> put_resp_header("keep-alive", "timeout=5, max=200")
     |> send_resp(202, Jason.encode!(body))
   end
 
