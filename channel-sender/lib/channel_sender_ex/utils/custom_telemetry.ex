@@ -39,7 +39,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
     :telemetry.execute(
       [:elixir, :http_request_duration_milliseconds],
       %{duration: monotonic_time_to_milliseconds(measures.duration)},
-      %{request_path: metadata.conn.request_path, status: metadata.conn.status, service: @service_name}
+      %{request_path: metadata.conn.request_path, status: metadata.conn.status, method: metadata.conn.method, service: @service_name}
     )
   end
 
@@ -51,8 +51,8 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
   def metrics do
     [
       # Plug Metrics
-      counter("elixir.http_request_duration_milliseconds.count", tags: [:request_path, :status, :service]),
-      sum("elixir.http_request_duration_milliseconds.duration", tags: [:request_path, :status, :service]),
+      counter("elixir.http_request_duration_milliseconds.count", tags: [:request_path, :status, :method, :service]),
+      sum("elixir.http_request_duration_milliseconds.duration", tags: [:request_path, :status, :method, :service]),
 
       #Custom Metrics
       counter("elixir.adf.message.requested.count", tags: [:service]),
