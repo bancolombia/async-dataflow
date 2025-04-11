@@ -27,16 +27,24 @@ defmodule ChannelSenderEx.Persistence.NoopChannelPersistence do
   def get_channel(_channel_ref), do: {:error, :not_found}
 
   @impl true
-  @spec delete_message(String.t()) :: :ok
-  def delete_message(_message_id), do: :ok
+  @spec delete_message(String.t(), String.t()) :: :ok
+  def delete_message(_channel_ref, _message_id), do: :ok
 
   @impl true
-  @spec save_message(String.t(), any()) :: :ok
-  def save_message(_message_id, _message), do: :ok
+  @spec ack_message(String.t(), String.t()) :: :ok
+  def ack_message(_socket, _message_id), do: :ok
+
+  @impl true
+  @spec save_message(String.t(), String.t(), any()) :: :ok
+  def save_message(_channel_ref, _message_id, _message), do: :ok
 
   @impl true
   @spec get_message(String.t(), String.t()) :: {:ok, list()}
   def get_message(_message_id, _channel_ref), do: {:ok, []}
+
+  @impl true
+  @spec get_messages(String.t()) :: {:ok, any()} | {:error, :not_found}
+  def get_messages(_channel_ref), do: {:ok, []}
 
   @impl true
   @spec child_spec :: [Supervisor.child_spec()] | []

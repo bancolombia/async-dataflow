@@ -1,16 +1,19 @@
 import Config
 
 config :channel_sender_ex,
-  secret_base:
-    {"aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc", "socket auth"},
-  initial_redelivery_time: 100,
-  max_age: 900,
-  #  message_encoder: ChannelSenderEx.Transport.Encoders.BinaryEncoder,
-  message_encoder: ChannelSenderEx.Transport.Encoders.JsonEncoder,
-  no_start: true,
-  socket_idle_timeout: 60000,
-  socket_port: 8082,
-  rest_port: 8081,
-  topology: [
-    strategy: Cluster.Strategy.Gossip
-  ]
+  config_file: "./config/config-local.yaml"
+
+config :ex_aws,
+  region: "us-east-1",
+  access_key_id: [
+    {:system, "AWS_ACCESS_KEY_ID"},
+    {:awscli, "default", 30},
+    :instance_role
+  ],
+  secret_access_key: [
+    {:system, "AWS_SECRET_ACCESS_KEY"},
+    {:awscli, "default", 30},
+    :instance_role
+  ],
+  security_token: {:system, "AWS_SESSION_TOKEN"},
+  awscli_auth_adapter: ExAws.STS.AuthCache.AssumeRoleCredentialsAdapter

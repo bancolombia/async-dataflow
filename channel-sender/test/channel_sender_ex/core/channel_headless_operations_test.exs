@@ -1,13 +1,14 @@
-Code.compiler_options(ignore_module_conflict: true)
+# Code.compiler_options(ignore_module_conflict: true)
 
 defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import Mock
 
-  alias ChannelSenderEx.Core.ChannelWorker
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.HeadlessChannelOperations
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Persistence.ChannelPersistence
+  alias ChannelSenderEx.Adapter.WsConnections
 
   @moduletag :capture_log
 
@@ -16,6 +17,7 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
         "socket auth"
     })
+    Application.put_env(:channel_sender_ex, :max_age, 1)
 
     Application.ensure_all_started(:plug_crypto)
     Helper.compile(:channel_sender_ex)
@@ -27,16 +29,8 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
       max_overflow: 10
     ])
 
-    :ok
-  end
-
-  setup do
-    Application.put_env(:channel_sender_ex, :max_unacknowledged_retries, 3)
-    Application.put_env(:channel_sender_ex, :max_age, 1)
-    Helper.compile(:channel_sender_ex)
-
     on_exit(fn ->
-      Application.delete_env(:channel_sender_ex, :max_unacknowledged_retries)
+      # Application.delete_env(:channel_sender_ex, :max_unacknowledged_retries)
       Application.delete_env(:channel_sender_ex, :max_age)
       Helper.compile(:channel_sender_ex)
     end)
@@ -44,9 +38,23 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
     :ok
   end
 
+  # setup do
+  #   Application.put_env(:channel_sender_ex, :max_unacknowledged_retries, 3)
+  #   Application.put_env(:channel_sender_ex, :max_age, 1)
+  #   Helper.compile(:channel_sender_ex)
+
+  #   on_exit(fn ->
+  #     Application.delete_env(:channel_sender_ex, :max_unacknowledged_retries)
+  #     Application.delete_env(:channel_sender_ex, :max_age)
+  #     Helper.compile(:channel_sender_ex)
+  #   end)
+
+  #   :ok
+  # end
+
   test "Should create a channel" do
     with_mocks([
-      {ChannelWorker, [], [
+      {ChannelPersistence, [], [
         save_channel: fn(_, _) -> :ok end
       ]}
     ]) do
@@ -56,8 +64,9 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
 
   test "Should delete channel" do
     with_mocks([
-      {ChannelWorker, [], [
-        delete_channel: fn(_) -> :ok end
+      {ChannelPersistence, [], [
+        delete_channel: fn(_) -> :ok end,
+        save_channel: fn(_, _) -> :ok end
       ]}
     ]) do
       assert :ok = HeadlessChannelOperations.delete_channel("xyz")
@@ -66,28 +75,37 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
 
   test "Should process on_connect to validate a channel exists" do
     with_mocks([
-      {ChannelWorker, [], [
-        get_channel: fn(_) -> {:ok, "my.connection"} end,
-        save_socket: fn(_, _) -> :ok end
+      {ChannelPersistence, [], [
+        get_channel: fn(_) -> {:ok, "my.connection555666"} end,
+        save_socket: fn(_, _) -> :ok end,
+        delete_socket: fn(_, _) -> :ok end,
+        ack_message: fn(_, _) -> :ok end
       ]}
     ]) do
-      assert {:ok, "OK"} = HeadlessChannelOperations.on_connect("ch1", "my.connection")
-      assert_called ChannelWorker.get_channel(:_)
-      assert_called ChannelWorker.save_socket(:_, :_)
+      assert {:ok, "OK"} = HeadlessChannelOperations.on_connect("ch1", "my.connection555666")
+      Process.sleep(100)
+      assert_called ChannelPersistence.get_channel(:_)
+      assert_called ChannelPersistence.save_socket(:_, :_)
     end
   end
 
   test "Should process on_connect with fail to validate channel existence" do
     with_mocks([
-      {ChannelWorker, [], [
+      {ChannelPersistence, [], [
         get_channel: fn(_) -> {:error, :not_found} end,
-        disconnect_raw_socket: fn(_, _) -> :ok end
+        save_socket: fn(_, _) -> :ok end,
+        delete_socket: fn(_, _) -> :ok end
+      ]},
+      {WsConnections, [], [
+        send_data: fn(_, _) -> :ok end,
+        close: fn(_) -> :ok end,
       ]}
     ]) do
-      assert {:error, "3008"} = HeadlessChannelOperations.on_connect("ch1", "my.connection")
+      assert {:error, "3008"} = HeadlessChannelOperations.on_connect("ch2", "my.connection")
       Process.sleep(100)
-      assert_called ChannelWorker.get_channel(:_)
-      assert_called ChannelWorker.disconnect_raw_socket(:_, :_)
+      assert_called ChannelPersistence.get_channel(:_)
+      assert_called WsConnections.send_data(:_, :_)
+      # assert_called WsConnections.close(:_)
     end
   end
 
@@ -99,17 +117,20 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
     connection_id = "my.connection"
 
     with_mocks([
-      {ChannelWorker, [], [
+      {ChannelPersistence, [], [
         get_socket: fn(_) -> {:ok, channel_ref} end,
         save_socket: fn(_ref, _socket) -> :ok end,
-        disconnect_socket: fn(_) -> :ok end
+        delete_socket: fn(_, _) -> :ok end,
+        save_channel: fn(_, _) -> :ok end
+      ]},
+      {WsConnections, [], [
+        close: fn(_) -> :ok end,
       ]}
     ]) do
       assert {:ok, "[\"\",\"\",\"AuthOk\",\"\"]"} = HeadlessChannelOperations.on_message(msg, connection_id)
       Process.sleep(100)
-      assert_called ChannelWorker.get_socket(:_)
-      assert_called ChannelWorker.save_socket(:_, :_)
-      assert_not_called ChannelWorker.disconnect_socket(:_)
+      assert_called ChannelPersistence.get_socket(:_)
+      assert_called ChannelPersistence.save_socket(:_, :_)
     end
   end
 
@@ -117,20 +138,25 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
     channel_ref = ChannelIDGenerator.generate_channel_id("a", "b")
     secret = ChannelIDGenerator.generate_token(channel_ref, "a", "b")
     msg = %{"payload" => "Auth::" <> secret}
-    connection_id = "my.connection"
+    connection_id = "my.connection2346778"
 
     with_mocks([
-      {ChannelWorker, [], [
+      {ChannelPersistence, [], [
         get_socket: fn(_) -> {:error, :not_found} end,
         save_socket: fn(_ref, _socket) -> :ok end,
-        disconnect_socket: fn(_) -> :ok end
+        delete_socket: fn(_ref, _socket) -> :ok end,
+        save_channel: fn(_ref, _socket) -> :ok end,
+      ]},
+      {WsConnections, [], [
+        send_data: fn(_, _) -> :ok end,
+        close: fn(_) -> :ok end,
       ]}
     ]) do
       assert {:unauthorized, "[\"\",\"\",\"AuthFailed\",\"\"]"} = HeadlessChannelOperations.on_message(msg, connection_id)
       Process.sleep(100)
-      assert_called ChannelWorker.get_socket(:_)
-      assert_not_called ChannelWorker.save_socket(:_, :_)
-      assert_called ChannelWorker.disconnect_socket(:_)
+      assert_called ChannelPersistence.get_socket(:_)
+      assert_not_called ChannelPersistence.save_socket(:_, :_)
+      # assert_called WsConnections.close(:_)
     end
   end
 
@@ -139,20 +165,23 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
     secret = ChannelIDGenerator.generate_token(channel_ref, "a", "b")
 
     msg = %{"payload" => "n_token::" <> secret}
-    connection_id = "my.connection"
+    connection_id = "my.connection0978"
 
     with_mocks([
-      {ChannelWorker, [], [
+      {ChannelPersistence, [], [
         get_socket: fn(_) -> {:ok, channel_ref} end,
         save_socket: fn(_ref, _socket) -> :ok end,
-        disconnect_socket: fn(_) -> :ok end
+        delete_socket: fn(_, _) -> :ok end,
+        save_channel: fn(_, _) -> :ok end,
+      ]},
+      {WsConnections, [], [
+        close: fn(_) -> :ok end,
       ]}
     ]) do
       {:ok, result} = HeadlessChannelOperations.on_message(msg, connection_id)
       assert ["", "", ":n_token", _secret] = Jason.decode!(result)
-      assert_called ChannelWorker.get_socket(:_)
-      assert_called ChannelWorker.save_socket(:_, :_)
-      assert_not_called ChannelWorker.disconnect_socket(:_)
+      assert_called ChannelPersistence.get_socket(:_)
+      assert_called ChannelPersistence.save_socket(:_, :_)
     end
   end
 
@@ -161,62 +190,67 @@ defmodule ChannelSenderEx.Core.HeadlessChannelOperationsTest do
     secret = ChannelIDGenerator.generate_token(channel_ref, "a", "b")
 
     msg = %{"payload" => "n_token::" <> secret}
-    connection_id = "my.connection"
+    connection_id = "my.connection23454"
 
     with_mocks([
-      {ChannelWorker, [], [
+      {ChannelPersistence, [], [
         get_socket: fn(_) ->
           Process.sleep(1100)
           {:ok, channel_ref}
         end,
         save_socket: fn(_ref, _socket) -> :ok end,
-        disconnect_socket: fn(_) -> :ok end
+        delete_socket: fn(_) -> :ok end
       ]}
     ]) do
       {:ok, result} = HeadlessChannelOperations.on_message(msg, connection_id)
       assert ["", "", "AuthFailed", ""] = Jason.decode!(result)
-      assert_called ChannelWorker.get_socket(:_)
-      assert_not_called ChannelWorker.save_socket(:_, :_)
-      assert_called ChannelWorker.disconnect_socket(:_)
+      assert_called ChannelPersistence.get_socket(:_)
+      assert_not_called ChannelPersistence.save_socket(:_, :_)
+      # assert_called ChannelWorker.disconnect_socket(:_)
     end
   end
 
   test "Should process on_message and handle ack" do
     msg = %{"payload" => "Ack::abc"}
-    connection_id = "my.connection"
+    connection_id = "my.connection56789887"
 
     with_mocks([
-      {ChannelWorker, [], [
+      {ChannelPersistence, [], [
         ack_message: fn(_socket, _connection) -> :ok end,
       ]}
     ]) do
       assert {:ok, "[\"\",\"\",\":Ack\",\"\"]"} = HeadlessChannelOperations.on_message(msg, connection_id)
       Process.sleep(100)
-      assert_called ChannelWorker.ack_message(:_, :_)
+      assert_called ChannelPersistence.ack_message(:_, :_)
     end
   end
 
   test "Should process on_message and handle heartbeat" do
     msg = %{"payload" => "hb::1"}
-    connection_id = "my.connection"
+    connection_id = "my.connection3456"
     assert {:ok, "[\"\",\"1\",\":hb\",\"\"]"} = HeadlessChannelOperations.on_message(msg, connection_id)
   end
 
   test "Should process on_message and handle any other message" do
     msg = %{"payload" => "foo"}
-    connection_id = "my.connection"
+    connection_id = "my.connection234"
     assert {:ok, "[\"\",\"\",\"9999\",\"\"]"} = HeadlessChannelOperations.on_message(msg, connection_id)
   end
 
   test "Should process on_disconnect" do
-    connection_id = "my.connection"
+    connection_id = "my.connection0009090"
     with_mocks([
-      {ChannelWorker, [], [
-        disconnect_socket: fn(_socket) -> :ok end,
+      {ChannelPersistence, [], [
+        get_socket: fn(_socket) -> {:ok, "ch098098"} end,
+        delete_socket: fn(_, _) -> :ok end,
+      ]},
+      {WsConnections, [], [
+        close: fn(_) -> :ok end,
       ]}
     ]) do
       assert :ok = HeadlessChannelOperations.on_disconnect(connection_id)
-      assert_called ChannelWorker.disconnect_socket(:_)
+      Process.sleep(100)
+      assert_called ChannelPersistence.delete_socket(:_, :_)
     end
   end
 

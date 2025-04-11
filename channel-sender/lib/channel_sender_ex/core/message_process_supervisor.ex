@@ -19,7 +19,7 @@ defmodule ChannelSenderEx.Core.MessageProcessSupervisor do
 
   @type channel_ref :: String.t()
   @type message_id :: String.t()
-  @type process_init_args :: {channel_ref(), message_id()}
+  @type process_init_args :: {channel_ref()}
 
   @spec start_process(process_init_args()) :: any()
   def start_process(args) do
@@ -27,8 +27,8 @@ defmodule ChannelSenderEx.Core.MessageProcessSupervisor do
   end
 
   @spec start_process_cluster(process_init_args()) :: any()
-  def start_process_cluster(args = {_channel_ref, message_id}) do
-    case Swarm.register_name(message_id, __MODULE__, :start_process, [args]) do
+  def start_process_cluster(args = {channel_ref}) do
+    case Swarm.register_name(channel_ref, __MODULE__, :start_process, [args]) do
       {:ok, pid} ->
         {:ok, pid}
 

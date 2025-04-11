@@ -210,7 +210,7 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
 
     with_mocks([
       {ChannelPersistence, [], [
-        delete_message: fn(_msg_id) ->
+        ack_message: fn(_socket, _msg_id) ->
           :ok
         end
       ]}
@@ -218,7 +218,7 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
 
       assert :ok = ChannelWorker.ack_message("conn.id", "32452")
       Process.sleep(10)
-      assert_called ChannelPersistence.delete_message(:_)
+      assert_called ChannelPersistence.ack_message(:_, :_)
     end
   end
 
@@ -228,16 +228,16 @@ defmodule ChannelSenderEx.Core.ChannelWorkerTest do
 
     with_mocks([
       {ChannelPersistence, [], [
-        save_message: fn(_msg_id, _message) ->
+        save_message: fn(_channel_ref, _msg_id, _message) ->
           :ok
         end]},
-      {MessageProcessSupervisor, [], [start_message_process: fn(_) -> :ok end]}
+      {MessageProcessSupervisor, [], [start_process_cluster: fn(_) -> :ok end]}
     ]) do
 
       assert :ok = ChannelWorker.route_message(Map.put(message, "channel_ref", channel_ref))
       Process.sleep(10)
-      assert_called ChannelPersistence.save_message(:_, :_)
-      assert_called MessageProcessSupervisor.start_message_process(:_)
+      assert_called ChannelPersistence.save_message(:_, :_, :_)
+      assert_called MessageProcessSupervisor.start_process_cluster(:_)
     end
   end
 

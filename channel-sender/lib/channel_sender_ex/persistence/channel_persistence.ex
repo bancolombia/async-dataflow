@@ -18,9 +18,9 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
     imp().save_socket(channel_ref, socket_id)
   end
 
-  @spec save_message(binary(), any()) :: :ok
-  def save_message(message_id, message) do
-    imp().save_message(message_id, message)
+  @spec save_message(binary(), binary(), any()) :: :ok
+  def save_message(channel_ref, message_id, message) do
+    imp().save_message(channel_ref, message_id, message)
   end
 
   @spec delete_channel(binary(), binary()) :: :ok
@@ -33,9 +33,14 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
     imp().delete_socket(socket, channel_ref)
   end
 
-  @spec delete_message(binary()) :: :ok
-  def delete_message(message_id) do
-    imp().delete_message(message_id)
+  @spec delete_message(binary(), binary()) :: :ok
+  def delete_message(channel_ref, message_id) do
+    imp().delete_message(channel_ref, message_id)
+  end
+
+  @spec ack_message(binary(), binary()) :: :ok
+  def ack_message(socket_ref, message_id) do
+    imp().ack_message(socket_ref, message_id)
   end
 
   @spec get_channel(binary()) :: {:ok, String.t()} | {:error, :not_found}
@@ -48,9 +53,14 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistence do
     imp().get_socket(socket)
   end
 
-  @spec get_message(binary()) :: {:ok, any()} | {:error, :not_found}
+  @spec get_message(binary(), binary()) :: {:ok, any()} | {:error, :not_found}
   def get_message(message_id, channel_ref \\ "") do
     imp().get_message(message_id, channel_ref)
+  end
+
+  @spec get_messages(binary()) :: {:ok, any()} | {:error, :not_found}
+  def get_messages(channel_ref) do
+    imp().get_messages(channel_ref)
   end
 
   @spec child_spec() :: [Supervisor.child_spec()] | []

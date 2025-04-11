@@ -35,7 +35,7 @@ defmodule ChannelSenderEx.Application do
 
     channel_worker_pool_opts = Application.get_env(:channel_sender_ex, :channel_worker_pool, [])
     finch_adapter_opts = Application.get_env(:channel_sender_ex, :api_adapter, [])
-    rest_opts = Application.get_env(:channel_sender_ex, :cowboy_transport_options, [])
+    # rest_opts = Application.get_env(:channel_sender_ex, :cowboy_transport_options, [])
 
     childs1 = [
       {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},

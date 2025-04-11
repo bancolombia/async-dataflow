@@ -184,7 +184,7 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
   def handle_cast({:ack_message, connection_id, message_id}, state) do
     if message_id != "" do
       Logger.debug(fn -> "ChWorker: Ack message [#{message_id}]" end)
-      ChannelPersistence.delete_message(message_id)
+      ChannelPersistence.ack_message(connection_id, message_id)
     else
       Logger.warning("ChWorker: Invalid message id to ack on connection [#{connection_id}]")
     end
@@ -197,8 +197,8 @@ defmodule ChannelSenderEx.Core.ChannelWorker do
         state
       ) do
     serialized = ProtocolMessage.map_to_socket_message(message) |> Jason.encode!()
-    ChannelPersistence.save_message(msg_id, serialized)
-    MessageProcessSupervisor.start_process_cluster({channel_ref, msg_id})
+    ChannelPersistence.save_message(channel_ref, msg_id, serialized)
+    MessageProcessSupervisor.start_process_cluster({channel_ref})
     {:noreply, state}
   end
 

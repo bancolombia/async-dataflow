@@ -6,7 +6,6 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Persistence.RedisSupervisor
-  alias ChannelSenderEx.Core.MessageProcessSupervisor
   alias ChannelSenderEx.Adapter.WsConnections
 
   @moduletag :capture_log
@@ -50,8 +49,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
         max_overflow: 10
     ])
 
-    {:ok, pid_supervisor} =
-      Horde.DynamicSupervisor.start_link(name: MessageProcessSupervisor, strategy: :one_for_one)
+    # {:ok, pid_supervisor} =
+    #   Horde.DynamicSupervisor.start_link(name: MessageProcessSupervisor, strategy: :one_for_one)
 
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
@@ -59,7 +58,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestIntegrationTest do
       Application.delete_env(:channel_sender_ex, :secret_base)
       Application.delete_env(:channel_sender_ex, :persistence_module)
 
-      true = Process.exit(pid_supervisor, :normal)
+      # true = Process.exit(pid_supervisor, :normal)
       # Process.exit(redis_pid, :normal)
     end)
 

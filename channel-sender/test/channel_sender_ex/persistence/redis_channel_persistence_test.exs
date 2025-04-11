@@ -16,7 +16,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
     ]) do
       assert :ok == RedisChannelPersistence.save_channel("channel", "socket")
       assert :ok == RedisChannelPersistence.save_socket("socket", "channel")
-      assert :ok == RedisChannelPersistence.save_message("message_id", "message")
+      assert :ok == RedisChannelPersistence.save_message("channel_ref", "message_id", "message")
     end
   end
 
@@ -29,7 +29,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
     ]) do
       assert :ok == RedisChannelPersistence.save_channel("channel", "socket")
       assert :ok == RedisChannelPersistence.save_socket("socket", "channel")
-      assert :ok == RedisChannelPersistence.save_message("message_id", "message")
+      assert :ok == RedisChannelPersistence.save_message("channel_ref", "message_id", "message")
     end
   end
 
@@ -42,7 +42,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
     ]) do
       assert :ok == RedisChannelPersistence.delete_channel("channel", "socket")
       assert :ok == RedisChannelPersistence.delete_socket("socket", "channel")
-      assert :ok == RedisChannelPersistence.delete_message("message_id")
+      assert :ok == RedisChannelPersistence.delete_message("channel_ref", "message_id")
     end
   end
 
@@ -55,7 +55,7 @@ defmodule ChannelSenderEx.Persistence.RedisChannelPersistenceTest do
     ]) do
       assert :ok == RedisChannelPersistence.delete_channel("channel", "socket")
       assert :ok == RedisChannelPersistence.delete_socket("socket", "channel")
-      assert :ok == RedisChannelPersistence.delete_message("message_id")
+      assert :ok == RedisChannelPersistence.delete_message("channel_ref", "message_id")
     end
   end
 
