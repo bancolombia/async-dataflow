@@ -1,11 +1,11 @@
 name: channel_sender_client
 description: Client for Async DataFlow Channel Sender
-version: 3.0.0-2-beta
+version: 3.0.0-3-beta
 homepage: https://github.com/bancolombia/async-dataflow
 repository: https://github.com/bancolombia/async-dataflow.git
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
+  sdk: '>=3.0.6 <4.0.0'
 
 dependencies:
   web_socket_channel: ^2.3.0
@@ -13,7 +13,6 @@ dependencies:
   validators: ^3.0.0
   uuid: ^3.0.5
   build_runner: ^2.2.0
-  eventflux: ^2.2.1
   
 dependency_overrides:
   http: ^1.1.0 

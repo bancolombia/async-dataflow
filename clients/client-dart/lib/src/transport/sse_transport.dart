@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'package:eventflux/eventflux.dart';
 import 'package:logging/logging.dart';
 
 import '../../channel_sender_client.dart';
 import '../decoder/json_decoder.dart';
 import '../decoder/message_decoder.dart';
+import '../sse/eventflux.dart';
 import '../utils/retry_timer.dart';
 import 'capped_list.dart';
 import 'max_retries_exception.dart';
