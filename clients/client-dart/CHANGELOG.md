@@ -1,4 +1,6 @@
 # CHANGELOG
+## [3.0.0-beta.3] 
+- Downgrade SDK requirement
 ## [3.0.0-beta] 
 - Support SSE protocol
 ## [2.0.4] 
