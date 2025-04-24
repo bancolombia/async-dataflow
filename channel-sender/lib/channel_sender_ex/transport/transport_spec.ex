@@ -16,8 +16,8 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
       @after_compile unquote(__MODULE__)
 
       import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
-      alias ChannelSenderEx.Core.RulesProvider
       alias ChannelSenderEx.Core.ChannelSupervisor
+      alias ChannelSenderEx.Core.RulesProvider
 
       require Logger
 

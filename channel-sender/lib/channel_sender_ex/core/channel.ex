@@ -6,10 +6,10 @@ defmodule ChannelSenderEx.Core.Channel do
   require Logger
   alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.ChannelIDGenerator
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Utils.CustomTelemetry
-  alias ChannelSenderEx.Core.ChannelSupervisor
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [exp_back_off: 4]
 
   @on_connected_channel_reply_timeout 2000
@@ -688,7 +688,7 @@ defmodule ChannelSenderEx.Core.Channel do
     {:deliver_msg, {self(), ref}, message}
   end
 
-  defp calculate_token_expiration_time() do
+  defp calculate_token_expiration_time do
     token_life_millis =
       get_param(:max_age, 900) * 1000 -
         get_param(:min_disconnection_tolerance, 50) * 1000
