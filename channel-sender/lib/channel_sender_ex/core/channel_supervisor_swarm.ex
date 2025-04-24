@@ -31,7 +31,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   end
 
   @spec register_channel(channel_init_args()) :: any()
-  def register_channel(args = {channel_ref, application, _user_ref, _meta}) do
+  def register_channel(args = {channel_ref, _application, _user_ref, _meta}) do
     case Swarm.register_name(channel_ref, __MODULE__, :start_channel, [args]) do
       {:ok, pid} ->
         # Swarm.join(application, pid)
