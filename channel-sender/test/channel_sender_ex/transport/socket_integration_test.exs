@@ -1,8 +1,7 @@
 defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   alias ChannelSenderEx.Core.ChannelIDGenerator
-  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.ProtocolMessage
@@ -33,6 +32,8 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         "socket auth"
     })
 
+    {:ok, _} = Application.ensure_all_started(:swarm)
+    {:ok, _} = Application.ensure_all_started(:libcluster)
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
@@ -45,16 +46,16 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
       event_name: "event.example"
     }
 
-    {:ok, pid_registry} = Horde.Registry.start_link(name: ChannelRegistry, keys: :unique)
-
-    {:ok, pid_supervisor} =
-      Horde.DynamicSupervisor.start_link(name: ChannelSupervisor, strategy: :one_for_one)
+    children = [
+      ChannelSupervisor
+    ]
+    opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
+    {:ok, pid_supervisor} = Supervisor.start_link(children, opts)
 
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
       Application.delete_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
       Application.delete_env(:channel_sender_ex, :secret_base)
-      true = Process.exit(pid_registry, :normal)
       true = Process.exit(pid_supervisor, :normal)
       IO.puts("Supervisor and Registry was terminated")
     end)
@@ -223,11 +224,13 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {_type, _string}}
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    ch_pid = ChannelRegistry.lookup_channel_addr(channel)
+    ch_pid = ChannelSupervisor.whereis_channel(channel)
 
     Process.exit(ch_pid, :kill)
 
-    Process.sleep(1200)
+    Process.sleep(1800)
+
+    assert is_pid(ChannelSupervisor.whereis_channel(channel))
 
     {message_id, data} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {_type, _string}}
@@ -267,10 +270,10 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1500
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
-    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 1000
+    assert_receive {:gun_ws, ^conn, ^stream, data_string = {^type, _string}}, 2000
     assert {^message_id, "", "event.test", ^data, _} = decode_message(data_string)
 
     :gun.close(conn)

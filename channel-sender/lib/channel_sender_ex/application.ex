@@ -7,8 +7,9 @@ defmodule ChannelSenderEx.Application do
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Transport.Rest.RestController
-  alias ChannelSenderEx.Utils.ClusterUtils
   alias ChannelSenderEx.Utils.CustomTelemetry
+
+  @default_prometheus_port 9568
 
   use Application
   require Logger
@@ -17,7 +18,6 @@ defmodule ChannelSenderEx.Application do
 
     _config = ApplicationConfig.load()
 
-    ClusterUtils.discover_and_connect_local()
     Helper.compile(:channel_sender_ex)
     CustomTelemetry.custom_telemetry_events()
 
@@ -31,17 +31,24 @@ defmodule ChannelSenderEx.Application do
   end
 
   defp children(no_start_param) do
+    prometheus_port =
+      Application.get_env(:channel_sender_ex, :prometheus_port, @default_prometheus_port)
+
     case no_start_param do
       false ->
         [
           {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
-          ChannelSenderEx.Core.ChannelRegistry,
           ChannelSenderEx.Core.ChannelSupervisor,
-          ChannelSenderEx.Core.NodeObserver,
           {Plug.Cowboy, scheme: :http, plug: RestController, options: [
             port: Application.get_env(:channel_sender_ex, :rest_port),
+            protocol_options: Application.get_env(:channel_sender_ex, :cowboy_protocol_options),
+            transport_options: Application.get_env(:channel_sender_ex, :cowboy_transport_options),
           ]},
-          {TelemetryMetricsPrometheus, [metrics: CustomTelemetry.metrics()]},
+          {TelemetryMetricsPrometheus,
+          [
+            metrics: CustomTelemetry.metrics(),
+            port: prometheus_port
+          ]},
           # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()}
         ]
       true ->

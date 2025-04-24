@@ -31,7 +31,7 @@ defmodule ChannelSenderEx.Core.ProtocolMessage do
         message_data: message_data,
         event_name: event_name
       }) do
-    {message_id, correlation_id, event_name, message_data, :os.system_time(:millisecond)}
+    {message_id, correlation_id || "", event_name, message_data, :os.system_time(:millisecond)}
   end
 
   @doc """

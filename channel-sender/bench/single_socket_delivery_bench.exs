@@ -3,7 +3,6 @@ alias ChannelSenderEx.Core.RulesProvider.Helper
 alias ChannelSenderEx.Core.ProtocolMessage
 alias ChannelSenderEx.Transport.EntryPoint
 alias ChannelSenderEx.Core.ChannelSupervisor
-alias ChannelSenderEx.Core.ChannelRegistry
 alias ChannelSenderEx.Transport.Encoders.{BinaryEncoder, JsonEncoder}
 
 defmodule SingleSocketDeliveryBench do
@@ -17,7 +16,6 @@ defmodule SingleSocketDeliveryBench do
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
-    {:ok, _pid_registry} = @registry_module.start_link(name: ChannelRegistry, keys: :unique)
     {:ok, _pid_supervisor} = @supervisor_module.start_link(name: ChannelSupervisor, strategy: :one_for_one)
     [ok: _] = EntryPoint.start(0)
     {:ok, :ranch.get_port(:external_server)}

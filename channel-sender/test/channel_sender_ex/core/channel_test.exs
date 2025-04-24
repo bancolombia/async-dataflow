@@ -1,7 +1,7 @@
 Code.compiler_options(ignore_module_conflict: true)
 
 defmodule ChannelSenderEx.Core.ChannelTest do
-  use ExUnit.Case, sync: true
+  use ExUnit.Case
   import Mock
 
   alias ChannelSenderEx.Core.Channel
@@ -30,6 +30,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     })
 
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
+    {:ok, _} = Application.ensure_all_started(:swarm)
     Helper.compile(:channel_sender_ex)
     :ok
   end
@@ -59,6 +60,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
 
   test "Should Send message when connected", %{init_args: init_args, message: message} do
     {:ok, pid} = start_channel_safe(init_args)
+    :sys.trace(pid, true)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
@@ -84,6 +86,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
 
   test "On connect should deliver message", %{init_args: init_args, message: message} do
     {:ok, pid} = start_channel_safe(init_args)
+    :sys.trace(pid, true)
     message_to_send = ProtocolMessage.to_protocol_message(message)
     :accepted_waiting = Channel.deliver_message(pid, message_to_send)
     refute_receive {_from = {^pid, _ref}, ^message_to_send}, 350
@@ -104,6 +107,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
 
   test "Should not re-deliver message ack is received", %{init_args: init_args, message: message} do
     {:ok, pid} = start_channel_safe(init_args)
+    :sys.trace(pid, true)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
@@ -134,18 +138,21 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   end
 
   test "Should send new token in correct interval", %{init_args: init_args = {channel, _, _, _}} do
-    Helper.compile(:channel_sender_ex, max_age: 2)
+    Application.put_env(:channel_sender_ex, :max_age, 2)
+    Application.put_env(:channel_sender_ex, :min_disconnection_tolerance, 1)
+    Helper.compile(:channel_sender_ex)
+
     {:ok, pid} = start_channel_safe(init_args)
     :sys.trace(pid, true)
     :ok = Channel.socket_connected(pid, self())
-    refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 950
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 1100
+    refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 300
     Channel.notify_ack(pid, ref, id)
-    refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 950
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 1100
+    refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 300
     Channel.notify_ack(pid, ref, id)
-    refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 950
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", token, _}}, 1100
+    refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", token, _}}, 300
     Channel.notify_ack(pid, ref, id)
 
     assert {:ok, _app, _user} = ChannelIDGenerator.verify_token(channel, token)
@@ -159,6 +166,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     message: message
   } do
     {:ok, pid} = start_channel_safe(init_args)
+    :sys.trace(pid, true)
     :ok = Channel.socket_connected(pid, self())
     message_to_send = ProtocolMessage.to_protocol_message(message)
     :accepted_connected = Channel.deliver_message(pid, message_to_send)
@@ -203,7 +211,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   } do
     proxy = proxy_process()
     {:ok, channel_pid} = start_channel_safe(init_args)
-    #    :sys.trace(channel_pid, true)
+    :sys.trace(channel_pid, true)
     :ok = Channel.socket_connected(channel_pid, proxy)
 
     message_to_send = ProtocolMessage.to_protocol_message(message)

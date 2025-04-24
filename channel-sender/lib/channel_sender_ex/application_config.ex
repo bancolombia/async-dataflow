@@ -109,6 +109,10 @@ defmodule ChannelSenderEx.ApplicationConfig do
     Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection,
       Map.get(channel_wait_times, "on_disconnection", 300))
 
+    Application.put_env(:channel_sender_ex, :prometheus_port,
+      Map.get(fetch(config, :channel_sender_ex), "prometheus_port", 9568)
+    )
+
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
     if config == %{} do
@@ -117,7 +121,39 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Logger.info("Succesfully loaded configuration: #{inspect(inspect(Application.get_all_env(:channel_sender_ex)))}")
     end
 
+    Application.put_env(:channel_sender_ex, :cowboy_protocol_options,
+      parse_cowboy_protocol_opts(get_in(config, [:channel_sender_ex, "cowboy", "protocol_options"]))
+    )
+    Application.put_env(:channel_sender_ex, :cowboy_transport_options,
+      parse_cowboy_transport_opts(get_in(config, [:channel_sender_ex, "cowboy", "transport_options"]))
+    )
+
     config
+  end
+
+  defp parse_cowboy_protocol_opts(opts) do
+    case opts do
+      nil ->
+        [
+          active_n: 1_000,
+          max_keepalive: 5_000,
+          request_timeout: 10_000
+        ]
+      _ ->
+        parse_config_key(opts)
+    end
+  end
+
+  defp parse_cowboy_transport_opts(opts) do
+    case opts do
+      nil ->
+        [
+          num_acceptors: 200,
+          max_connections: 16_384
+        ]
+      _ ->
+        parse_config_key(opts)
+    end
   end
 
   defp parse_libcluster_topology(config) do
@@ -145,10 +181,6 @@ defmodule ChannelSenderEx.ApplicationConfig do
     end
   end
 
-  defp process_param(param) when is_integer(param) do
-    param
-  end
-
   defp process_param(param) when is_binary(param) do
     case String.starts_with?(param, ":") do
       true ->
@@ -156,6 +188,10 @@ defmodule ChannelSenderEx.ApplicationConfig do
       false ->
         param
     end
+  end
+
+  defp process_param(param) do
+    param
   end
 
   defp fetch(config, base) do
