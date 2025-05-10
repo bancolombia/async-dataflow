@@ -58,7 +58,9 @@ defmodule ChannelSenderEx.MixProject do
       {:telemetry_metrics_prometheus, "~> 1.1"},
       {:telemetry_poller, "~> 1.1"},
       {:cowboy_telemetry, "~> 0.4.0"},
-      {:telemetry, "~> 1.3"}
+      {:telemetry, "~> 1.3"},
+      {:eflambe, "~> 0.3.0"},
+      {:observer_cli, "~> 1.8"}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
