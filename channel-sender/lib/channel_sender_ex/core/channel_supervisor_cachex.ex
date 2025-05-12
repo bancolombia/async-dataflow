@@ -27,18 +27,12 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @spec start_channel(channel_init_args()) :: any()
   def start_channel(args) do
     Logger.debug(fn -> "Channel Supervisor, starting channel with args: #{inspect(args)}" end)
-    DynamicSupervisor.start_child(__MODULE__, {Channel, args})
-  end
 
-  @spec register_channel(channel_init_args()) :: any()
-  def register_channel(args = {channel_ref, _application, _user_ref, _meta}) do
-    case Swarm.register_name(channel_ref, __MODULE__, :start_channel, [args]) do
+    case DynamicSupervisor.start_child(__MODULE__, {Channel, args}) do
       {:ok, pid} ->
-        # Swarm.join(application, pid)
         {:ok, pid}
 
       {:error, {:already_registered, pid}} ->
-        # Swarm.join(application, pid)
         {:ok, pid}
 
       {:error, reason} ->
@@ -50,30 +44,55 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     end
   end
 
+  @spec register_channel(channel_init_args()) :: any()
+  def register_channel(args = {channel_ref, _application, _user_ref, _meta}) do
+    with {:ok, pid} <- start_channel(args),
+         {:ok, true} <- Cachex.put(:channels, channel_ref, pid) do
+      {:ok, pid}
+    else
+      {:error, reason} ->
+        Logger.error(fn ->
+          "Channel Supervisor, failed to register channel with args: #{inspect(args)}, reason: #{inspect(reason)}"
+        end)
+
+        {:error, reason}
+    end
+  end
+
   @spec register_channel_if_not_exists(channel_init_args()) :: any()
   def register_channel_if_not_exists(args = {channel_ref, _application, _user_ref, _meta}) do
-    case Swarm.whereis_name(channel_ref) do
-      pid when is_pid(pid) ->
-        Logger.debug(fn -> "Channel Supervisor, channel exists : #{inspect(pid)}" end)
+    case Cachex.get(:channels, channel_ref) do
+      {:ok, pid} when is_pid(pid) ->
+        Logger.debug(fn -> "Channel Supervisor, channel exists : #{inspect(pid)} self #{inspect(self())}" end)
         {:ok, pid}
 
-      :undefined ->
-        register_channel(args)
+      {:ok, nil} ->
+        pid = self()
+        Logger.debug(fn -> "Channel Supervisor, channel not exists : nil self #{inspect(pid)}" end)
+        Cachex.put(:channels, channel_ref, pid)
+        {:ok, pid}
     end
   end
 
   @spec unregister_channel(channel_ref()) :: any()
   def unregister_channel(channel_ref) do
-    Swarm.unregister_name(channel_ref)
+    Cachex.del(:channels, channel_ref)
   end
 
   @spec whereis_channel(channel_ref()) :: pid() | :undefined
   def whereis_channel(channel_ref) do
-    Swarm.whereis_name(channel_ref)
+    case Cachex.get(:channels, channel_ref) do
+      {:ok, pid} when is_pid(pid) ->
+        Logger.debug(fn -> "Channel Supervisor, channel exists : #{inspect(pid)}" end)
+        pid
+
+      {:ok, nil} ->
+        :undefined
+    end
   end
 
   @spec app_members(application()) :: list()
-  def app_members(application) do
-    Swarm.members(application)
+  def app_members(_application) do
+    []
   end
 end

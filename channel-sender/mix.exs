@@ -44,7 +44,7 @@ defmodule ChannelSenderEx.MixProject do
       {:gen_state_machine, "~> 2.0"},
       {:jason, "~> 1.2"},
       {:cors_plug, "~> 3.0"},
-      {:swarm, "~> 3.4"},
+      {:cachex, "~> 4.0"},
       {:hackney, "~> 1.20.1", only: :test},
       {:plug_crypto, "~> 2.1"},
       {:stream_data, "~> 0.4", only: [:test]},

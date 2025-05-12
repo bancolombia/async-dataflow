@@ -38,6 +38,7 @@ defmodule ChannelSenderEx.Application do
       false ->
         [
           {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
+          {Cachex, [:channels]},
           ChannelSenderEx.Core.ChannelSupervisor,
           {Plug.Cowboy, scheme: :http, plug: RestController, options: [
             port: Application.get_env(:channel_sender_ex, :rest_port),
