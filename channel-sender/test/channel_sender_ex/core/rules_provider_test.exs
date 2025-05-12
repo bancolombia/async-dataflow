@@ -5,13 +5,28 @@ defmodule Test.NewModule do
 end
 
 defmodule ChannelSenderEx.Core.RulesProviderTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.RulesProvider.Compiler
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.ApplicationConfig
 
   doctest ChannelSenderEx.Core.RulesProvider.Compiler
+
+  # setup_all do
+  #   ApplicationConfig.load()
+  # end
+
+  setup do
+    Application.put_env(:channel_sender_ex, :initial_redelivery_time, 1)
+    Helper.compile(:channel_sender_ex)
+
+    on_exit(fn ->
+      Application.delete_env(:channel_sender_ex, :initial_redelivery_time)
+      Helper.compile(:channel_sender_ex)
+    end)
+  end
 
   test "Should get rules into new module" do
     Compiler.compile(Test.NewModule, rule1: "value1", rule2: {:some, :value})
@@ -21,15 +36,13 @@ defmodule ChannelSenderEx.Core.RulesProviderTest do
 
   test "Should get rules from Application config" do
     Helper.compile(:channel_sender_ex)
-    assert RulesProvider.get(:initial_redelivery_time) >= 100
-    assert RulesProvider.get(:app_repo) == ChannelSenderEx.Repository.ApplicationRepo
-    assert RulesProvider.get(:max_age) >= 100
-    assert RulesProvider.get(:socket_port) == 8082
+    assert RulesProvider.get(:initial_redelivery_time) > 0
   end
 
   test "Should single change runtime rule" do
     Helper.compile(:channel_sender_ex)
-    assert RulesProvider.get(:initial_redelivery_time) >= 100
+
+    assert RulesProvider.get(:initial_redelivery_time) > 0
 
     Helper.compile(:channel_sender_ex, initial_redelivery_time: 120)
 

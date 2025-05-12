@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.1.0",
+      version: "0.4.0",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -35,16 +35,12 @@ defmodule ChannelSenderEx.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      {:cowboy, "~> 2.13"},
-      {:cowlib, "~> 2.14", override: true},
-      {:plug_cowboy, "~> 2.7"},
+      {:bandit, "~> 1.0"},
       {:plug_checkup, "~> 0.6"},
       {:elixir_uuid, "~> 1.2"},
-      {:gen_state_machine, "~> 3.0"},
       {:jason, "~> 1.4"},
       {:cors_plug, "~> 3.0"},
-      {:horde, "~> 0.9"},
+      {:swarm, "~> 3.4.0"},
       {:plug_crypto, "~> 2.1"},
       {:finch, "~> 0.19"},
       {:libcluster, "~> 3.5"},
@@ -61,7 +57,6 @@ defmodule ChannelSenderEx.MixProject do
       # for metrics
       {:telemetry_metrics_prometheus, "~> 1.1"},
       {:telemetry_poller, "~> 1.1"},
-      {:cowboy_telemetry, "~> 0.4"},
       {:telemetry, "~> 1.3"},
       # for testing
       {:stream_data, "~> 1.1", only: [:test]},
@@ -70,6 +65,8 @@ defmodule ChannelSenderEx.MixProject do
       {:mock, "~> 0.3", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
+      {:eflambe, "~> 0.3.0"},
+      {:observer_cli, "~> 1.8"}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end

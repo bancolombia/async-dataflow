@@ -54,8 +54,8 @@ channel_sender_ex:
 
   # Number of workers to process the requests (Poolboy configuration)
   channel_worker_pool:
-    size: 120
-    max_overflow: 50
+    size: 1200
+    max_overflow: 200
 
   persistence:
     enabled: true # Indicates if the persistence layer is enabled
@@ -71,6 +71,19 @@ channel_sender_ex:
     #   password: nil # Password to connect to the persistence layer
       # secret: "redis-secret" # Secret to connect to the persistence layer secret can be json like: {"username": "", "password": "", "host": "", "hostread", "port": 0, "ssl": false}
       # if secret is provided, the other fields can be overwritten by the secret but only if there are present in the secret
+
+  bandit:
+    http_1_options:
+      enabled: true
+      log_unknown_messages: true
+    http_2_options:
+      enabled: true
+    thousand_island_options:
+      num_acceptors: 1000
+      num_connections: 16384
+      max_connections_retry_wait: 1000
+      max_connections_retry_count: 3
+      
 
 logger:
   level: debug

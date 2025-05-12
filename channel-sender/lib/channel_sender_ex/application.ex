@@ -35,6 +35,7 @@ defmodule ChannelSenderEx.Application do
 
     channel_worker_pool_opts = Application.get_env(:channel_sender_ex, :channel_worker_pool, [])
     finch_adapter_opts = Application.get_env(:channel_sender_ex, :api_adapter, [])
+    # rest_opts = Application.get_env(:channel_sender_ex, :cowboy_transport_options, [])
 
     childs1 = [
       {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
@@ -50,12 +51,17 @@ defmodule ChannelSenderEx.Application do
          metrics: CustomTelemetry.metrics(),
          port: prometheus_port
        ]},
-      {Plug.Cowboy,
-       scheme: :http,
-       plug: RestController,
-       options: [
-         port: Application.get_env(:channel_sender_ex, :rest_port)
-       ]}
+       {Bandit, [
+        plug: RestController,
+        scheme: :http,
+        port: Application.get_env(:channel_sender_ex, :rest_port),
+        http_options: [
+          log_client_closures: true,
+        ],
+        http_1_options: Application.get_env(:channel_sender_ex, :bandit_http_1_options),
+        http_2_options: Application.get_env(:channel_sender_ex, :bandit_http_2_options),
+        thousand_island_options: Application.get_env(:channel_sender_ex, :bandit_thousand_island_options)
+      ]}
     ]
 
     childs1 ++ ChannelPersistence.child_spec() ++ childs2

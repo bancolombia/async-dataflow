@@ -15,7 +15,7 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistenceTest do
   end
 
   test "Should save message" do
-    assert :ok == ChannelPersistence.save_message("message_id", "message")
+    assert :ok == ChannelPersistence.save_message("channel_ref", "message_id", "message")
   end
 
   test "Should delete channel" do
@@ -27,7 +27,7 @@ defmodule ChannelSenderEx.Persistence.ChannelPersistenceTest do
   end
 
   test "Should delete message" do
-    assert :ok == ChannelPersistence.delete_message("message_id")
+    assert :ok == ChannelPersistence.delete_message("channel_ref", "message_id")
   end
 
   test "Should get channel" do

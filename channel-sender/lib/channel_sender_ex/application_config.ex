@@ -114,6 +114,16 @@ defmodule ChannelSenderEx.ApplicationConfig do
       Map.get(fetch(config, :channel_sender_ex), "prometheus_port", 9568)
     )
 
+    Application.put_env(:channel_sender_ex, :bandit_http_1_options,
+      parse_bandit_options(get_in(config, [:channel_sender_ex, "bandit", "http_1_options"]))
+    )
+    Application.put_env(:channel_sender_ex, :bandit_http_2_options,
+      parse_bandit_options(get_in(config, [:channel_sender_ex, "bandit", "http_2_options"]))
+    )
+    Application.put_env(:channel_sender_ex, :bandit_thousand_island_options,
+      parse_bandit_options(get_in(config, [:channel_sender_ex, "bandit", "thousand_island_options"]))
+    )
+
     config
   end
 
@@ -154,6 +164,15 @@ defmodule ChannelSenderEx.ApplicationConfig do
       type: process_param(Map.get(persistence, "type", ":none")),
       config: parse_config_key(Map.get(persistence, "config", %{}))
     ]
+  end
+
+  defp parse_bandit_options(opts) do
+    case opts do
+      nil ->
+        []
+      _ ->
+        parse_config_key(opts)
+    end
   end
 
   defp parse_libcluster_topology(config) do
