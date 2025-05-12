@@ -35,8 +35,35 @@ defmodule ChannelSenderEx.Application do
       false ->
         [
           {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
-          ChannelSenderEx.Core.ChannelRegistry,
-          ChannelSenderEx.Core.ChannelSupervisor,
+          # ChannelSenderEx.Core.ChannelRegistry,
+          # ChannelSenderEx.Core.ChannelSupervisor,
+
+          Supervisor.child_spec(
+            {ChannelSenderEx.Core.ChannelRegistry, [name: ChannelSenderEx.Core.ChannelRegistry1]},
+            id: :channel_registry_1
+          ),
+          Supervisor.child_spec(
+            {ChannelSenderEx.Core.ChannelRegistry, [name: ChannelSenderEx.Core.ChannelRegistry2]},
+            id: :channel_registry_2
+          ),
+          Supervisor.child_spec(
+            {ChannelSenderEx.Core.ChannelRegistry, [name: ChannelSenderEx.Core.ChannelRegistry3]},
+            id: :channel_registry_3
+          ),
+
+          Supervisor.child_spec(
+            {ChannelSenderEx.Core.ChannelSupervisor, [name: ChannelSenderEx.Core.ChannelSupervisor1]},
+            id: :channel_supervisor_1
+          ),
+          Supervisor.child_spec(
+            {ChannelSenderEx.Core.ChannelSupervisor, [name: ChannelSenderEx.Core.ChannelSupervisor2]},
+            id: :channel_supervisor_2
+          ),
+          Supervisor.child_spec(
+            {ChannelSenderEx.Core.ChannelSupervisor, [name: ChannelSenderEx.Core.ChannelSupervisor3]},
+            id: :channel_supervisor_3
+          ),
+
           ChannelSenderEx.Core.NodeObserver,
           {Plug.Cowboy, scheme: :http, plug: RestController, options: [
             port: Application.get_env(:channel_sender_ex, :rest_port),

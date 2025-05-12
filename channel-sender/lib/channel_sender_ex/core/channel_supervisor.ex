@@ -12,10 +12,11 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @min_backoff 50
   @max_backoff 300
 
-  def start_link(_) do
-    opts = [strategy: :one_for_one, shutdown: 1000]
-    result = Horde.DynamicSupervisor.start_link(__MODULE__, opts, name: __MODULE__)
+  @shards 3
 
+  def start_link(args) do
+    opts = [strategy: :one_for_one, shutdown: 1000]
+    result = Horde.DynamicSupervisor.start_link(__MODULE__, opts, name: args[:name])
     Logger.debug("ChannelSupervisor: #{inspect(result)}")
     result
   end
@@ -63,7 +64,15 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   end
 
   defp start_channel_retried(args = {channel_ref, _application, _user_ref, _meta}) do
-    case Horde.DynamicSupervisor.start_child(__MODULE__, channel_child_spec(args)) do
+
+    shard = :erlang.phash2(channel_ref, @shards)
+    module = case shard do
+      0 -> ChannelSenderEx.Core.ChannelSupervisor1
+      1 -> ChannelSenderEx.Core.ChannelSupervisor2
+      2 -> ChannelSenderEx.Core.ChannelSupervisor3
+    end
+
+    case Horde.DynamicSupervisor.start_child(module, channel_child_spec(args)) do
       {:ok, pid} ->
         {:ok, pid}
 
@@ -77,7 +86,13 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   end
 
   defp via_tuple(ref, app, usr) do
-    {:via, Horde.Registry, {ChannelSenderEx.Core.ChannelRegistry, ref, {app, usr}}}
+    shard = :erlang.phash2(ref, @shards)
+    module = case shard do
+      0 -> ChannelSenderEx.Core.ChannelRegistry1
+      1 -> ChannelSenderEx.Core.ChannelRegistry2
+      2 -> ChannelSenderEx.Core.ChannelRegistry3
+    end
+    {:via, Horde.Registry, {module, ref, {app, usr}}}
   end
 
   defp get_shutdown_tolerance do

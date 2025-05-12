@@ -7,9 +7,10 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
 
   @type channel_ref :: String.t()
   @type channel_addr :: pid()
+  @shards 3
 
-  def start_link(_) do
-    Horde.Registry.start_link(__MODULE__, [keys: :unique], name: __MODULE__)
+  def start_link(args) do
+    Horde.Registry.start_link(__MODULE__, [keys: :unique], name: args[:name])
   end
 
   def init(init_arg) do
@@ -50,9 +51,20 @@ defmodule ChannelSenderEx.Core.ChannelRegistry do
   end
 
   @compile {:inline, via_tuple: 1}
-  def via_tuple(channel_ref), do: {:via, Horde.Registry, {__MODULE__, channel_ref}}
+  def via_tuple(channel_ref) do
+    shard = :erlang.phash2(channel_ref, @shards)
+    module = case shard do
+      0 -> ChannelSenderEx.Core.ChannelRegistry1
+      1 -> ChannelSenderEx.Core.ChannelRegistry2
+      2 -> ChannelSenderEx.Core.ChannelRegistry3
+    end
+    |> IO.inspect()
+    {:via, Horde.Registry, {module, channel_ref}}
+  end
 
-  def via_tuple(channel_ref, registry), do: {:via, Horde.Registry, {registry, channel_ref}}
+  def via_tuple(channel_ref, registry) do
+    {:via, Horde.Registry, {registry, channel_ref}}
+  end
 
   defp members do
     [Node.self() | Node.list()]
