@@ -4,6 +4,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   use ExUnit.Case
   import Mock
 
+  alias Hex.Netrc.Cache
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.Channel.Data
   alias ChannelSenderEx.Core.ChannelIDGenerator
@@ -28,9 +29,8 @@ defmodule ChannelSenderEx.Core.ChannelTest do
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
         "socket auth"
     })
-
+    {:ok, _} = Application.ensure_all_started(:cachex)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
-    {:ok, _} = Application.ensure_all_started(:swarm)
     Helper.compile(:channel_sender_ex)
     :ok
   end

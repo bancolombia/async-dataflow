@@ -138,54 +138,25 @@ defmodule ChannelSenderEx.Core.Channel do
     case ChannelSupervisor.register_channel_if_not_exists({channel, application, user_ref, meta}) do
       {:ok, ^current_pid} ->
         Logger.debug(fn ->
-          "Channel #{channel} is swarm registered with self() pid #{inspect(current_pid)}"
+          "Channel #{channel} is registered with self() pid #{inspect(current_pid)}"
         end)
 
         :existing
 
       {:error, reason} ->
         Logger.error(fn ->
-          "Channel #{channel} failed to register in swarm: #{inspect(reason)}"
+          "Channel #{channel} failed to register in registry: #{inspect(reason)}"
         end)
 
         :error
 
       {:ok, pid} ->
         Logger.debug(fn ->
-          "Channel #{channel} swarm re-registration or exists with another pid #{inspect(pid)} stoping self #{inspect(self())}"
+          "Channel #{channel} re-registration or exists with another pid #{inspect(pid)} stoping self #{inspect(self())}"
         end)
 
         :registered
     end
-  end
-
-  def waiting(:cast, {:swarm, :resolve_conflict, data}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :resolve_conflict in pid #{inspect(self())} at #{Node.self()}. state: waiting."
-    end)
-    {:keep_state, data}
-  end
-
-  def waiting(:cast, {:swarm, :end_handoff, _data}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :end_handoff in pid #{inspect(self())} at #{Node.self()}. state: waiting."
-    end)
-    {:next_state, :waiting, state}
-  end
-
-  def waiting({:call, from}, {:swarm, :begin_handoff}, state) do
-    # Return the state so the new node can take over
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :begin_handoff in pid #{inspect(self())} at #{Node.self()}. state: waiting."
-    end)
-    {:keep_state_and_data, [{:reply, from, {:resume, state}}]}
-  end
-
-  def waiting(:info, {:swarm, :die}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :die in pid #{inspect(self())} at #{Node.self()}. state: waiting."
-    end)
-    {:stop, :shutdown, state}
   end
 
   def waiting(:enter, _old_state, data) do
@@ -313,35 +284,6 @@ defmodule ChannelSenderEx.Core.Channel do
 
   @type call() :: {:call, GenServer.from()}
   @type state_return() :: :gen_statem.event_handler_result(Data.t())
-
-  def connected(:cast, {:swarm, :resolve_conflict, data}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :resolve_conflict in pid #{inspect(self())} at #{Node.self()}. state: connected."
-    end)
-    {:keep_state, data}
-  end
-
-  def connected(:info, {:swarm, :die}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :die in pid #{inspect(self())} at #{Node.self()}. state: connected."
-    end)
-    {:stop, :shutdown, state}
-  end
-
-  def connected({:call, from}, {:swarm, :begin_handoff}, state) do
-    # Return the state so the new node can take over
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :begin_handoff in pid #{inspect(self())} at #{Node.self()}. state: connected."
-    end)
-    {:keep_state_and_data, [{:reply, from, {:resume, state}}]}
-  end
-
-  def connected(:cast, {:swarm, :end_handoff, _data}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :end_handoff in pid #{inspect(self())} at #{Node.self()}. state: connected."
-    end)
-    {:next_state, :connected, state}
-  end
 
   def connected(:enter, _old_state, data) do
     refresh_timeout = calculate_refresh_token_timeout()
@@ -550,44 +492,6 @@ defmodule ChannelSenderEx.Core.Channel do
   ############################################
   ###           CLOSED STATE              ####
   ############################################
-
-  def closed(:cast, {:swarm, :resolve_conflict, data}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :resolve_conflict in pid #{inspect(self())} at #{Node.self()}. state: closed."
-    end)
-    {:keep_state, data}
-  end
-
-  def closed({:call, from}, {:swarm, :begin_handoff}, state) do
-    # Return the state so the new node can take over
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :begin_handoff in pid #{inspect(self())} at #{Node.self()}. state: closed."
-    end)
-    {:keep_state_and_data, [{:reply, from, :ignore}]}
-  end
-
-  def closed(:cast, {:swarm, :end_handoff, _data}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :end_handoff in pid #{inspect(self())} at #{Node.self()}. state: closed."
-    end)
-    {:next_state, :closed, state}
-  end
-
-  def closed({:cast, _from}, {:swarm, :end_handoff}, state) do
-    # Return the state so the new node can take over
-    Logger.debug(fn ->
-      "Channel #{state.channel} end handoff in pid #{inspect(self())} at #{Node.self()}"
-    end)
-
-    {:next_state, :closed, state}
-  end
-
-  def closed(:info, {:swarm, :die}, state) do
-    Logger.debug(fn ->
-      "Channel #{state.channel} :swarm, :die in pid #{inspect(self())} at #{Node.self()}. state: closed."
-    end)
-    {:stop, :shutdown, state}
-  end
 
   def closed(:enter, _old_state, data) do
     Logger.debug(fn ->
