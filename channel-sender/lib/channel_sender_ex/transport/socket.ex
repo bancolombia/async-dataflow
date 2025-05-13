@@ -253,11 +253,6 @@ defmodule ChannelSenderEx.Transport.Socket do
     :ok
   end
 
-  defp extract_ref(state) when is_tuple(state) do
-    elem(state, 0)
-  end
-  defp extract_ref(state), do: state
-
   # handle other possible termination reasons:
   # {:crash, Class, Reason}
   # {:error, :badencoding | :badframe | :closed | Reason}
