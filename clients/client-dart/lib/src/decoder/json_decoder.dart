@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'channel_message.dart';
+import '../model/channel_message.dart';
+import '../utils/utils.dart';
 import 'message_decoder.dart';
-import 'utils.dart';
 
 class JsonDecoder extends MessageDecoder<String> {
   @override

@@ -15,6 +15,8 @@ class Setup {
       heartbeatInterval: int.parse(getEnvironment(prefs, 'heartbeatInterval')),
       maxRetries: int.parse(getEnvironment(prefs, 'maxRetries')),
       socketUrl: getEnvironment(prefs, 'socketUrl'),
+      sseUrl: getEnvironment(prefs, 'sseUrl'),
+      transports: getEnvironments(prefs, 'transports'),
       logNotifier: logNotifier,
       child: const MyApp(),
     );
@@ -24,14 +26,28 @@ class Setup {
     SharedPreferences prefs,
     String key,
   ) {
-    var businessUrl = prefs.getString(key);
-    if (businessUrl == null) {
-      businessUrl = dotenv.env[key]!;
-      prefs.setString(key, businessUrl);
+    var value = prefs.getString(key);
+    if (value == null) {
+      value = dotenv.env[key]!;
+      prefs.setString(key, value);
     }
-    print(businessUrl);
+    print(value);
 
-    return businessUrl;
+    return value;
+  }
+
+  static List<String> getEnvironments(
+    SharedPreferences prefs,
+    String key,
+  ) {
+    var value = prefs.getStringList(key);
+    if (value == null) {
+      value = dotenv.env[key]!.split(',');
+      prefs.setStringList(key, value);
+    }
+    print(value.join(','));
+
+    return value;
   }
 
   static LogNotifier configureLogger() {
@@ -44,7 +60,7 @@ class Setup {
     Logger.root.onRecord.listen((record) {
       var log = '${record.level.name}: ${record.time}: ${record.message}';
       logNotifier.setLog(log);
-      // debugPrint(log);
+      print(log);
     });
     return logNotifier;
   }

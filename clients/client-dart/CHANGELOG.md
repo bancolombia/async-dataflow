@@ -1,4 +1,8 @@
 # CHANGELOG
+## [3.0.0-beta.3] 
+- Downgrade SDK requirement
+## [3.0.0-beta] 
+- Support SSE protocol
 ## [2.0.4] 
 - Fix overflow of exp Backoff
 ## [2.0.3] 

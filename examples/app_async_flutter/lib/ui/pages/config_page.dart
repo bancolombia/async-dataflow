@@ -18,7 +18,9 @@ class _ConfigPageState extends State<ConfigPage> {
   TextEditingController maxRetriesController = TextEditingController();
   TextEditingController apiBusinessController = TextEditingController();
   TextEditingController socketController = TextEditingController();
+  TextEditingController sseController = TextEditingController();
   late AsyncClientService asyncClientService;
+  List<String> selectedTransports = [];
 
   @override
   void initState() {
@@ -26,8 +28,10 @@ class _ConfigPageState extends State<ConfigPage> {
     heartbeatController.text =
         AppConfig.of(context).heartbeatInterval.toString();
     maxRetriesController.text = AppConfig.of(context).maxRetries.toString();
-    apiBusinessController.text = AppConfig.of(context).socketUrl;
-    socketController.text = AppConfig.of(context).businessUrl;
+    apiBusinessController.text = AppConfig.of(context).businessUrl;
+    socketController.text = AppConfig.of(context).socketUrl;
+    sseController.text = AppConfig.of(context).sseUrl ?? '';
+    selectedTransports = AppConfig.of(context).transports;
   }
 
   @override
@@ -36,31 +40,63 @@ class _ConfigPageState extends State<ConfigPage> {
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InputField(
               textEditingController: heartbeatController,
               labelText: "Heartbeat delay in ms",
-              icon: Icons.lock_clock_outlined),
+              icon: Icons.timelapse),
           const SizedBox(height: 20),
           InputField(
               textEditingController: maxRetriesController,
               labelText: "max retries to connect",
-              icon: Icons.plus_one),
+              icon: Icons.numbers),
           const SizedBox(height: 20),
           InputField(
-              textEditingController: apiBusinessController,
+              textEditingController: socketController,
               labelText: "Socket url",
               keyboardType: TextInputType.url,
               icon: Icons.connect_without_contact_sharp),
           const SizedBox(height: 20),
           InputField(
-              textEditingController: socketController,
+              textEditingController: sseController,
+              labelText: "SSE url",
+              keyboardType: TextInputType.url,
+              icon: Icons.http),
+          const SizedBox(height: 20),          
+          InputField(
+              textEditingController: apiBusinessController,
               labelText: "api Business url",
               keyboardType: TextInputType.url,
               icon: Icons.api),
-          const SizedBox(height: 20),
+          const SizedBox(height: 5),
+          //create checkboxes
+          const Text('Transports'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              for (var transport in ['ws', 'sse'])
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: CheckboxListTile(
+                    title: Text(transport),
+                    value: selectedTransports.contains(transport),
+                    onChanged: (value) {
+                      if (value!) {
+                        selectedTransports.add(transport);
+                      } else {
+                        selectedTransports.remove(transport);
+                      }
+                      setState(() {});
+                    },
+                  ),
+                )
+            ],
+          ),
+          const SizedBox(height: 5),
           const Text('Show all logs'),
           Switch(
             value: AppConfig.of(context).logNotifier.level == LogLevel.all,
@@ -78,14 +114,26 @@ class _ConfigPageState extends State<ConfigPage> {
           ),
           const Text(
               'If you disable this option, will set the log level to info'),
-          const SizedBox(height: 40),
+          const SizedBox(height: 5),
           Button(
               onTap: () {
+                if (selectedTransports.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Select at least one transport'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
                 AppConfig.of(context).updateConfig(
                     heartbeatInterval: int.parse(heartbeatController.text),
                     maxRetries: int.parse(maxRetriesController.text),
-                    socketUrl: apiBusinessController.text,
-                    businessUrl: socketController.text);
+                    socketUrl: socketController.text,
+                    sseUrl: sseController.text,
+                    businessUrl: apiBusinessController.text,
+                    transports: selectedTransports);
+
                 asyncClientService.saveConfig();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -97,6 +145,7 @@ class _ConfigPageState extends State<ConfigPage> {
               text: 'Save')
         ],
       ),
+      )
     );
   }
 }

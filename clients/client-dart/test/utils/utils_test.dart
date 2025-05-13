@@ -1,4 +1,4 @@
-import 'package:channel_sender_client/src/utils.dart';
+import 'package:channel_sender_client/src/utils/utils.dart';
 import 'package:test/test.dart';
 
 void main() {

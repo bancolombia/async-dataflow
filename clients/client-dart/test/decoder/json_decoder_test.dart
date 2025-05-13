@@ -1,4 +1,4 @@
-import 'package:channel_sender_client/src/json_decoder.dart';
+import 'package:channel_sender_client/src/decoder/json_decoder.dart';
 import 'package:test/test.dart';
 
 void main() {
