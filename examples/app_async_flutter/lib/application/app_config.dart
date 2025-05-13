@@ -9,13 +9,17 @@ class AppConfig extends InheritedWidget {
     required this.heartbeatInterval,
     required this.maxRetries,
     required this.logNotifier,
+    required this.transports,
     required Widget child,
+    this.sseUrl
   }) : super(key: key, child: child);
 
   String businessUrl;
   String socketUrl;
+  String? sseUrl;
   int heartbeatInterval;
   int maxRetries;
+  List<String> transports;
   LogNotifier logNotifier;
 
   static AppConfig of(BuildContext context) =>
@@ -28,10 +32,14 @@ class AppConfig extends InheritedWidget {
       {required int heartbeatInterval,
       required int maxRetries,
       required String socketUrl,
-      required String businessUrl}) {
+      required String businessUrl,
+      required List<String> transports,
+      String? sseUrl}) {
     this.heartbeatInterval = heartbeatInterval;
     this.maxRetries = maxRetries;
     this.socketUrl = socketUrl;
     this.businessUrl = businessUrl;
+    this.transports = transports;
+    this.sseUrl = sseUrl;
   }
 }

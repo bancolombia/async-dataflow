@@ -3,8 +3,10 @@ on:
   pull_request:
     paths:
       - 'clients/client-dart/**' 
+      - '.github/**/*dart*'
     branches:
       - master
+      - feature/*
 jobs:
   build:
     permissions:

@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:validators/validators.dart';
 
-import 'channel_message.dart';
+import '../model/channel_message.dart';
 import 'message_decoder.dart';
 
 class BinaryDecoder extends MessageDecoder<Uint8List> {

@@ -18,7 +18,8 @@ void main(List<String> arguments) async {
     heartbeatInterval: 2500,
   );
 
-  var client = AsyncClient(conf).connect();
+  AsyncClient client = AsyncClient(conf);
+  client.connect();
 
   client.subscribeTo(
     'event.productCreated',

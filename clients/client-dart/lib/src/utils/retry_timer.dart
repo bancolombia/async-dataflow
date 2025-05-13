@@ -18,12 +18,14 @@ class RetryTimer {
   }
 
   int _tries = 0;
-  late Future Function() _function;
+  late Future Function() _callback;
+  late Future Function() _limitReachedCallback;
 
   Timer? _timer;
 
   RetryTimer(
-    Future Function() function, {
+    Future Function() callback,
+    Future Function() limitReachedCallback, {
     int? initialWait,
     int? maxWait,
     Function? jitterFn,
@@ -33,27 +35,37 @@ class RetryTimer {
     _maxWait = maxWait ?? _maxWait;
     _maxRetries = maxRetries ?? _maxRetries;
     _jitterFn = jitterFn ?? _defaultJitterFn;
-    _function = function;
+    _callback = callback;
+    _limitReachedCallback = limitReachedCallback;
   }
 
   void reset() {
     _tries = 0;
     _timer?.cancel();
     _timer = null;
-    _log.finest('async-client. Retry timer reset');
+    _log.finest('[async-client][RetyTimer] Retry timer reset');
+  }
+
+  bool isActive() {
+    return _timer?.isActive ?? false;
   }
 
   void schedule() {
     var delay = _delay();
-    _log.info('async-client. scheduling retry in $delay ms');
+    _log.info('[async-client][RetyTimer] scheduling retry in $delay ms');
     _timer = Timer(Duration(milliseconds: delay), () async {
       try {
         if (_tries <= _maxRetries) {
-          _log.info('async-client. retrying $_tries of $_maxRetries');
-          await _function();
+          _log.info('[async-client][RetyTimer] retrying $_tries of $_maxRetries');
+          await _callback();
+        } else {
+          _log.info('[async-client][RetyTimer] notifying limit reached.');
+          reset();
+          await _limitReachedCallback();
+          _log.severe('[async-client][RetyTimer] max retries reached.');
         }
       } catch (e) {
-        _log.severe('Captured error calling delayed function: $e');
+        _log.severe('[async-client][RetyTimer] captured error calling delayed function: $e');
       }
     });
     _tries = _tries + 1;
