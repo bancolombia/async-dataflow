@@ -5,7 +5,6 @@ defmodule ChannelSenderEx.Transport.Sse do
 
   require Logger
 
-  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.JsonEncoder
@@ -71,13 +70,22 @@ defmodule ChannelSenderEx.Transport.Sse do
   def info({:deliver_msg, {pid, ref}, message = {msg_id, _, _, _, _}}, req, state) do
     {:ok, {:text, response}} = JsonEncoder.encode_message(message)
     send_event(req, response)
-    send(pid, {:ack, ref, msg_id})
+    #send ack later to increase success rate of message delivery
+    Process.send_after(self(), {:ack, ref, msg_id, pid}, 2500)
+    {:ok, req, state}
+  end
+
+  def info({:ack, ref, msg_id, chpid}, req, state) do
+    send(chpid, {:ack, ref, msg_id})
     {:ok, req, state}
   end
 
   def info(:terminate_socket, req, state) do
-    # check if we need to do something with the new_socket_pid
-    Logger.info("Sse for channel xxxxxx : received terminate_socket message")
+    ch = case get_channel_from_qs(req) do
+      {:error, _} -> ""
+      val -> val
+    end
+    Logger.debug(fn -> "Sse for channel [#{inspect(ch)}] : received terminate_socket message" end)
     {:ok, req, state}
   end
 

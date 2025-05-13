@@ -1,7 +1,8 @@
 defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   @moduledoc false
 
-  alias ChannelSenderEx.Core.{Channel, ChannelRegistry}
+  alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Core.ChannelSupervisor
 
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
   require Logger
@@ -31,16 +32,19 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   end
 
   def connect_socket_to_channel(channel_ref, socket_pid) do
-    case ChannelRegistry.lookup_channel_addr(channel_ref) do
-      :noproc -> :noproc
-      pid ->
-        timeout = Application.get_env(:channel_sender_ex,
-                            :on_connected_channel_reply_timeout)
+    case  ChannelSupervisor.whereis_channel(channel_ref) do
+      :undefined ->
+        :noproc
+      pid when is_pid(pid) ->
+        Logger.debug(fn -> "Connecting socket #{inspect(pid)} to channel #{channel_ref}" end)
+        timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
         Channel.socket_connected(pid, socket_pid, timeout)
         pid
     end
   catch
-    _type, _err -> :noproc
+    _type, err ->
+      Logger.error("Error connecting socket to channel #{inspect(err)}")
+      :noproc
   end
 
 end

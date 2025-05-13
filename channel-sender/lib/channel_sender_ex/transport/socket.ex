@@ -6,7 +6,6 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   require Logger
 
-  alias ChannelSenderEx.Core.ChannelRegistry
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
   alias ChannelSenderEx.Core.RulesProvider
@@ -49,6 +48,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def websocket_handle({:text, "Auth::" <> secret}, {channel, :pre_auth, encoder}) do
+    Logger.debug(fn -> "Socket for channel #{channel} received auth" end)
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
         monitor_ref = notify_connected(channel)
@@ -173,7 +173,9 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   defp get_relevant_request_info(req) do
     # extracts the channel key from the request query string
-    get_channel_from_qs(req)
+    rs = get_channel_from_qs(req)
+    Logger.debug(fn -> "Socket starting with parameter: #{inspect(rs)}" end)
+    rs
   end
 
   defp process_subprotocol_selection({@channel_key, channel}, req) do
@@ -272,8 +274,10 @@ defmodule ChannelSenderEx.Transport.Socket do
   @compile {:inline, auth_ok_frame: 1}
   defp auth_ok_frame(encoder) do
     encoder.simple_frame("AuthOk")
-    rescue
-      _e -> {:close, @invalid_secret_code, "Invalid token for channel"}
+  rescue
+    e ->
+      Logger.error("Socket unable to send auth ok frame: #{inspect(e)}")
+      {:close, @invalid_secret_code, "Invalid token for channel"}
   end
 
   defp ws_opts do
@@ -283,9 +287,9 @@ defmodule ChannelSenderEx.Transport.Socket do
       #      active_n: 5,
       #      compress: false,
       #      deflate_opts: %{},
-      max_frame_size: 1024,
+      max_frame_size: 4096,
       # Disable in pdn
-      validate_utf8: true,
+      # validate_utf8: true,
       # Usefull to save space avoiding to save all request info
       req_filter: fn %{qs: qs, peer: peer} -> {qs, peer} end
     }

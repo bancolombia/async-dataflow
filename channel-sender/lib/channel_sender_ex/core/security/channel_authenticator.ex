@@ -14,7 +14,7 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   @spec create_channel(application(), user_ref(), meta()) :: {channel_ref(), channel_secret()}
   def create_channel(application, user_ref, meta \\ []) do
     {channel_ref, _channel_secret} = credentials = create_channel_data_for(application, user_ref)
-    {:ok, _pid} = ChannelSupervisor.start_channel({channel_ref, application, user_ref, meta})
+    {:ok, _pid} = ChannelSupervisor.register_channel({channel_ref, application, user_ref, meta})
     credentials
   end
 

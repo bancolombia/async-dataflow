@@ -23,8 +23,13 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
 
   test "Should create channel" do
     with_mocks([
+      {Swarm, [], [
+        register_name: fn(_, _, _, _) -> {:ok, :c.pid(0, 255, 0)} end,
+        join: fn(_, _) -> :ok end
+      ]},
       {ChannelSupervisor, [], [
-        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
+        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end,
+        register_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
       ]}
     ]) do
       assert {_, _} = ChannelAuthenticator.create_channel("App1", "User1")
@@ -33,8 +38,13 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
 
   test "Should verify creds" do
     with_mocks([
+      {Swarm, [], [
+        register_name: fn(_, _, _, _) -> {:ok, :c.pid(0, 255, 0)} end,
+        join: fn(_, _) -> :ok end
+      ]},
       {ChannelSupervisor, [], [
-        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
+        start_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end,
+        register_channel: fn(_) -> {:ok, :c.pid(0, 255, 0)} end
       ]}
     ]) do
       {ref , secret} = ChannelAuthenticator.create_channel("App1", "User1")

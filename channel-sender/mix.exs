@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.2.2",
+      version: "0.2.3",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -41,10 +41,10 @@ defmodule ChannelSenderEx.MixProject do
       {:cowlib, "~> 2.9", override: true},
       {:plug_cowboy, "~> 2.0"},
       {:elixir_uuid, "~> 1.2"},
-      {:gen_state_machine, "~> 3.0"},
+      {:gen_state_machine, "~> 2.0"},
       {:jason, "~> 1.2"},
       {:cors_plug, "~> 3.0"},
-      {:horde, "~> 0.9.0"},
+      {:swarm, "~> 3.4"},
       {:hackney, "~> 1.20.1", only: :test},
       {:plug_crypto, "~> 2.1"},
       {:stream_data, "~> 0.4", only: [:test]},
