@@ -6,6 +6,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   require Logger
 
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
   alias ChannelSenderEx.Core.RulesProvider
@@ -38,12 +39,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   @impl :cowboy_websocket
   def websocket_init(state = {ref, _, _}) do
     Logger.debug("Socket init with pid: #{inspect(self())} starting... #{inspect(state)}")
-    case lookup_channel_addr(ref) do
-      {:ok, _pid} ->
-        {_commands = [], state}
-      {:error, desc} ->
-        {_commands = [{:close, 1001, desc}], state}
-    end
+    {_commands = [], state}
   end
 
   @impl :cowboy_websocket
@@ -51,12 +47,7 @@ defmodule ChannelSenderEx.Transport.Socket do
     Logger.debug(fn -> "Socket for channel #{channel} received auth" end)
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
-        monitor_ref = notify_connected(channel)
-
-        CustomTelemetry.execute_custom_event([:adf, :socket, :connection], %{count: 1})
-
-        {_commands = [auth_ok_frame(encoder)],
-         {channel, :connected, encoder, {application, user_ref, monitor_ref}, %{}}}
+        ensure_channel_exists_and_notify_socket(channel, application, user_ref)
 
       :unauthorized ->
 
@@ -288,6 +279,23 @@ defmodule ChannelSenderEx.Transport.Socket do
       # Usefull to save space avoiding to save all request info
       req_filter: fn %{qs: qs, peer: peer} -> {qs, peer} end
     }
+  end
+
+  defp ensure_channel_exists_and_notify_socket(channel, application, user_ref) do
+    args = {channel, application, user_ref, []}
+    case ChannelSupervisor.start_channel_if_not_exists(args) do
+      {:ok, pid} ->
+        monitor_ref = notify_connected(channel)
+
+        CustomTelemetry.execute_custom_event([:adf, :socket, :connection], %{count: 1})
+
+        state = {channel, :connected, encoder, {application, user_ref, monitor_ref}, %{}}
+        {_commands = [auth_ok_frame(encoder)], state}
+
+      {:error, reason} ->
+        Logger.error("Channel #{channel} not exists and unable to start. Reason: #{inspect(reason)}")
+        {_commands = [{:close, 1001, <<@invalid_channel_code>>}], {channel, :unauthorized}}
+    end
   end
 
 end

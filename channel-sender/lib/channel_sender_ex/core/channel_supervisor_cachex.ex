@@ -59,6 +59,18 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     end
   end
 
+  @spec start_channel_if_not_exists(channel_init_args()) :: any()
+  def start_channel_if_not_exists(args = {channel_ref, _application, _user_ref, _meta}) do
+    pid = whereis_channel(channel_ref)
+
+    if pid == :undefined or not Process.alive?(pid) do
+      CustomTelemetry.execute_custom_event([:adf, :channel, :created_on_socket], %{count: 1})
+      register_channel(args)
+    else
+      {:ok, pid}
+    end
+  end
+
   @spec register_channel_if_not_exists(channel_init_args()) :: any()
   def register_channel_if_not_exists(_args = {channel_ref, _application, _user_ref, _meta}) do
     case Cachex.get(:channels, channel_ref) do
@@ -67,12 +79,19 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
       {:ok, nil} ->
         pid = self()
-        Logger.debug(fn -> "Channel Supervisor, channel #{channel_ref} not exists : nil self #{inspect(pid)}" end)
+
+        Logger.debug(fn ->
+          "Channel Supervisor, channel #{channel_ref} not exists : nil self #{inspect(pid)}"
+        end)
+
         Cachex.put(:channels, channel_ref, pid)
         {:ok, pid}
 
       {:error, reason} ->
-        Logger.error(fn -> "Channel Supervisor, failed to register channel #{channel_ref}, reason: #{inspect(reason)}" end)
+        Logger.error(fn ->
+          "Channel Supervisor, failed to register channel #{channel_ref}, reason: #{inspect(reason)}"
+        end)
+
         {:error, reason}
     end
   end
@@ -101,11 +120,18 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
   defp register_if_not_running(channel_ref, pid) do
     self_pid = self()
+
     if Process.alive?(pid) do
-      Logger.debug(fn -> "Channel Supervisor, channel #{channel_ref} exists : #{inspect(pid)} self #{inspect(self_pid)}" end)
+      Logger.debug(fn ->
+        "Channel Supervisor, channel #{channel_ref} exists : #{inspect(pid)} self #{inspect(self_pid)}"
+      end)
+
       {:ok, pid}
     else
-      Logger.debug(fn -> "Channel Supervisor, channel #{channel_ref} not alive : #{inspect(pid)} self #{inspect(self_pid)}" end)
+      Logger.debug(fn ->
+        "Channel Supervisor, channel #{channel_ref} not alive : #{inspect(pid)} self #{inspect(self_pid)}"
+      end)
+
       Cachex.put(:channels, channel_ref, self_pid)
       {:ok, self_pid}
     end
