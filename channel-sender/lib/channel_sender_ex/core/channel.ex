@@ -662,8 +662,7 @@ defmodule ChannelSenderEx.Core.Channel do
     try do
       GenServer.call(pid, :alive?)
     catch
-      :exit, {:noproc, _} -> false
-      :exit, {:timeout, _} -> true
+      :exit, _ -> false
     end
   end
 end
