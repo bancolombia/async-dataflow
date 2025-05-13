@@ -68,12 +68,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   @spec alive?(atom() | pid() | {atom(), any()} | {:via, atom(), any()}) :: boolean()
   def alive?(server) do
-    try do
-      GenServer.call(server, :alive?)
-    catch
-      :exit, {:noproc, _} -> false
-      :exit, {:timeout, _} -> true
-    end
+    safe_alive?(server, self())
   end
 
   @doc """
@@ -658,5 +653,17 @@ defmodule ChannelSenderEx.Core.Channel do
     RulesProvider.get(param)
   rescue
     _e -> def
+  end
+
+  defp safe_alive?(pid, self_pid) when pid == self_pid do
+    true
+  end
+  defp safe_alive?(pid, _self_pid) do
+    try do
+      GenServer.call(pid, :alive?)
+    catch
+      :exit, {:noproc, _} -> false
+      :exit, {:timeout, _} -> true
+    end
   end
 end

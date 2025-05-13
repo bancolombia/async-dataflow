@@ -76,7 +76,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   def register_channel_if_not_exists(_args = {channel_ref, _application, _user_ref, _meta}) do
     case Cachex.get(:channels, channel_ref) do
       {:ok, pid} when is_pid(pid) ->
-        register_if_not_running(channel_ref, pid)
+        register_if_not_running(channel_ref, pid, self())
 
       {:ok, nil} ->
         pid = self()
@@ -119,9 +119,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     []
   end
 
-  defp register_if_not_running(channel_ref, pid) do
-    self_pid = self()
-
+  defp register_if_not_running(channel_ref, pid, self_pid) do
     if Channel.alive?(pid) do
       Logger.debug(fn ->
         "Channel Supervisor, channel #{channel_ref} exists : #{inspect(pid)} self #{inspect(self_pid)}"
