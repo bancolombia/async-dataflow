@@ -37,7 +37,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def websocket_init(state = {ref, _, _}) do
+  def websocket_init(state = {_ref, _, _}) do
     Logger.debug("Socket init with pid: #{inspect(self())} starting... #{inspect(state)}")
     {_commands = [], state}
   end
@@ -47,7 +47,7 @@ defmodule ChannelSenderEx.Transport.Socket do
     Logger.debug(fn -> "Socket for channel #{channel} received auth" end)
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
-        ensure_channel_exists_and_notify_socket(channel, application, user_ref)
+        ensure_channel_exists_and_notify_socket(channel, application, user_ref, encoder)
 
       :unauthorized ->
 
@@ -281,11 +281,11 @@ defmodule ChannelSenderEx.Transport.Socket do
     }
   end
 
-  defp ensure_channel_exists_and_notify_socket(channel, application, user_ref) do
+  defp ensure_channel_exists_and_notify_socket(channel, application, user_ref, encoder) do
     args = {channel, application, user_ref, []}
     case ChannelSupervisor.start_channel_if_not_exists(args) do
       {:ok, pid} ->
-        monitor_ref = notify_connected(channel)
+        monitor_ref = notify_connected(pid)
 
         CustomTelemetry.execute_custom_event([:adf, :socket, :connection], %{count: 1})
 

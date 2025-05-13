@@ -7,6 +7,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   require Logger
 
   alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Utils.CustomTelemetry
 
   def start_link(_) do
     res = DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
