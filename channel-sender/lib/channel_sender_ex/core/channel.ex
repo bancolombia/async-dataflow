@@ -66,6 +66,16 @@ defmodule ChannelSenderEx.Core.Channel do
     end
   end
 
+  @spec alive?(atom() | pid() | {atom(), any()} | {:via, atom(), any()}) :: boolean()
+  def alive?(server) do
+    try do
+      GenServer.call(server, :alive?)
+    catch
+      :exit, {:noproc, _} -> false
+      :exit, {:timeout, _} -> true
+    end
+  end
+
   @doc """
   operation to notify this server that the socket is connected
   """
@@ -181,6 +191,10 @@ defmodule ChannelSenderEx.Core.Channel do
     end
   end
 
+  def waiting({:call, from}, :alive?, _data) do
+    {:keep_state_and_data, [{:reply, from, true}]}
+  end
+
   def waiting({:call, from}, :stop, data) do
     actions = [
       _reply = {:reply, from, :ok}
@@ -289,6 +303,10 @@ defmodule ChannelSenderEx.Core.Channel do
     refresh_timeout = calculate_refresh_token_timeout()
     Logger.info(fn -> "Channel #{data.channel} entering connected state" end)
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
+  end
+
+  def connected({:call, from}, :alive?, _data) do
+    {:keep_state_and_data, [{:reply, from, true}]}
   end
 
   def connected(
@@ -497,6 +515,7 @@ defmodule ChannelSenderEx.Core.Channel do
     Logger.debug(fn ->
       "Channel #{data.channel} enter state closed."
     end)
+
     ChannelSupervisor.unregister_channel(data.channel)
     {:stop, :normal, data}
   end

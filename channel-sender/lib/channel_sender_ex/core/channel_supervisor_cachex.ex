@@ -64,7 +64,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   def start_channel_if_not_exists(args = {channel_ref, _application, _user_ref, _meta}) do
     pid = whereis_channel(channel_ref)
 
-    if pid == :undefined or not Process.alive?(pid) do
+    if pid == :undefined or not Channel.alive?(pid) do
       CustomTelemetry.execute_custom_event([:adf, :channel, :created_on_socket], %{count: 1})
       register_channel(args)
     else
@@ -122,7 +122,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   defp register_if_not_running(channel_ref, pid) do
     self_pid = self()
 
-    if Process.alive?(pid) do
+    if Channel.alive?(pid) do
       Logger.debug(fn ->
         "Channel Supervisor, channel #{channel_ref} exists : #{inspect(pid)} self #{inspect(self_pid)}"
       end)
