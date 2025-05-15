@@ -4,13 +4,13 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   use ExUnit.Case
   import Mock
 
-  alias Hex.Netrc.Cache
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Core.Channel.Data
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias Hex.Netrc.Cache
 
   @moduletag :capture_log
 

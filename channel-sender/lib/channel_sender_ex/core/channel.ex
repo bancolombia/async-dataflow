@@ -1,4 +1,6 @@
 defmodule ChannelSenderEx.Core.Channel do
+  # credo:disable-for-this-file Credo.Check.Readability.PreferImplicitTry
+
   @moduledoc """
   Main abstraction for modeling and active or temporarily idle async communication channel with an user.
   """
@@ -658,6 +660,7 @@ defmodule ChannelSenderEx.Core.Channel do
   defp safe_alive?(pid, self_pid) when pid == self_pid do
     true
   end
+
   defp safe_alive?(pid, _self_pid) do
     try do
       GenServer.call(pid, :alive?)
@@ -665,4 +668,5 @@ defmodule ChannelSenderEx.Core.Channel do
       :exit, _ -> false
     end
   end
+
 end
