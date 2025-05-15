@@ -21,13 +21,12 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBus do
   def connect_channel(_, _, 7), do: raise("No channel found")
 
   def connect_channel(channel, socket_pid, count) do
-    case  ChannelSupervisor.whereis_channel(channel) do
+    case ChannelSupervisor.whereis_channel(channel) do
       :undefined ->
         Process.sleep(350)
         connect_channel(channel, socket_pid, count + 1)
       pid when is_pid(pid) ->
-        timeout = Application.get_env(:channel_sender_ex,
-                            :on_connected_channel_reply_timeout)
+        timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
         :ok = Channel.socket_connected(pid, socket_pid, timeout)
         pid
     end

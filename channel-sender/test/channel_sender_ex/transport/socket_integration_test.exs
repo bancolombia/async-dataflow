@@ -32,11 +32,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
         "socket auth"
     })
 
-    {:ok, _} = Application.ensure_all_started(:swarm)
     {:ok, _} = Application.ensure_all_started(:libcluster)
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
+    {:ok, _} = Application.ensure_all_started(:cachex)
     Helper.compile(:channel_sender_ex)
 
     ext_message = %{
@@ -47,7 +47,8 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     }
 
     children = [
-      ChannelSupervisor
+      ChannelSupervisor,
+      {Cachex, [:channels]},
     ]
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     {:ok, pid_supervisor} = Supervisor.start_link(children, opts)
@@ -200,11 +201,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert {:binary, _} = assert_receive_and_close(channel, conn_stream)
   end
 
-  test "Should not connect to channel when not previoulsy registered", %{port: port} do
+  test "Should allow to connect socket when channel not previoulsy registered", %{port: port} do
     {app_id, user_ref} = {"App1", "User1234"}
     channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
     channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
-    {_conn, _stream} = assert_reject(port, channel_ref, channel_secret)
+    assert_connect_and_authenticate(port, channel_ref, channel_secret)
   end
 
   test "Should reestablish Channel link when Channel gets restarted", %{

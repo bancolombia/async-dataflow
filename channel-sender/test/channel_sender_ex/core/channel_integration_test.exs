@@ -26,12 +26,12 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
         "socket auth"
       })
 
-    {:ok, _} = Application.ensure_all_started(:swarm)
     {:ok, _} = Application.ensure_all_started(:libcluster)
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
     {:ok, _} = Application.ensure_all_started(:telemetry)
+    {:ok, _} = Application.ensure_all_started(:cachex)
 
     Helper.compile(:channel_sender_ex)
 
@@ -43,7 +43,8 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     }
 
     children = [
-      ChannelSupervisor
+      ChannelSupervisor,
+      {Cachex, [:channels]}
     ]
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     Supervisor.start_link(children, opts)
