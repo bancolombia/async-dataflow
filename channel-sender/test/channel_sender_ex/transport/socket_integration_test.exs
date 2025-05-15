@@ -201,11 +201,11 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     assert {:binary, _} = assert_receive_and_close(channel, conn_stream)
   end
 
-  test "Should not connect to channel when not previoulsy registered", %{port: port} do
+  test "Should allow to connect socket when channel not previoulsy registered", %{port: port} do
     {app_id, user_ref} = {"App1", "User1234"}
     channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
     channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
-    {_conn, _stream} = assert_reject(port, channel_ref, channel_secret)
+    assert_connect_and_authenticate(port, channel_ref, channel_secret)
   end
 
   test "Should reestablish Channel link when Channel gets restarted", %{
