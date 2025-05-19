@@ -15,7 +15,13 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
     Logger.debug("Starting re-connection process for channel #{channel_ref}")
     action_function = create_action(channel_ref, socket_pid, Process.monitor(socket_pid))
 
-    execute(@min_backoff, @max_backoff, @max_retries, action_function, &start_channel/0)
+    execute(
+      @min_backoff,
+      @max_backoff,
+      @max_retries,
+      action_function,
+      fn -> start_channel(channel_ref) end
+    )
   end
 
   def create_action(channel_ref, socket_pid, socket_mon_ref) do
@@ -52,22 +58,18 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   end
 
   def start_channel(channel_ref) do
-    fn ->
-      case ChannelSupervisor.register_channel({channel_ref, "", "", []}) do
-        {:ok, pid} ->
-          Logger.debug(
-            "Re-connection process for channel #{channel_ref} solved with new pid: #{inspect(pid)}"
-          )
+    case ChannelSupervisor.register_channel({channel_ref, "", "", []}) do
+      {:ok, pid} ->
+        Logger.debug(
+          "Re-connection process for channel #{channel_ref} solved with new pid: #{inspect(pid)}"
+        )
 
-          pid
+        pid
 
-        other ->
-          Logger.error(
-            "Re-connection process for channel #{channel_ref} failed: #{inspect(other)}"
-          )
+      other ->
+        Logger.error("Re-connection process for channel #{channel_ref} failed: #{inspect(other)}")
 
-          other
-      end
+        other
     end
   end
 end
