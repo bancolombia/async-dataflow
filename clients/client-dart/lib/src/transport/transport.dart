@@ -5,6 +5,7 @@ abstract class Transport {
   Future<bool> connect();
   Future<void> disconnect();
   bool isOpen();
+  void send(String message); 
   Stream<ChannelMessage> get stream;
 }
 

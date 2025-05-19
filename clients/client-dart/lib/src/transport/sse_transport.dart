@@ -105,6 +105,10 @@ class SSETransport implements Transport {
     return true;
   }
 
+  void send(String message) {
+    _log.warning('[async-client][SSETransport] method Send not supported');
+  }
+
   void _handleNewToken(ChannelMessage message) {
     _log.finest('[async-client][SSETransport] new token received');
     currentToken = message.payload;
