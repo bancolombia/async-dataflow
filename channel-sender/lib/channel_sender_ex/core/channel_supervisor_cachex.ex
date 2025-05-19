@@ -160,9 +160,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
             "Channel Supervisor, channel #{channel_ref} saved in #{delay}"
           end)
 
-          {:ok, true}
-
-        # TODO: may be optional retrieve value from cachex to ensure the channel is saved
+          verify_or_retry(channel_ref)
 
         other ->
           Logger.debug(fn ->
@@ -171,6 +169,21 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
           :retry
       end
+    end
+  end
+
+  defp verify_or_retry(channel_ref) do
+    case Cachex.get(:channels, channel_ref) do
+      {:ok, pid} when is_pid(pid) ->
+        Logger.debug(fn -> "Channel Supervisor, channel #{channel_ref} checked save ok" end)
+        {:ok, true}
+
+      other ->
+        Logger.debug(fn ->
+          "Channel Supervisor, channel #{channel_ref} checked save fail inspect #{other}"
+        end)
+
+        :retry
     end
   end
 end
