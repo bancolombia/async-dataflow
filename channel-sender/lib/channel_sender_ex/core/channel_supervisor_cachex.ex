@@ -156,8 +156,13 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
     fn delay ->
       case Cachex.put(:channels, channel_ref, channel_pid) do
         {:ok, true} ->
+          Logger.debug(fn ->
+            "Channel Supervisor, channel #{channel_ref} saved in #{delay}"
+          end)
+
           {:ok, true}
-          # TODO: may be optional retrieve value from cachex to ensure the channel is saved
+
+        # TODO: may be optional retrieve value from cachex to ensure the channel is saved
 
         other ->
           Logger.debug(fn ->
