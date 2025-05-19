@@ -14,7 +14,8 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   def start(socket_pid, channel_ref) do
     Logger.debug("Starting re-connection process for channel #{channel_ref}")
     action_function = create_action(channel_ref, socket_pid, Process.monitor(socket_pid))
-    execute(@min_backoff, @max_backoff, @max_retries, action_function, :no_channel)
+
+    execute(@min_backoff, @max_backoff, @max_retries, action_function, &start_channel/0)
   end
 
   def create_action(channel_ref, socket_pid, socket_mon_ref) do
@@ -26,15 +27,18 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
           after
             actual_delay -> :retry
           end
-        result -> result
+
+        result ->
+          result
       end
     end
   end
 
   def connect_socket_to_channel(channel_ref, socket_pid) do
-    case  ChannelSupervisor.whereis_channel(channel_ref) do
+    case ChannelSupervisor.whereis_channel(channel_ref) do
       :undefined ->
         :noproc
+
       pid when is_pid(pid) ->
         Logger.debug(fn -> "Connecting socket #{inspect(pid)} to channel #{channel_ref}" end)
         timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
@@ -47,4 +51,23 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
       :noproc
   end
 
+  def start_channel(channel_ref) do
+    fn ->
+      case ChannelSupervisor.register_channel({channel_ref, "", "", []}) do
+        {:ok, pid} ->
+          Logger.debug(
+            "Re-connection process for channel #{channel_ref} solved with new pid: #{inspect(pid)}"
+          )
+
+          pid
+
+        other ->
+          Logger.error(
+            "Re-connection process for channel #{channel_ref} failed: #{inspect(other)}"
+          )
+
+          other
+      end
+    end
+  end
 end

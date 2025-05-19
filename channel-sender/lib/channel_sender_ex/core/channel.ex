@@ -305,7 +305,7 @@ defmodule ChannelSenderEx.Core.Channel do
   def connected({:call, from}, :alive?, _data) do
     {:keep_state_and_data, [{:reply, from, true}]}
   end
-  
+
   def connected(
         {:call, from},
         {:socket_connected, socket_pid},
