@@ -305,6 +305,20 @@ defmodule ChannelSenderEx.Core.Channel do
   def connected({:call, from}, :alive?, _data) do
     {:keep_state_and_data, [{:reply, from, true}]}
   end
+  
+  def connected(
+        {:call, from},
+        {:socket_connected, socket_pid},
+        data = %{socket: {old_socket_pid, _old_socket_ref}}
+      ) when socket_pid == old_socket_pid do
+    # socket already connected
+    actions = [
+      _reply = {:reply, from, :ok}
+    ]
+
+    Logger.debug(fn -> "Channel #{data.channel} socket pid already connected." end)
+    {:keep_state_and_data, actions}
+  end
 
   def connected(
         {:call, from},

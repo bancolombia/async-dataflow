@@ -8,6 +8,10 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
   alias ChannelSenderEx.Core.Channel
   alias ChannelSenderEx.Utils.CustomTelemetry
+  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
+  @max_retries 5
+  @min_backoff 50
+  @max_backoff 200
 
   def start_link(_) do
     res = DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
@@ -48,7 +52,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   @spec register_channel(channel_init_args()) :: any()
   def register_channel(args = {channel_ref, _application, _user_ref, _meta}) do
     with {:ok, pid} <- start_channel(args),
-         {:ok, true} <- Cachex.put(:channels, channel_ref, pid) do
+         {:ok, true} <- put_retried(channel_ref, pid) do
       {:ok, pid}
     else
       {:error, reason} ->
@@ -85,7 +89,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
           "Channel Supervisor, channel #{channel_ref} not exists : nil self #{inspect(pid)}"
         end)
 
-        Cachex.put(:channels, channel_ref, pid)
+        put_retried(channel_ref, pid)
         {:ok, pid}
 
       {:error, reason} ->
@@ -131,8 +135,37 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
         "Channel Supervisor, channel #{channel_ref} not alive : #{inspect(pid)} self #{inspect(self_pid)}"
       end)
 
-      Cachex.put(:channels, channel_ref, self_pid)
+      put_retried(channel_ref, self_pid)
       {:ok, self_pid}
+    end
+  end
+
+  defp put_retried(channel_ref, channel_pid) do
+    action_fn = put_action(channel_ref, channel_pid)
+
+    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
+      Logger.warning(fn ->
+        "Channel Supervisor, could not save channel #{channel_ref} after #{@max_retries} retries"
+      end)
+
+      {:ok, true}
+    end)
+  end
+
+  defp put_action(channel_ref, channel_pid) do
+    fn delay ->
+      case Cachex.put(:channels, channel_ref, channel_pid) do
+        {:ok, true} ->
+          {:ok, true}
+          # TODO: may be optional retrieve value from cachex to ensure the channel is saved
+
+        other ->
+          Logger.debug(fn ->
+            "Channel Supervisor, channel #{channel_ref} could not be saved in delay #{delay} -> #{inspect(other)}"
+          end)
+
+          :retry
+      end
     end
   end
 end
