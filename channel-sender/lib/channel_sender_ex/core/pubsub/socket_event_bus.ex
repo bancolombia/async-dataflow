@@ -13,7 +13,8 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBus do
 
   def notify_event({:connected, channel_pid}, socket_pid) when is_pid(channel_pid) do
     timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
-    :ok = Channel.socket_connected(channel_pid, socket_pid, timeout)
+    now = System.system_time(:millisecond)
+    :ok = Channel.socket_connected(channel_pid, socket_pid, now, timeout)
     channel_pid
   end
 
@@ -25,11 +26,12 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBus do
       :undefined ->
         Process.sleep(350)
         connect_channel(channel, socket_pid, count + 1)
+
       pid when is_pid(pid) ->
         timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
-        :ok = Channel.socket_connected(pid, socket_pid, timeout)
+        now = System.system_time(:millisecond)
+        :ok = Channel.socket_connected(pid, socket_pid, now, timeout)
         pid
     end
   end
-
 end
