@@ -17,6 +17,7 @@ import 'transport.dart';
 class WSTransport implements Transport {
   MessageDecoder msgDecoder = JsonDecoder();
   String? pendingHeartbeatRef;
+  int pendingHeartbeatCount = 0;
   late String currentToken;
 
   static const String JSON_FLOW = 'json_flow';
@@ -30,6 +31,7 @@ class WSTransport implements Transport {
   static const int SOCKET_NORMAL_CLOSE = 1000;
   static const int SOCKET_GOING_AWAY = 1001;
   static const int SENDER_INVALID_REF = 3050;
+  static const int MAX_LOST_HEARTBEATS = 3; // TODO: make this configurable
 
   static const int RETRY_DEFAULT_MAX_RETRIES = 5;
 
@@ -70,10 +72,12 @@ class WSTransport implements Transport {
         ChannelMessage>.broadcast(); // subscribers stream of data
 
     _connectRetryTimer = RetryTimer(
-      () async { // action callback
+      () async {
+        // action callback
         return await connect();
       },
-      () async { // limit reached callback
+      () async {
+        // limit reached callback
         _onSocketError(
           MaxRetriesException(
             'Max retries reached',
@@ -124,7 +128,7 @@ class WSTransport implements Transport {
         await Future.delayed(Duration(milliseconds: wait));
       }
     }
-    
+
     if (connected && _connectRetryTimer.isActive()) {
       _log.finer('[async-client][WSTransport] connect() resetting timer.');
       _connectRetryTimer.reset();
@@ -200,6 +204,12 @@ class WSTransport implements Transport {
     );
 
     try {
+      _socketStreamSub?.cancel();
+    } catch (e) {
+      _log.info(
+          '[async-client][WSTransport] Error cancelling stream before subscription: $e');
+    }
+    try {
       _socketStreamSub = _webSocketCh.listen(
         (data) {
           if (!_broadCastStream.isClosed) {
@@ -208,7 +218,10 @@ class WSTransport implements Transport {
         },
         onError: (error, stackTrace) {
           _log.severe('[async-client][WSTransport] signaling on error...');
-          _onSocketError(error, stackTrace);
+          _onSocketError(
+            error,
+            stackTrace,
+          );
         },
         onDone: () {
           _streamDone = true;
@@ -248,8 +261,7 @@ class WSTransport implements Transport {
     var kind = EVENT_KIND_SYSTEM;
     if (message.event == RESPONSE_AUTH_OK) {
       _handleAuthResponse();
-    } else if (message.event == RESPONSE_HB &&
-        message.correlationId == pendingHeartbeatRef) {
+    } else if (message.event == RESPONSE_HB) {
       _handleCleanHeartBeat();
     } else if (message.event == RESPONSE_NEW_TOKEN) {
       _handleNewToken(message);
@@ -276,14 +288,15 @@ class WSTransport implements Transport {
   }
 
   void _onSocketError(Exception error, StackTrace stackTrace) {
-    _log.severe('[async-client][WSTransport] onSocketError: ${error.toString()}');
+    _log.severe(
+        '[async-client][WSTransport] onSocketError: ${error.toString()}');
 
     if (error is MaxRetriesException) {
       _log.severe('[async-client][WSTransport] Max retries reached');
       _signalSocketError(error);
 
-      return; 
-    } 
+      return;
+    }
 
     var heartbeatTimer = _heartbeatTimer;
     if (heartbeatTimer != null) {
@@ -336,6 +349,7 @@ class WSTransport implements Transport {
 
   void resetHeartbeat() {
     pendingHeartbeatRef = null;
+    pendingHeartbeatCount = 0;
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
@@ -349,8 +363,9 @@ class WSTransport implements Transport {
     if (!isOpen()) {
       return;
     }
-    if (pendingHeartbeatRef != null) {
+    if (pendingHeartbeatCount >= MAX_LOST_HEARTBEATS) {
       pendingHeartbeatRef = null;
+      pendingHeartbeatCount = 0;
       String reason =
           'heartbeat timeout. Attempting to re-establish connection heartbeat interval ${_config.hbInterval} ms';
       _log.warning('[async-client][WSTransport] transport: $reason');
@@ -359,6 +374,7 @@ class WSTransport implements Transport {
       return;
     }
     pendingHeartbeatRef = _makeRef();
+    pendingHeartbeatCount++;
     send('hb::$pendingHeartbeatRef');
   }
 
@@ -393,6 +409,7 @@ class WSTransport implements Transport {
 
   void _handleCleanHeartBeat() {
     pendingHeartbeatRef = null;
+    pendingHeartbeatCount--;
   }
 
   // Function to handle the refreshed channel secret sent by the server
