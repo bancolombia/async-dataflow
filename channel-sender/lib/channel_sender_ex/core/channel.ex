@@ -337,7 +337,7 @@ defmodule ChannelSenderEx.Core.Channel do
       _reply = {:reply, from, :ok}
     ]
 
-    Logger.debug(fn -> "Channel #{data.channel} overwritting socket pid." end)
+    Logger.debug(fn -> "Channel #{data.channel} overwritting socket pid from #{inspect(old_socket_pid)} to #{inspect(socket_pid)}" end)
     {:keep_state, new_data, actions}
   end
 
