@@ -10,6 +10,7 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias Hex.Netrc.Cache
 
   @moduletag :capture_log
 
@@ -28,9 +29,8 @@ defmodule ChannelSenderEx.Core.ChannelTest do
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
         "socket auth"
     })
-
+    {:ok, _} = Application.ensure_all_started(:cachex)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
-    {:ok, _} = Application.ensure_all_started(:swarm)
     Helper.compile(:channel_sender_ex)
     :ok
   end

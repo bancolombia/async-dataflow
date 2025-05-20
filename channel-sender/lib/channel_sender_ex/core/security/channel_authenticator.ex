@@ -3,7 +3,7 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   Channel Authentication logic
   """
   alias ChannelSenderEx.Core.ChannelIDGenerator
-  alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
 
   @type application() :: String.t()
   @type user_ref() :: String.t()

@@ -16,7 +16,7 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
       @after_compile unquote(__MODULE__)
 
       import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
-      alias ChannelSenderEx.Core.ChannelSupervisor
+      alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
       alias ChannelSenderEx.Core.RulesProvider
 
       require Logger
@@ -68,6 +68,8 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
         # extracts the channel key from the request query string
         case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
           {@channel_key, channel} = resp when byte_size(channel) > 10 ->
+            socket_id = Map.get(:cowboy_req.headers(req), "sec-websocket-key")
+            Logger.debug("Socket #{socket_id} connecting to channel #{channel}")
             resp
           _ ->
             {:error, @invalid_request_code}

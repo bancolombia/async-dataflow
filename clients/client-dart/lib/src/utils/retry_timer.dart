@@ -51,6 +51,11 @@ class RetryTimer {
   }
 
   void schedule() {
+    if (_timer?.isActive ?? false) {
+      _log.finest('[async-client][RetyTimer] Timer already active, skipping scheduling');
+      
+      return;
+    }
     var delay = _delay();
     _log.info('[async-client][RetyTimer] scheduling retry in $delay ms');
     _timer = Timer(Duration(milliseconds: delay), () async {
