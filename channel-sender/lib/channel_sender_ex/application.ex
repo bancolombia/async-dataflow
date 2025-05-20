@@ -2,7 +2,7 @@ defmodule ChannelSenderEx.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
-  import Cachex.Spec
+  #import Cachex.Spec
 
   alias ChannelSenderEx.ApplicationConfig
   alias ChannelSenderEx.Core.RulesProvider.Helper
@@ -39,20 +39,22 @@ defmodule ChannelSenderEx.Application do
       false ->
         [
           {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
-          {Cachex,
-           [
-             :channels,
-             [
-               router:
-                 router(
-                   module: Cachex.Router.Ring,
-                   options: [
-                     monitor: true
-                   ]
-                 )
-             ]
-           ]},
-          ChannelSenderEx.Core.ChannelSupervisor,
+          pg_spec(),
+          # {Cachex,
+          #  [
+          #    :channels,
+          #    [
+          #      router:
+          #        router(
+          #          module: Cachex.Router.Ring,
+          #          options: [
+          #            monitor: true
+          #          ]
+          #        )
+          #    ]
+          #  ]},
+          # ChannelSenderEx.Core.ChannelSupervisor,
+          ChannelSenderEx.Core.ChannelSupervisorPg,
           {Plug.Cowboy,
            scheme: :http,
            plug: RestController,
@@ -81,5 +83,12 @@ defmodule ChannelSenderEx.Application do
 
     Logger.debug("Topology selected: #{inspect(topology)}")
     topology
+  end
+
+  defp pg_spec do
+    %{
+      id: :pg,
+      start: {:pg, :start_link, []}
+    }
   end
 end

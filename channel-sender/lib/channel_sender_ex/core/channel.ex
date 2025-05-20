@@ -8,7 +8,7 @@ defmodule ChannelSenderEx.Core.Channel do
   require Logger
   alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.ChannelIDGenerator
-  alias ChannelSenderEx.Core.ChannelSupervisor
+  # alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Utils.CustomTelemetry
@@ -118,9 +118,13 @@ defmodule ChannelSenderEx.Core.Channel do
       Data.new(channel, application, user_ref, meta)
       |> Map.put(:token_expiry, calculate_token_expiration_time())
 
-    Logger.debug(fn -> "Channel #{channel} created. Data: #{inspect(data)}" end)
+    # Logger.debug(fn -> "Channel #{channel} created. Data: #{inspect(data)}" end)
+
     Process.flag(:trap_exit, true)
-    CustomTelemetry.execute_custom_event([:adf, :channel], %{count: 1})
+
+    :pg.join(channel, self())
+
+    # CustomTelemetry.execute_custom_event([:adf, :channel], %{count: 1})
     {:ok, :waiting, data}
   end
 
@@ -128,64 +132,64 @@ defmodule ChannelSenderEx.Core.Channel do
   ###           WAITING STATE             ####
   ### waiting state callbacks definitions ####
 
-  defp check_process(_waiting_tomeout = 0, %{channel: channel}) do
-    Logger.info(fn ->
-      "Channel #{channel} will not remain in waiting state due calculated wait time is 0. Stopping now."
-    end)
+  # defp check_process(_waiting_tomeout = 0, %{channel: channel}) do
+  #   Logger.info(fn ->
+  #     "Channel #{channel} will not remain in waiting state due calculated wait time is 0. Stopping now."
+  #   end)
 
-    :timeout
-  end
+  #   :timeout
+  # end
 
-  defp check_process(
-         _waiting_tomeout,
-         _data = %{channel: channel, application: application, user_ref: user_ref, meta: meta}
-       ) do
-    current_pid = self()
+  # defp check_process(
+  #        _waiting_tomeout,
+  #        _data = %{channel: channel, application: application, user_ref: user_ref, meta: meta}
+  #      ) do
+  #   current_pid = self()
 
-    case ChannelSupervisor.register_channel_if_not_exists({channel, application, user_ref, meta}) do
-      {:ok, ^current_pid} ->
-        Logger.debug(fn ->
-          "Channel #{channel} is registered with self() pid #{inspect(current_pid)}"
-        end)
+  #   case ChannelSupervisor.register_channel_if_not_exists({channel, application, user_ref, meta}) do
+  #     {:ok, ^current_pid} ->
+  #       Logger.debug(fn ->
+  #         "Channel #{channel} is registered with self() pid #{inspect(current_pid)}"
+  #       end)
 
-        :existing
+  #       :existing
 
-      {:error, reason} ->
-        Logger.error(fn ->
-          "Channel #{channel} failed to register in registry: #{inspect(reason)}"
-        end)
+  #     {:error, reason} ->
+  #       Logger.error(fn ->
+  #         "Channel #{channel} failed to register in registry: #{inspect(reason)}"
+  #       end)
 
-        :error
+  #       :error
 
-      {:ok, pid} ->
-        Logger.debug(fn ->
-          "Channel #{channel} re-registration or exists with another pid #{inspect(pid)} stoping self #{inspect(self())}"
-        end)
+  #     {:ok, pid} ->
+  #       Logger.debug(fn ->
+  #         "Channel #{channel} re-registration or exists with another pid #{inspect(pid)} stoping self #{inspect(self())}"
+  #       end)
 
-        :registered
-    end
-  end
+  #       :registered
+  #   end
+  # end
 
   def waiting(:enter, _old_state, data) do
     # time to wait for the socket to be open (or re-opened) and authenticated
     waiting_timeout = round(estimate_process_wait_time(data) * 1000)
 
-    case check_process(waiting_timeout, data) do
-      :timeout ->
-        ChannelSupervisor.unregister_channel(data.channel)
-        {:stop, :normal, data}
+    # case check_process(waiting_timeout, data) do
+    #   :timeout ->
+    #     ChannelSupervisor.unregister_channel(data.channel)
+    #     {:stop, :normal, data}
 
-      :registered ->
-        {:stop, :normal, data}
+    #   :registered ->
+    #     {:stop, :normal, data}
 
-      _ ->
+    #   _ ->
         Logger.info(
           "Channel #{data.channel} entering waiting state. Expecting a socket connection/authentication. max wait time: #{waiting_timeout} ms"
         )
 
         new_data = %{data | socket_stop_cause: nil}
         {:keep_state, new_data, [{:state_timeout, waiting_timeout, :waiting_timeout}]}
-    end
+    # end
   end
 
   def waiting({:call, from}, :alive?, _data) do
@@ -208,7 +212,9 @@ defmodule ChannelSenderEx.Core.Channel do
       "Channel #{data.channel} timed-out on waiting state for a socket connection and/or authentication"
     )
 
-    ChannelSupervisor.unregister_channel(data.channel)
+    #ChannelSupervisor.unregister_channel(data.channel)
+    :pg.leave(data.channel, self())
+
     {:stop, :normal, %{data | stop_cause: :waiting_timeout}}
   end
 
@@ -527,7 +533,9 @@ defmodule ChannelSenderEx.Core.Channel do
       "Channel #{data.channel} enter state closed."
     end)
 
-    ChannelSupervisor.unregister_channel(data.channel)
+    #ChannelSupervisor.unregister_channel(data.channel)
+    :pg.leave(data.channel, self())
+
     {:stop, :normal, data}
   end
 

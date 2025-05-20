@@ -1,0 +1,85 @@
+channel_sender_ex:
+  rest_port: 8071
+  socket_port: 8072
+  prometheus_port: 7568
+  secret_generator:
+    base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
+    salt: "socket auth"
+    # Max time (in seconds) for a token to be valid
+    # this parameter is also used to hold the channel genstatemachine in wainting state
+    # before it is closed
+    max_age: 900
+  
+  # initial time in seconds to wait before re-send a message not acked to a channel
+  initial_redelivery_time: 900
+
+  # max time in milliseconds to wait the client to send the auth token
+  # before closing the channel
+  socket_idle_timeout: 90000
+
+  # Specifies the maximum time (in milliseconds) that the Elixir supervisor waits 
+  # for child channel processes to terminate after sending it an exit signal 
+  # (:shutdown). This time is used by all gen_statem processes to perform clean up
+  # operations before shutting down.
+  channel_shutdown_tolerance: 10000
+
+  # Specifies the maximum drift time (in seconds) the channel process
+  # will consider for emiting a new secret token before the current one expires.
+  # Time to generate will be the greater value between (max_age / 2) and
+  # (max_age - min_disconnection_tolerance)
+  min_disconnection_tolerance: 50
+
+  on_connected_channel_reply_timeout: 2000
+
+  # max time a channel process will wait to perform the send operation before times out
+  accept_channel_reply_timeout: 1000
+
+  # Allowed max number of unacknowledged messages per client connection
+  # after this limit is reached, oldes unacknowledged messages will be dropped
+  max_unacknowledged_queue: 100
+
+  # Allowed max number of retries to re-send unack'ed message to a channel
+  max_unacknowledged_retries: 10
+  
+  # Allowed max number of messages pending to be sent to a channel
+  # received by sender while on waiting state (no socket connection)
+  max_pending_queue: 100
+
+  # channel_shutdown_socket_disconnect: Defines the waiting time of the channel process
+  # after a socket disconnection, in case the client re-connects. The disconection can be
+  # clean or unclean. The channel process will wait for the client to re-connect before
+  #
+  # on_clean_close: time in seconds to wait before shutting down the channel process when a 
+  # client explicitlly ends the socket connection (clean close). A value of 0, will
+  # terminate the channel process immediately. This value should never be greater than max_age.
+  #
+  # on_disconnection: time in seconds to wait before shutting down the channel process when the
+  # connectin between the client and server accidentally or unintendedlly is interrupted. 
+  # A value of 0, will terminate the channel process immediately. This value should never 
+  # be greater than max_age.
+  channel_shutdown_socket_disconnect: 
+    on_clean_close: 300
+    on_disconnection: 900
+
+  no_start: false
+  topology:
+    strategy: Elixir.Cluster.Strategy.Gossip # for local development
+
+    # strategy: Elixir.Cluster.Strategy.Kubernetes # topology for kubernetes
+    # config: 
+    #   mode: :hostname
+    #   kubernetes_ip_lookup_mode: :pods
+    #   kubernetes_service_name: "adfsender-headless"
+    #   kubernetes_node_basename: "channel_sender_ex"
+    #   kubernetes_selector: "cluster=beam"
+    #   namespace: "sendernm"
+    #   polling_interval: 5000
+
+    # see https://github.com/bancolombia/async-dataflow/tree/master/channel-sender/deploy_samples/k8s
+    # for more information about the kubernetes configuration with libcluser
+
+logger:
+  level: debug
+
+
+

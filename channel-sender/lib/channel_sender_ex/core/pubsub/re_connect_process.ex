@@ -2,7 +2,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   @moduledoc false
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
 
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
   require Logger

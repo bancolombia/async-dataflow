@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBus do
   association.
   """
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
 
   # Notify the event of a socket connection. Receiving part is the channel process.
   def notify_event({:connected, channel}, socket_pid) when is_binary(channel) do
