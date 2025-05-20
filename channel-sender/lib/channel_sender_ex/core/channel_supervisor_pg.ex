@@ -83,7 +83,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisorPg do
     end
   end
 
-  def register_channel_if_not_exists(channel_ref) do
+  def register_channel_if_not_exists(_args = {channel_ref, _application, _user_ref, _meta}) do
     pid = whereis_channel(channel_ref)
 
     cond do
