@@ -12,6 +12,13 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   @max_backoff 3000
 
   def start(socket_pid, channel_ref) do
+    Task.start_link(fn ->
+      new_pid = start_internal(socket_pid, channel_ref)
+      send(socket_pid, {:monitor_channel, channel_ref, new_pid})
+    end)
+  end
+
+  def start_internal(socket_pid, channel_ref) do
     Logger.debug("Starting re-connection process for channel #{channel_ref}")
     now = System.system_time(:millisecond)
     action_function = create_action(channel_ref, socket_pid, now, Process.monitor(socket_pid))

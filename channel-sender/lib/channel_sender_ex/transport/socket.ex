@@ -152,13 +152,7 @@ defmodule ChannelSenderEx.Transport.Socket do
           received DOWN message: #{inspect({ref, proc, pid, cause})}. Spawning process for re-conection
         """)
 
-        new_pid = ReConnectProcess.start(self(), channel_ref)
-
-        Logger.debug(fn ->
-          "Socket #{inspect(self())} for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}"
-        end)
-
-        Process.monitor(new_pid)
+        ReConnectProcess.start(self(), channel_ref)
 
         {_commands = [], state}
     end
@@ -173,7 +167,19 @@ defmodule ChannelSenderEx.Transport.Socket do
       "Socket #{inspect(self())} for channel #{channel_ref} : spawning process for re-conection"
     end)
 
-    spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
+    ReConnectProcess.start(self(), channel_ref)
+
+    {_commands = [], state}
+  end
+
+  @impl :cowboy_websocket
+  def websocket_info({:monitor_channel, channel_ref, new_pid}, state) do
+    Logger.debug(fn ->
+      "Socket #{inspect(self())} for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}"
+    end)
+
+    Process.monitor(new_pid)
+
     {_commands = [], state}
   end
 
