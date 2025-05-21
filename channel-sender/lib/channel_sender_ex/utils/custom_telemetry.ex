@@ -65,7 +65,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       counter("elixir.adf.socket.disconnection.count", tags: [:service]),
       counter("elixir.adf.socket_duration_milliseconds.count", tags: [:request_path, :service]),
 
-      sum("elixir.adf.channel.count", tags: [:service], reporter_options: [report_as: :counter]),
+      last_value("elixir.adf.channel.total", tags: [:service]),
       sum("elixir.adf.channel.waiting.count", tags: [:service], reporter_options: [report_as: :counter]),
       sum("elixir.adf.channel.connected.count", tags: [:service], reporter_options: [report_as: :counter]),
       sum("elixir.adf.channel.created_on_socket.count", tags: [:service], reporter_options: [report_as: :counter]),
