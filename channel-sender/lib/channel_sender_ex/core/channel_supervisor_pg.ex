@@ -46,11 +46,11 @@ defmodule ChannelSenderEx.Core.ChannelSupervisorPg do
   end
 
   @spec register_channel(channel_init_args()) :: any()
-  def register_channel(args = {_channel_ref, _application, _user_ref, _meta}) do
-    with {:ok, pid} <- start_channel(args) do
-      #:pg.join(application, pid)
-      {:ok, pid}
-    else
+  def register_channel(args = {channel_ref, _application, _user_ref, _meta}) do
+    case start_channel(args) do
+      {:ok, pid} ->
+        register_pid(channel_ref, pid)
+
       {:error, reason} ->
         Logger.error(fn ->
           "Channel Supervisor, failed to register channel with args: #{inspect(args)}, reason: #{inspect(reason)}"
@@ -65,8 +65,17 @@ defmodule ChannelSenderEx.Core.ChannelSupervisorPg do
     case :pg.get_members(channel_ref) do
       [] ->
         :undefined
-      pids ->
-        List.first(pids)
+
+      [pid | _tail] ->
+        pid
+    end
+  end
+
+  @spec related_channels(channel_ref()) :: [pid()] | :undefined
+  def related_channels(channel_ref) do
+    case :pg.get_members(channel_ref) do
+      [] -> :undefined
+      pids -> pids
     end
   end
 
@@ -74,7 +83,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisorPg do
   def start_channel_if_not_exists(args = {channel_ref, _application, _user_ref, _meta}) do
     pid = whereis_channel(channel_ref)
 
-    if pid == :undefined do
+    if pid == :undefined or not Channel.alive?(pid) do
       CustomTelemetry.execute_custom_event([:adf, :channel, :created_on_socket], %{count: 1})
       register_channel(args)
     else
@@ -82,10 +91,34 @@ defmodule ChannelSenderEx.Core.ChannelSupervisorPg do
     end
   end
 
-  @spec app_members(application()) :: list()
-  def app_members(_application) do
-    #:pg.get_members(application)
-    []
+  def register_channel_if_not_exists(_args = {channel_ref, _application, _user_ref, _meta}) do
+    pid = whereis_channel(channel_ref)
+
+    cond do
+      pid == :undefined ->
+        register_pid(channel_ref, self())
+
+      Channel.alive?(pid) ->
+        {:ok, pid}
+
+      true ->
+        unregister_channel(channel_ref, pid)
+        register_pid(channel_ref, self())
+    end
   end
 
+  def register_pid(channel_ref, pid) do
+    :pg.join(channel_ref, pid)
+    {:ok, pid}
+  end
+
+  def unregister_channel(channel_ref, pid) do
+    :pg.leave(channel_ref, pid)
+  end
+
+  @spec app_members(application()) :: list()
+  def app_members(_application) do
+    # :pg.get_members(application)
+    []
+  end
 end

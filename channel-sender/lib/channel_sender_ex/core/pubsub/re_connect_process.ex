@@ -12,6 +12,13 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
   @max_backoff 3000
 
   def start(socket_pid, channel_ref) do
+    Task.start_link(fn ->
+      new_pid = start_internal(socket_pid, channel_ref)
+      send(socket_pid, {:monitor_channel, channel_ref, new_pid})
+    end)
+  end
+
+  def start_internal(socket_pid, channel_ref) do
     Logger.debug("Starting re-connection process for channel #{channel_ref}")
     action_function = create_action(channel_ref, socket_pid, Process.monitor(socket_pid))
 
@@ -20,7 +27,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
       @max_backoff,
       @max_retries,
       action_function,
-      fn -> start_channel(channel_ref) end
+      fn -> start_channel(channel_ref, socket_pid) end
     )
   end
 
@@ -46,9 +53,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
         :noproc
 
       pid when is_pid(pid) ->
-        Logger.debug(fn -> "Connecting socket #{inspect(pid)} to channel #{channel_ref}" end)
-        timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
-        Channel.socket_connected(pid, socket_pid, timeout)
+        connect_socket_to_pid(channel_ref, socket_pid, pid)
         pid
     end
   catch
@@ -57,13 +62,14 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
       :noproc
   end
 
-  def start_channel(channel_ref) do
+  def start_channel(channel_ref, socket_pid) do
     case ChannelSupervisor.register_channel({channel_ref, "", "", []}) do
       {:ok, pid} ->
         Logger.debug(
-          "Re-connection process for channel #{channel_ref} solved with new pid: #{inspect(pid)}"
+          "Re-connection process for channel #{channel_ref} solved with new channel pid: #{inspect(pid)}"
         )
 
+        connect_socket_to_pid(channel_ref, socket_pid, pid)
         pid
 
       other ->
@@ -71,5 +77,14 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
 
         other
     end
+  end
+
+  defp connect_socket_to_pid(channel_ref, socket_pid, pid) do
+    Logger.debug(fn ->
+      "Connecting socket with pid #{inspect(socket_pid)} to channel #{channel_ref} with pid #{inspect(pid)}"
+    end)
+
+    timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
+    Channel.socket_connected(pid, socket_pid, timeout)
   end
 end

@@ -25,13 +25,17 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   @spec deliver_to_channel(channel_ref(), ProtocolMessage.t()) :: any()
   def deliver_to_channel(channel_ref, message) do
     action_fn = fn _ -> do_deliver_to_channel(channel_ref, message) end
+
     execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
       CustomTelemetry.execute_custom_event([:adf, :message, :nodelivered], %{count: 1})
       raise("No channel found")
     end)
   rescue
     e ->
-      Logger.warning("Could not deliver message after #{@max_retries} retries, to channel: \"#{channel_ref}\". Cause: #{inspect(e)}")
+      Logger.warning(
+        "Could not deliver message after #{@max_retries} retries, to channel: \"#{channel_ref}\". Cause: #{inspect(e)}"
+      )
+
       :error
   end
 
@@ -56,15 +60,20 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   end
 
   defp do_deliver_to_channel(channel_ref, message) do
-    case ChannelSupervisor.whereis_channel(channel_ref) do
-      pid when is_pid(pid) -> Channel.deliver_message(pid, message)
+    case ChannelSupervisor.related_channels(channel_ref) do
       :undefined ->
         :retry
+
+      pids ->
+        pids
+        |> Enum.uniq()
+        |> Enum.each(fn pid -> Channel.deliver_message(pid, message) end)
     end
   end
 
   def delete_channel(channel_ref) do
     action_fn = fn _ -> do_delete_channel(channel_ref) end
+
     execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
       Logger.warning("Could not delete channel #{channel_ref} after #{@max_retries} retries")
       :ok
@@ -72,8 +81,10 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   end
 
   def do_delete_channel(channel_ref) do
-    case  ChannelSupervisor.whereis_channel(channel_ref) do
-      pid when is_pid(pid) -> Channel.stop(pid)
+    case ChannelSupervisor.whereis_channel(channel_ref) do
+      pid when is_pid(pid) ->
+        Channel.stop(pid)
+
       :undefined ->
         :retry
     end
