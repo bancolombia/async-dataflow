@@ -123,7 +123,6 @@ defmodule ChannelSenderEx.Core.Channel do
 
     Process.flag(:trap_exit, true)
 
-    # CustomTelemetry.execute_custom_event([:adf, :channel], %{count: 1})
     {:ok, :waiting, data}
   end
 
@@ -168,6 +167,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
     case check_process(waiting_timeout, data) do
       :timeout ->
+        CustomTelemetry.execute_custom_event([:adf, :channel, :deleted], %{count: 1})
         {:stop, :normal, data}
 
       :registered ->
@@ -530,7 +530,7 @@ defmodule ChannelSenderEx.Core.Channel do
 
   @impl true
   def terminate(reason, state, data) do
-    CustomTelemetry.execute_custom_event([:adf, :channel], %{count: -1})
+    CustomTelemetry.execute_custom_event([:adf, :channel, :deleted], %{count: 1})
     level = if reason == :normal, do: :info, else: :warning
 
     Logger.log(

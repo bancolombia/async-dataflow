@@ -31,6 +31,7 @@ defmodule ChannelSenderEx.Core.ChannelSupervisorPg do
 
     case DynamicSupervisor.start_child(__MODULE__, {Channel, args}) do
       {:ok, pid} ->
+        CustomTelemetry.execute_custom_event([:adf, :channel, :created], %{count: 1})
         {:ok, pid}
 
       {:error, {:already_registered, pid}} ->

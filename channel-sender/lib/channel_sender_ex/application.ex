@@ -56,7 +56,7 @@ defmodule ChannelSenderEx.Application do
           #  ]},
           # ChannelSenderEx.Core.ChannelSupervisor,
           ChannelSenderEx.Core.ChannelSupervisorPg,
-          {ChannelCounter,[]},
+          # {ChannelCounter,[]},
           {Plug.Cowboy,
            scheme: :http,
            plug: RestController,
