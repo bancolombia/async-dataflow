@@ -141,7 +141,7 @@ class WSTransport implements Transport {
       _connectRetryTimer.reset();
       await _socketStreamSub?.cancel();
       _socketStreamSub = null;
-      await close(SOCKET_NORMAL_CLOSE, 'Client disconnect');
+      await _webSocketCh.close(SOCKET_NORMAL_CLOSE, 'Client disconnect');
     } catch (e) {
       _log.warning('[async-client][WSTransport] Error disconnecting: $e');
     }
