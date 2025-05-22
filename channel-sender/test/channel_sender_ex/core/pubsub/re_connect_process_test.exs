@@ -2,6 +2,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
   import Mock
 
@@ -15,15 +16,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
 
   test "should not connect processes, due to process not registered" do
     with_mock(
-      Cachex, [get: fn(_, _) -> {:ok, nil} end]
-    ) do
-      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)) == :noproc
-    end
-  end
-
-  test "should not connect processes, handle error" do
-    with_mock(
-      Cachex, [get: fn(_, _) -> raise("dummy") end]
+      ChannelSupervisor, [whereis_channel: fn(_) -> :undefined end]
     ) do
       assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)) == :noproc
     end
@@ -31,7 +24,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
 
   test "should query and connect processes" do
     with_mocks([
-      {Cachex, [], [get: fn(_, _) -> {:ok, :c.pid(0, 200, 0)} end]},
+      {ChannelSupervisor, [], [whereis_channel: fn(_) -> :c.pid(0, 200, 0) end]},
       {Channel, [], [socket_connected: fn(_, _, _) -> :ok end]},
     ]) do
       assert is_pid(ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)))

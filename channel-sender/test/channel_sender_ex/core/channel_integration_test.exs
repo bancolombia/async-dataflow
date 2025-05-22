@@ -3,7 +3,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
   alias ChannelSenderEx.Core.RulesProvider.Helper
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias ChannelSenderEx.Core.{Channel, ChannelSupervisor, ProtocolMessage}
+  alias ChannelSenderEx.Core.{Channel, ChannelSupervisorPg, ProtocolMessage}
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Transport.EntryPoint
 
@@ -26,6 +26,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
         "socket auth"
       })
 
+    {:ok, pg_pid} = :pg.start_link()
     {:ok, _} = Application.ensure_all_started(:libcluster)
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
@@ -43,8 +44,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     }
 
     children = [
-      ChannelSupervisor,
-      {Cachex, [:channels]}
+      ChannelSupervisorPg
     ]
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     Supervisor.start_link(children, opts)
@@ -58,6 +58,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
       # true = Process.exit(pid_supervisor, :normal)
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
       Application.delete_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
+      Process.exit(pg_pid, :kill)
       IO.puts("Supervisor and Registry was terminated")
     end)
 
@@ -96,11 +97,13 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     secret: secret
   } do
 
+    IO.inspect(Application.get_env(:channel_sender_ex, :channel_shutdown_on_clean_close, 0), label: "Shutdown on clean close")
+
     # start socket connection and authenticate
     {_conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
 
     # call for stop
-    channel_pid = ChannelSupervisor.whereis_channel(channel)
+    channel_pid = ChannelSupervisorPg.whereis_channel(channel)
     :ok = Channel.stop(channel_pid)
 
     Process.sleep(100)
@@ -114,7 +117,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   } do
 
     # call for stop
-    channel_pid = ChannelSupervisor.whereis_channel(channel)
+    channel_pid = ChannelSupervisorPg.whereis_channel(channel)
     :ok = Channel.stop(channel_pid)
 
     Process.sleep(200)
@@ -130,8 +133,8 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   } do
 
     # send 2 messages
-    assert {:accepted_waiting, _, _} = deliver_message(channel, "99")
-    assert {:accepted_waiting, _, _} = deliver_message(channel, "100")
+    assert {:ok, _, _} = deliver_message(channel, "99")
+    assert {:ok, _, _} = deliver_message(channel, "100")
 
     # connect
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
@@ -150,11 +153,11 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     secret: secret
   } do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-    assert {:accepted_connected, _, _} = deliver_message(channel)
+    assert {:ok, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
     :gun.close(conn)
     Process.sleep(100)
-    assert {:accepted_waiting, _, _} = deliver_message(channel)
+    assert {:ok, _, _} = deliver_message(channel)
   end
 
   test "Should do no waiting when connection closes clean", %{
@@ -167,10 +170,10 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Helper.compile(:channel_sender_ex)
 
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-    assert {:accepted_connected, _, _} = deliver_message(channel)
+    assert {:ok, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
 
-    channel_pid = ChannelSupervisor.whereis_channel(channel)
+    channel_pid = ChannelSupervisorPg.whereis_channel(channel)
     :gun.close(conn)
 
     Process.sleep(500)
@@ -187,13 +190,13 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Helper.compile(:channel_sender_ex, channel_shutdown_on_disconnection: 1)
 
     {channel, _secret} = ChannelAuthenticator.create_channel("App1", "User1234")
-    channel_pid = ChannelSupervisor.whereis_channel(channel)
+    channel_pid = ChannelSupervisorPg.whereis_channel(channel)
 
     ref = Process.monitor(channel_pid)
     assert_receive {:DOWN, ^ref, :process, ^channel_pid, :normal}, 1200
     Process.sleep(300)
 
-    assert :undefined == ChannelSupervisor.whereis_channel(channel)
+    assert :undefined == ChannelSupervisorPg.whereis_channel(channel)
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
       Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
@@ -207,9 +210,9 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   #   {:ok, _} = DynamicSupervisor.start_link(name: :sup2, strategy: :one_for_one)
 
   #   {:ok, pid1} = DynamicSupervisor.start_child(:sup1,
-  #     ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg1)))
+  #     ChannelSupervisorPg.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg1)))
   #   {:ok, pid2} = DynamicSupervisor.start_child(:sup2,
-  #     ChannelSupervisor.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg2)))
+  #     ChannelSupervisorPg.channel_child_spec(channel_args, ChannelRegistry.via_tuple("channel_ref", :reg2)))
   #   {_, msg1} = build_message("42")
   #   {_, msg2} = build_message("82")
   #   Channel.deliver_message(pid1, msg1)

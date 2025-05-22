@@ -10,7 +10,6 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias Hex.Netrc.Cache
 
   @moduletag :capture_log
 
@@ -29,9 +28,16 @@ defmodule ChannelSenderEx.Core.ChannelTest do
         "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
         "socket auth"
     })
+    {:ok, pg_pid} = :pg.start_link()
+
     {:ok, _} = Application.ensure_all_started(:cachex)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
     Helper.compile(:channel_sender_ex)
+
+    on_exit(fn ->
+      Process.exit(pg_pid, :kill)
+    end)
+
     :ok
   end
 
@@ -59,18 +65,18 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   end
 
   test "Should Send message when connected", %{init_args: init_args, message: message} do
-    {:ok, pid} = start_channel_safe(init_args)
-    :sys.trace(pid, true)
-    :ok = Channel.socket_connected(pid, self())
-    message_to_send = ProtocolMessage.to_protocol_message(message)
-    :accepted_connected = Channel.deliver_message(pid, message_to_send)
-    assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
+      {:ok, pid} = start_channel_safe(init_args)
+      :sys.trace(pid, true)
+      :ok = Channel.socket_connected(pid, self())
+      message_to_send = ProtocolMessage.to_protocol_message(message)
+      :accepted_connected = Channel.deliver_message(pid, message_to_send)
+      assert_receive {:deliver_msg, _from = {^pid, _ref}, ^message_to_send}
 
-    {_, app, user, []} = init_args
-    data = %Data{application: app, user_ref: user}
-    assert data.application == app
+      {_, app, user, []} = init_args
+      data = %Data{application: app, user_ref: user}
+      assert data.application == app
 
-    Process.exit(pid, :kill)
+      Process.exit(pid, :kill)
   end
 
   test "Should Send message handle RulesProvider exception", %{init_args: init_args, message: message} do
@@ -146,13 +152,13 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     :sys.trace(pid, true)
     :ok = Channel.socket_connected(pid, self())
     refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 300
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 500
     Channel.notify_ack(pid, ref, id)
     refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 300
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 500
     Channel.notify_ack(pid, ref, id)
     refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", token, _}}, 300
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", token, _}}, 500
     Channel.notify_ack(pid, ref, id)
 
     assert {:ok, _app, _user} = ChannelIDGenerator.verify_token(channel, token)

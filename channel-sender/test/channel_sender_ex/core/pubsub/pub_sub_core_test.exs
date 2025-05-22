@@ -2,28 +2,29 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCoreTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.Channel
+  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
   alias ChannelSenderEx.Core.PubSub.PubSubCore
 
   import Mock
 
   test "should deliver to channel" do
     with_mocks([
-      {Cachex, [], [
-        get: fn(_, _) -> {:ok, :c.pid(0, 255, 0)} end
+      {ChannelSupervisor, [], [
+        related_channels: fn(_) -> [:c.pid(0, 255, 0)] end
       ]},
       {Channel, [], [deliver_message: fn(_, _) -> :accepted_connected end]}
     ]) do
-      assert :accepted_connected == PubSubCore.deliver_to_channel("channel_ref", %{})
-      assert_called_exactly Cachex.get(:channels, "channel_ref"), 1
+      assert :ok == PubSubCore.deliver_to_channel("channel_ref", %{})
+      assert_called_exactly ChannelSupervisor.related_channels("channel_ref"), 1
     end
   end
 
   test "should retry when channel not found" do
     with_mock(
-      Cachex, [get: fn(_, _) -> {:ok, nil} end]
+      ChannelSupervisor, [related_channels: fn(_) -> :undefined end]
     ) do
       assert :error == PubSubCore.deliver_to_channel("channel_ref", %{})
-      assert_called_exactly Cachex.get(:channels, "channel_ref"), 10
+      assert_called_exactly ChannelSupervisor.related_channels("channel_ref"), 10
     end
   end
 
@@ -52,7 +53,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCoreTest do
 
   test "should handle call to delete (end) non-existent channel" do
     with_mock(
-      Cachex, [get: fn(_, _) -> {:ok, nil} end]
+      ChannelSupervisor, [whereis_channel: fn(_) -> :undefined end]
     ) do
       assert :ok == PubSubCore.delete_channel("channel_ref")
     end
@@ -60,8 +61,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCoreTest do
 
   test "should handle call to delete (end) existent channel" do
     with_mocks([
-      {Cachex, [], [get: fn(_, _) -> {:ok, :c.pid(0, 255, 0)} end]},
-      {Channel, [], [stop: fn(_) -> :ok end]}
+      {ChannelSupervisor, [], [whereis_channel: fn(_) -> :c.pid(0, 255, 0) end]}
     ]) do
       assert :ok == PubSubCore.delete_channel("channel_ref")
     end

@@ -1,7 +1,7 @@
 defmodule ChannelSenderEx.Transport.SseIntegrationTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
@@ -42,7 +42,7 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
 
     children = [
       ChannelSupervisor,
-      {Cachex, [:channels]}
+      %{id: :pg, start: {:pg, :start_link, []}}
     ]
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     {:ok, pid_supervisor} = Supervisor.start_link(children, opts)
