@@ -56,28 +56,26 @@ class WSTransport implements Transport {
     _webSocketCh = value;
   }
 
-  WSTransport(
-    this._signalSocketClose,
-    this._signalSocketError,
-    this._config,
-  ) {
+  WSTransport(this._signalSocketClose, this._signalSocketError, this._config) {
     _log.finer('[async-client][WSTransport] constructor start.');
 
     currentToken = _config.channelSecret;
     _subProtocols = configSubProtocol();
     // _localStream = StreamController(onListen: _onListen);
-    _broadCastStream = StreamController<
-        ChannelMessage>.broadcast(); // subscribers stream of data
+    _broadCastStream =
+        StreamController<
+          ChannelMessage
+        >.broadcast(); // subscribers stream of data
 
     _connectRetryTimer = RetryTimer(
-      () async { // action callback
+      () async {
+        // action callback
         return await connect();
       },
-      () async { // limit reached callback
+      () async {
+        // limit reached callback
         _onSocketError(
-          MaxRetriesException(
-            'Max retries reached',
-          ),
+          MaxRetriesException('Max retries reached'),
           StackTrace.current,
         );
       },
@@ -124,7 +122,7 @@ class WSTransport implements Transport {
         await Future.delayed(Duration(milliseconds: wait));
       }
     }
-    
+
     if (connected && _connectRetryTimer.isActive()) {
       _log.finer('[async-client][WSTransport] connect() resetting timer.');
       _connectRetryTimer.reset();
@@ -202,7 +200,11 @@ class WSTransport implements Transport {
     try {
       _socketStreamSub = _webSocketCh.listen(
         (data) {
-          if (!_broadCastStream.isClosed) {
+          if (_broadCastStream.isClosed) {
+            _log.severe(
+              '[async-client][Main] received event but _broadCastStream.isClosed',
+            );
+          } else {
             _onData(data);
           }
         },
@@ -276,14 +278,16 @@ class WSTransport implements Transport {
   }
 
   void _onSocketError(Exception error, StackTrace stackTrace) {
-    _log.severe('[async-client][WSTransport] onSocketError: ${error.toString()}');
+    _log.severe(
+      '[async-client][WSTransport] onSocketError: ${error.toString()}',
+    );
 
     if (error is MaxRetriesException) {
       _log.severe('[async-client][WSTransport] Max retries reached');
       _signalSocketError(error);
 
-      return; 
-    } 
+      return;
+    }
 
     var heartbeatTimer = _heartbeatTimer;
     if (heartbeatTimer != null) {
@@ -310,7 +314,8 @@ class WSTransport implements Transport {
       _heartbeatTimer?.cancel();
     }
     int reasonCode = extractCode(reason);
-    bool shouldRetry = code > SOCKET_GOING_AWAY ||
+    bool shouldRetry =
+        code > SOCKET_GOING_AWAY ||
         (code == SOCKET_GOING_AWAY && reasonCode >= SENDER_INVALID_REF);
     _log.info('[async-client][WSTransport] shouldRetry: $shouldRetry');
 
@@ -327,10 +332,7 @@ class WSTransport implements Transport {
       );
       disconnect();
 
-      _signalSocketClose(
-        code,
-        reason,
-      );
+      _signalSocketClose(code, reason);
     }
   }
 
@@ -339,10 +341,12 @@ class WSTransport implements Transport {
     if (_heartbeatTimer != null) {
       _heartbeatTimer?.cancel();
     }
-    _heartbeatTimer =
-        Timer.periodic(Duration(milliseconds: _config.hbInterval), (Timer t) {
-      sendHeartbeat();
-    });
+    _heartbeatTimer = Timer.periodic(
+      Duration(milliseconds: _config.hbInterval),
+      (Timer t) {
+        sendHeartbeat();
+      },
+    );
   }
 
   void sendHeartbeat() {
@@ -378,9 +382,10 @@ class WSTransport implements Transport {
   }
 
   MessageDecoder _selectMessageDecoder() {
-    MessageDecoder decoder = getProtocol() == 'binary_flow'
-        ? BinaryDecoder()
-        : JsonDecoder() as MessageDecoder;
+    MessageDecoder decoder =
+        getProtocol() == 'binary_flow'
+            ? BinaryDecoder()
+            : JsonDecoder() as MessageDecoder;
     _log.finest('[async-client][WSTransport] Decoder selected : $decoder');
 
     return decoder;
