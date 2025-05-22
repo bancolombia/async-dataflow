@@ -60,6 +60,7 @@ defmodule ChannelSenderEx.MixProject do
       {:cowboy_telemetry, "~> 0.4.0"},
       {:telemetry, "~> 1.3"},
       {:eflambe, "~> 0.3.0"},
+      {:meck, "0.9.2"},
       {:observer_cli, "~> 1.8"}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
