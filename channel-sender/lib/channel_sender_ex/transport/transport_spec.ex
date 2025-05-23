@@ -68,6 +68,8 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
         # extracts the channel key from the request query string
         case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
           {@channel_key, channel} = resp when byte_size(channel) > 10 ->
+            socket_id = Map.get(:cowboy_req.headers(req), "sec-websocket-key")
+            Logger.debug("Socket #{socket_id} connecting to channel #{channel}")
             resp
           _ ->
             {:error, @invalid_request_code}
@@ -116,13 +118,13 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
       end
 
       def notify_connected(channel) when is_binary(channel) do
-        socket_event_bus = get_param(:socket_event_bus, nil)
+        socket_event_bus = get_param(:socket_event_bus, ChannelSenderEx.Core.PubSub.SocketEventBus)
         ch_pid = socket_event_bus.notify_event({:connected, channel}, self())
         Process.monitor(ch_pid)
       end
 
       def notify_connected(channel_pid) when is_pid(channel_pid) do
-        socket_event_bus = get_param(:socket_event_bus, nil)
+        socket_event_bus = get_param(:socket_event_bus, ChannelSenderEx.Core.PubSub.SocketEventBus)
         socket_event_bus.notify_event({:connected, channel_pid}, self())
         Process.monitor(channel_pid)
       end

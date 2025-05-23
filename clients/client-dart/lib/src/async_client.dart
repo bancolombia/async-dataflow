@@ -101,12 +101,20 @@ class AsyncClient {
       (message) {
         if (eventFilters.contains(message.event)) {
           onData(message);
+        } else {
+          _log.warning(
+            '[async-client][Main] received event name "${message.event}" does not match event filters: "$eventFilters"  ',
+          );
+          _transportStrategy.sendInfo('not-subscribed-to[${message.event}]');
         }
       },
       onError: (error, stacktrace) {
+        _log.warning(
+          '[async-client][Main] Event stream signaled an error',
+        );
         if (onError != null) {
           onError(error);
-        }
+        } 
       },
       onDone: () {
         _log.warning(

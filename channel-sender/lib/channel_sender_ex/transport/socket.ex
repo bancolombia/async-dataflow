@@ -6,6 +6,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   require Logger
 
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
   alias ChannelSenderEx.Core.RulesProvider
@@ -24,11 +25,14 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   @impl :cowboy_websocket
   def init(req = %{method: "GET"}, opts) do
-    init_result = get_relevant_request_info(req)
+    init_result =
+      get_relevant_request_info(req)
       |> process_subprotocol_selection(req)
+
     case init_result do
       {:cowboy_websocket, _, _, _} = res ->
         res
+
       {:error, desc} ->
         :cowboy_req.reply(400, %{<<"x-error-code">> => desc}, req)
         {:ok, req, opts}
@@ -36,37 +40,34 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   @impl :cowboy_websocket
-  def websocket_init(state = {ref, _, _}) do
-    Logger.debug("Socket init with pid: #{inspect(self())} starting... #{inspect(state)}")
-    case lookup_channel_addr(ref) do
-      {:ok, _pid} ->
-        {_commands = [], state}
-      {:error, desc} ->
-        {_commands = [{:close, 1001, desc}], state}
-    end
+  def websocket_init(state = {_ref, _, _}) do
+    Logger.debug(fn ->
+      "Socket init with pid: #{inspect(self())} starting... #{inspect(state)}"
+    end)
+
+    {_commands = [], state}
   end
 
   @impl :cowboy_websocket
   def websocket_handle({:text, "Auth::" <> secret}, {channel, :pre_auth, encoder}) do
-    Logger.debug(fn -> "Socket for channel #{channel} received auth" end)
+    Logger.debug(fn -> "Socket #{inspect(self())} for channel #{channel} received auth" end)
+
     case ChannelAuthenticator.authorize_channel(channel, secret) do
       {:ok, application, user_ref} ->
-        monitor_ref = notify_connected(channel)
-
-        CustomTelemetry.execute_custom_event([:adf, :socket, :connection], %{count: 1})
-
-        {_commands = [auth_ok_frame(encoder)],
-         {channel, :connected, encoder, {application, user_ref, monitor_ref}, %{}}}
+        ensure_channel_exists_and_notify_socket(channel, application, user_ref, encoder)
 
       :unauthorized ->
+        CustomTelemetry.execute_custom_event(
+          [:adf, :socket, :badrequest],
+          %{count: 1},
+          %{request_path: "/ext/socket", status: 101, code: @invalid_secret_code}
+        )
 
-        CustomTelemetry.execute_custom_event([:adf, :socket, :badrequest],
-        %{count: 1},
-        %{request_path: "/ext/socket", status: 101, code: @invalid_secret_code})
+        Logger.error(fn ->
+          "Socket #{inspect(self())} unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}"
+        end)
 
-        Logger.error("Socket unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}")
-        {_commands = [{:close, 1001, <<@invalid_secret_code>>}],
-         {channel, :unauthorized}}
+        {_commands = [{:close, 1001, <<@invalid_secret_code>>}], {channel, :unauthorized}}
     end
   end
 
@@ -80,6 +81,15 @@ defmodule ChannelSenderEx.Transport.Socket do
         send(pid, {:ack, ref, message_id})
         {[], new_state}
     end
+  end
+
+  @impl :cowboy_websocket
+  def websocket_handle({:text, "Info::" <> message}, state = {channel_ref, _, _, _, _}) do
+    Logger.debug(fn ->
+      "Socket #{inspect(self())} for channel #{channel_ref} received info message: #{inspect(message)}"
+    end)
+
+    {[], state}
   end
 
   @impl :cowboy_websocket
@@ -119,7 +129,10 @@ defmodule ChannelSenderEx.Transport.Socket do
   @impl :cowboy_websocket
   def websocket_info(:terminate_socket, state = {channel_ref, _, _, _, _}) do
     # ! check if we need to do something with the new_socket_pid
-    Logger.info("Socket for channel #{channel_ref} : received terminate_socket message")
+    Logger.info(fn ->
+      "Socket #{inspect(self())} for channel #{channel_ref} : received terminate_socket message"
+    end)
+
     {_commands = [{:close, 1001, <<@socket_replaced>>}], state}
   end
 
@@ -127,38 +140,63 @@ defmodule ChannelSenderEx.Transport.Socket do
   def websocket_info({:DOWN, ref, proc, pid, cause}, state = {channel_ref, _, _, _, _}) do
     case cause do
       :normal ->
-        Logger.info("Socket for channel #{channel_ref}. Related process #{inspect(ref)} down normally.")
+        Logger.info(fn ->
+          "Socket #{inspect(self())} for channel #{channel_ref}. Related process #{inspect(ref)} down normally."
+        end)
+
         {_commands = [{:close, 1000, <<@normal_close_code>>}], state}
+
       _ ->
         Logger.warning("""
-          Socket for channel #{channel_ref}. Related Process #{inspect(ref)}
+          Socket #{inspect(self())} for channel #{channel_ref}. Related Process #{inspect(ref)}
           received DOWN message: #{inspect({ref, proc, pid, cause})}. Spawning process for re-conection
         """)
 
-        new_pid = ReConnectProcess.start(self(), channel_ref)
-        Logger.debug("Socket for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}")
-        Process.monitor(new_pid)
+        ReConnectProcess.start(self(), channel_ref)
 
         {_commands = [], state}
     end
   end
 
   @impl :cowboy_websocket
-  def websocket_info({:DOWN, _ref, :process, _pid, :no_channel}, state = {channel_ref, :connected, _, {_, _, _}, _}) do
-    Logger.warning("Socket for channel #{channel_ref} : spawning process for re-conection")
-    spawn_monitor(ReConnectProcess, :start, [self(), channel_ref])
+  def websocket_info(
+        {:DOWN, _ref, :process, _pid, :no_channel},
+        state = {channel_ref, :connected, _, {_, _, _}, _}
+      ) do
+    Logger.warning(fn ->
+      "Socket #{inspect(self())} for channel #{channel_ref} : spawning process for re-conection"
+    end)
+
+    ReConnectProcess.start(self(), channel_ref)
+
+    {_commands = [], state}
+  end
+
+  @impl :cowboy_websocket
+  def websocket_info({:monitor_channel, channel_ref, new_pid}, state) do
+    Logger.debug(fn ->
+      "Socket #{inspect(self())} for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}"
+    end)
+
+    Process.monitor(new_pid)
+
     {_commands = [], state}
   end
 
   @impl :cowboy_websocket
   def websocket_info(message, state) do
-    Logger.warning("Socket received socket info message: #{inspect(message)}, state: #{inspect(state)}")
+    Logger.warning(fn ->
+      "Socket #{inspect(self())} received socket info message: #{inspect(message)}, state: #{inspect(state)}"
+    end)
+
     {_commands = [], state}
   end
 
   @impl :cowboy_websocket
   def terminate(reason, partial_req, state) do
-    Logger.debug("Socket terminate with pid: #{inspect(self())}. REASON: #{inspect(reason)}. REQ: #{inspect(partial_req)}, STATE: #{inspect(state)}")
+    Logger.debug(fn ->
+      "Socket terminate with pid: #{inspect(self())}. REASON: #{inspect(reason)}. REQ: #{inspect(partial_req)}, STATE: #{inspect(state)}"
+    end)
 
     CustomTelemetry.execute_custom_event([:adf, :socket, :disconnection], %{count: 1})
 
@@ -174,18 +212,21 @@ defmodule ChannelSenderEx.Transport.Socket do
   defp get_relevant_request_info(req) do
     # extracts the channel key from the request query string
     rs = get_channel_from_qs(req)
-    Logger.debug(fn -> "Socket starting with parameter: #{inspect(rs)}" end)
+    Logger.debug(fn -> "Socket #{inspect(self())} starting with parameter: #{inspect(rs)}" end)
     rs
   end
 
   defp process_subprotocol_selection({@channel_key, channel}, req) do
     case :cowboy_req.parse_header("sec-websocket-protocol", req) do
       :undefined ->
-        {:cowboy_websocket, req, _state = {channel, :pre_auth, Application.get_env(
-          :channel_sender_ex,
-          :message_encoder,
-          ChannelSenderEx.Transport.Encoders.JsonEncoder
-          )}, ws_opts()}
+        {:cowboy_websocket, req,
+         _state =
+           {channel, :pre_auth,
+            Application.get_env(
+              :channel_sender_ex,
+              :message_encoder,
+              ChannelSenderEx.Transport.Encoders.JsonEncoder
+            )}, ws_opts()}
 
       sub_protocols ->
         {encoder, req} =
@@ -204,7 +245,10 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   defp process_subprotocol_selection(err = {:error, _}, req) do
-    Logger.error("Socket unable to start. Error: #{inspect(err)}. Request: #{inspect(req)}")
+    Logger.error(fn ->
+      "Socket #{inspect(self())} unable to start. Error: #{inspect(err)}. Request: #{inspect(req)}"
+    end)
+
     err
   end
 
@@ -220,36 +264,58 @@ defmodule ChannelSenderEx.Transport.Socket do
   end
 
   defp handle_terminate(:normal, _req, state) do
-    Logger.info("Socket with pid: #{inspect(self())} terminated with cause :normal. STATE: #{inspect(state)}")
+    Logger.info(fn ->
+      "Socket with pid: #{inspect(self())} terminated with cause :normal. STATE: #{inspect(state)}"
+    end)
+
     :ok
   end
 
   defp handle_terminate(:remote, _req, state) do
-    Logger.info("Socket with pid: #{inspect(self())} terminated with cause :remote. STATE: #{inspect(state)}")
+    Logger.info(fn ->
+      "Socket with pid: #{inspect(self())} terminated with cause :remote. STATE: #{inspect(state)}"
+    end)
+
     :ok
   end
 
   defp handle_terminate(cause = {:remote, _code, _}, _req, state) do
     channel_ref = extract_ref(state)
-    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated. CAUSE: #{inspect(cause)}")
+
+    Logger.info(fn ->
+      "Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated. CAUSE: #{inspect(cause)}"
+    end)
+
     :ok
   end
 
   defp handle_terminate(:stop, _req, state) do
     channel_ref = extract_ref(state)
-    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :stop. STATE: #{inspect(state)}")
+
+    Logger.info(fn ->
+      "Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :stop. STATE: #{inspect(state)}"
+    end)
+
     :ok
   end
 
   defp handle_terminate(:timeout, _req, state) do
     channel_ref = extract_ref(state)
-    Logger.info("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :timeout. STATE: #{inspect(state)}")
+
+    Logger.info(fn ->
+      "Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} terminated with :timeout. STATE: #{inspect(state)}"
+    end)
+
     :ok
   end
 
   defp handle_terminate({:error, :closed}, _req, state) do
     channel_ref = extract_ref(state)
-    Logger.warning("Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} was closed without receiving closing frame first")
+
+    Logger.warning(fn ->
+      "Socket with pid: #{inspect(self())}, for ref #{inspect(channel_ref)} was closed without receiving closing frame first"
+    end)
+
     :ok
   end
 
@@ -257,13 +323,17 @@ defmodule ChannelSenderEx.Transport.Socket do
   # {:crash, Class, Reason}
   # {:error, :badencoding | :badframe | :closed | Reason}
   defp handle_terminate(reason, _req, state) do
-    Logger.info("Socket with pid: #{inspect(self())}, terminated with reason: #{inspect(reason)}. STATE: #{inspect(state)}")
+    Logger.info(fn ->
+      "Socket with pid: #{inspect(self())}, terminated with reason: #{inspect(reason)}. STATE: #{inspect(state)}"
+    end)
+
     :ok
   end
 
   defp extract_ref(state) when is_tuple(state) do
     elem(state, 0)
   end
+
   defp extract_ref(state), do: state
 
   @compile {:inline, auth_ok_frame: 1}
@@ -271,12 +341,16 @@ defmodule ChannelSenderEx.Transport.Socket do
     encoder.simple_frame("AuthOk")
   rescue
     e ->
-      Logger.error("Socket unable to send auth ok frame: #{inspect(e)}")
+      Logger.error(fn ->
+        "Socket #{inspect(self())} unable to send auth ok frame: #{inspect(e)}"
+      end)
+
       {:close, @invalid_secret_code, "Invalid token for channel"}
   end
 
   defp ws_opts do
     timeout = get_param(:socket_idle_timeout, 90_000)
+
     %{
       idle_timeout: timeout,
       #      active_n: 5,
@@ -290,4 +364,24 @@ defmodule ChannelSenderEx.Transport.Socket do
     }
   end
 
+  defp ensure_channel_exists_and_notify_socket(channel, application, user_ref, encoder) do
+    args = {channel, application, user_ref, []}
+
+    case ChannelSupervisor.start_channel_if_not_exists(args) do
+      {:ok, pid} ->
+        monitor_ref = notify_connected(pid)
+
+        CustomTelemetry.execute_custom_event([:adf, :socket, :connection], %{count: 1})
+
+        state = {channel, :connected, encoder, {application, user_ref, monitor_ref}, %{}}
+        {_commands = [auth_ok_frame(encoder)], state}
+
+      {:error, reason} ->
+        Logger.error(fn ->
+          "Channel #{channel} not exists and unable to start. Reason: #{inspect(reason)}"
+        end)
+
+        {_commands = [{:close, 1001, <<@invalid_channel_code>>}], {channel, :unauthorized}}
+    end
+  end
 end

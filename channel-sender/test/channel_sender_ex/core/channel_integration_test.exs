@@ -26,7 +26,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
         "socket auth"
       })
 
-    {:ok, _} = Application.ensure_all_started(:swarm)
+    {:ok, pg_pid} = :pg.start_link()
     {:ok, _} = Application.ensure_all_started(:libcluster)
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
@@ -57,6 +57,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
       # true = Process.exit(pid_supervisor, :normal)
       Application.delete_env(:channel_sender_ex, :accept_channel_reply_timeout)
       Application.delete_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
+      Process.exit(pg_pid, :kill)
       IO.puts("Supervisor and Registry was terminated")
     end)
 
@@ -129,8 +130,8 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   } do
 
     # send 2 messages
-    assert {:accepted_waiting, _, _} = deliver_message(channel, "99")
-    assert {:accepted_waiting, _, _} = deliver_message(channel, "100")
+    assert {:ok, _, _} = deliver_message(channel, "99")
+    assert {:ok, _, _} = deliver_message(channel, "100")
 
     # connect
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
@@ -149,11 +150,11 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     secret: secret
   } do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-    assert {:accepted_connected, _, _} = deliver_message(channel)
+    assert {:ok, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
     :gun.close(conn)
     Process.sleep(100)
-    assert {:accepted_waiting, _, _} = deliver_message(channel)
+    assert {:ok, _, _} = deliver_message(channel)
   end
 
   test "Should do no waiting when connection closes clean", %{
@@ -166,7 +167,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Helper.compile(:channel_sender_ex)
 
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
-    assert {:accepted_connected, _, _} = deliver_message(channel)
+    assert {:ok, _, _} = deliver_message(channel)
     assert_receive {:gun_ws, ^conn, ^stream, {:text, _data_string}}
 
     channel_pid = ChannelSupervisor.whereis_channel(channel)

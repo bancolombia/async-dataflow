@@ -77,6 +77,10 @@ class DefaultTransportStrategy {
     _currentTransport = NoopTransport();
   }
 
+  Future<void> sendInfo(String message) async {
+    _currentTransport.send('Info::$message');
+  }
+
   Transport getTransport() {
     return _currentTransport;
   }

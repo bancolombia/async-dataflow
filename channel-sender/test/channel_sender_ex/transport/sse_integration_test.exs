@@ -26,7 +26,6 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
         "socket auth"
     })
 
-    {:ok, _} = Application.ensure_all_started(:swarm)
     {:ok, _} = Application.ensure_all_started(:libcluster)
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
@@ -41,7 +40,8 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
     }
 
     children = [
-      ChannelSupervisor
+      ChannelSupervisor,
+      %{id: :pg, start: {:pg, :start_link, []}}
     ]
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     {:ok, pid_supervisor} = Supervisor.start_link(children, opts)

@@ -14,6 +14,11 @@ class NoopTransport implements Transport {
   }
 
   @override
+  void send(String message) {
+    // No operation  
+  }
+
+  @override
   bool isOpen() {
     return false;
   }

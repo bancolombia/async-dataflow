@@ -2,6 +2,8 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
   @moduledoc """
   Exponential backoff algorithm with jitter.
   """
+  require Logger
+
   def execute(initial, max_delay, max_retries, action_fn, on_give_up) do
     loop(initial, max_delay, max_retries, action_fn, normalize(on_give_up), 0)
   end
@@ -24,7 +26,9 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
       try do
         action_fn.(actual_delay)
       catch
-        _type, _err -> :retry
+        type, err ->
+          Logger.error("Error in retry action: #{inspect(type)}, #{inspect(err)}")
+          :retry
       end
     end)
     case val do
