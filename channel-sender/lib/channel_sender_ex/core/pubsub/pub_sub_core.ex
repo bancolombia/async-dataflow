@@ -5,7 +5,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   require Logger
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Utils.CustomTelemetry
   import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]

@@ -30,7 +30,6 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     })
     {:ok, pg_pid} = :pg.start_link()
 
-    {:ok, _} = Application.ensure_all_started(:cachex)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
     Helper.compile(:channel_sender_ex)
 

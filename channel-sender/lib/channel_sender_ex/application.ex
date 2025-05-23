@@ -2,7 +2,6 @@ defmodule ChannelSenderEx.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
-  #import Cachex.Spec
 
   alias ChannelSenderEx.ApplicationConfig
   alias ChannelSenderEx.Core.RulesProvider.Helper
@@ -40,22 +39,7 @@ defmodule ChannelSenderEx.Application do
         [
           {Cluster.Supervisor, [topologies(), [name: ChannelSenderEx.ClusterSupervisor]]},
           pg_spec(),
-          # {Cachex,
-          #  [
-          #    :channels,
-          #    [
-          #      router:
-          #        router(
-          #          module: Cachex.Router.Ring,
-          #          options: [
-          #            monitor: true
-          #          ]
-          #        )
-          #    ]
-          #  ]},
-          # ChannelSenderEx.Core.ChannelSupervisor,
-          ChannelSenderEx.Core.ChannelSupervisorPg,
-          # {ChannelCounter,[]},
+          ChannelSenderEx.Core.ChannelSupervisor,
           {Plug.Cowboy,
            scheme: :http,
            plug: RestController,

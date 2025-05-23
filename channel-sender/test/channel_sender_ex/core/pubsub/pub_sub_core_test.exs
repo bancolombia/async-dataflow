@@ -2,7 +2,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCoreTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.PubSub.PubSubCore
 
   import Mock
@@ -27,20 +27,6 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCoreTest do
       assert_called_exactly ChannelSupervisor.related_channels("channel_ref"), 10
     end
   end
-
-  # No implementado con Cachex
-  # test "should deliver to all channels associated with the given application reference" do
-  #   with_mocks([
-  #     {Swarm, [], [
-  #       members: fn(_) -> [:c.pid(0, 255, 0), :c.pid(0, 254, 0)] end
-  #     ]},
-  #     {Channel, [], [deliver_message: fn(_, _) -> :accepted_connected end]}
-  #   ]) do
-  #     assert  %{accepted_connected: 2} == PubSubCore.deliver_to_app_channels("app_ref", %{})
-  #     assert_called_exactly Swarm.members("app_ref"), 1
-  #     assert_called_exactly Channel.deliver_message(:_, :_), 2
-  #   end
-  # end
 
   test "should deliver to all channels associated with the given user reference" do
     with_mocks([

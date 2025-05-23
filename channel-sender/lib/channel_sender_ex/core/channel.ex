@@ -8,7 +8,7 @@ defmodule ChannelSenderEx.Core.Channel do
   require Logger
   alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.ChannelIDGenerator
-  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Utils.CustomTelemetry

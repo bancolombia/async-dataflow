@@ -2,7 +2,7 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBusTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.PubSub.SocketEventBus
 
   import Mock

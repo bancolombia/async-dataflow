@@ -6,7 +6,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
   require Logger
 
-  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
   alias ChannelSenderEx.Core.RulesProvider

@@ -1,7 +1,7 @@
 defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
@@ -30,7 +30,6 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
     {:ok, _} = Application.ensure_all_started(:cowboy)
     {:ok, _} = Application.ensure_all_started(:gun)
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
-    {:ok, _} = Application.ensure_all_started(:cachex)
     Helper.compile(:channel_sender_ex)
 
     ext_message = %{

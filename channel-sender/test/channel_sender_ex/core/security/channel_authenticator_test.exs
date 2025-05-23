@@ -1,7 +1,7 @@
 defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
 
   import Mock

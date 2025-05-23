@@ -2,7 +2,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
   use ExUnit.Case
 
   alias ChannelSenderEx.Core.Channel
-  alias ChannelSenderEx.Core.ChannelSupervisorPg, as: ChannelSupervisor
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.PubSub.ReConnectProcess
   import Mock
 

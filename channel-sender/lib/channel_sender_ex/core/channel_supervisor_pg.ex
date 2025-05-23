@@ -1,4 +1,4 @@
-defmodule ChannelSenderEx.Core.ChannelSupervisorPg do
+defmodule ChannelSenderEx.Core.ChannelSupervisor do
   use DynamicSupervisor
 
   @moduledoc """
