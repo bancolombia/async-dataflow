@@ -97,8 +97,6 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     secret: secret
   } do
 
-    IO.inspect(Application.get_env(:channel_sender_ex, :channel_shutdown_on_clean_close, 0), label: "Shutdown on clean close")
-
     # start socket connection and authenticate
     {_conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
 

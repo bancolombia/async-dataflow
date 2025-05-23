@@ -1,4 +1,5 @@
 defmodule ChannelSenderEx.Core.Stats.ChannelCounter do
+  @moduledoc false
   use GenServer
 
   alias ChannelSenderEx.Utils.CustomTelemetry

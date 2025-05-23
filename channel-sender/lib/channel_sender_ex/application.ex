@@ -6,7 +6,6 @@ defmodule ChannelSenderEx.Application do
 
   alias ChannelSenderEx.ApplicationConfig
   alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias ChannelSenderEx.Core.Stats.ChannelCounter
   alias ChannelSenderEx.Transport.EntryPoint
   alias ChannelSenderEx.Transport.Rest.RestController
   alias ChannelSenderEx.Utils.CustomTelemetry

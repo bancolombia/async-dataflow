@@ -154,21 +154,25 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
   defp put_action(channel_ref, channel_pid) do
     fn delay ->
-      case Cachex.put(:channels, channel_ref, channel_pid) do
-        {:ok, true} ->
-          Logger.debug(fn ->
-            "Channel Supervisor, channel #{channel_ref} saved in #{delay}"
-          end)
+      put_action_delay(delay, channel_ref, channel_pid)
+    end
+  end
 
-          verify_or_retry(channel_ref)
+  defp put_action_delay(delay, channel_ref, channel_pid) do
+    case Cachex.put(:channels, channel_ref, channel_pid) do
+      {:ok, true} ->
+        Logger.debug(fn ->
+          "Channel Supervisor, channel #{channel_ref} saved in #{delay}"
+        end)
 
-        other ->
-          Logger.debug(fn ->
-            "Channel Supervisor, channel #{channel_ref} could not be saved in delay #{delay} -> #{inspect(other)}"
-          end)
+        verify_or_retry(channel_ref)
 
-          :retry
-      end
+      other ->
+        Logger.debug(fn ->
+          "Channel Supervisor, channel #{channel_ref} could not be saved in delay #{delay} -> #{inspect(other)}"
+        end)
+
+        :retry
     end
   end
 
