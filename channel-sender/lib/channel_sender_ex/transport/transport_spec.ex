@@ -15,7 +15,7 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
       @__option__ unquote(option)
       @after_compile unquote(__MODULE__)
 
-      import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
+      import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 6]
       alias ChannelSenderEx.Core.ChannelSupervisor
       alias ChannelSenderEx.Core.RulesProvider
 
@@ -68,8 +68,7 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
         # extracts the channel key from the request query string
         case :lists.keyfind(@channel_key, 1, :cowboy_req.parse_qs(req)) do
           {@channel_key, channel} = resp when byte_size(channel) > 10 ->
-            socket_id = Map.get(:cowboy_req.headers(req), "sec-websocket-key")
-            Logger.debug("Socket #{socket_id} connecting to channel #{channel}")
+            print_socket_info(req, channel)
             resp
           _ ->
             {:error, @invalid_request_code}
@@ -105,7 +104,7 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
         execute(100, 500, 3, action_fn, fn ->
           Logger.error("Transport #{@__option__} unable to start. channel_ref process does not exist yet, ref: #{inspect(channel_ref)}")
           {:error, <<@invalid_channel_code>>}
-        end)
+        end, "lookup_channel_#{channel_ref}")
       end
 
       def check_channel_registered(channel_ref) do
@@ -117,15 +116,15 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
         end
       end
 
-      def notify_connected(channel) when is_binary(channel) do
+      def notify_connected(channel, kind) when is_binary(channel) do
         socket_event_bus = get_param(:socket_event_bus, ChannelSenderEx.Core.PubSub.SocketEventBus)
-        ch_pid = socket_event_bus.notify_event({:connected, channel}, self())
+        ch_pid = socket_event_bus.notify_event({:connected, channel, kind}, self())
         Process.monitor(ch_pid)
       end
 
-      def notify_connected(channel_pid) when is_pid(channel_pid) do
+      def notify_connected(channel_pid, kind) when is_pid(channel_pid) do
         socket_event_bus = get_param(:socket_event_bus, ChannelSenderEx.Core.PubSub.SocketEventBus)
-        socket_event_bus.notify_event({:connected, channel_pid}, self())
+        socket_event_bus.notify_event({:connected, channel_pid, kind}, self())
         Process.monitor(channel_pid)
       end
 
@@ -133,6 +132,39 @@ defmodule ChannelSenderEx.Transport.TransportSpec do
         RulesProvider.get(param)
       rescue
         _e -> def
+      end
+
+      defp print_socket_info(req, channel) do
+        case get_kind(req) do
+          {:websocket, socket_id} ->
+            Logger.debug("Socket #{socket_id} connecting to channel #{channel}")
+
+          {:sse, _} ->
+            Logger.debug("SSE connecting to channel #{channel}")
+
+          {:longpoll, _} ->
+            Logger.debug("LongPoll connecting to channel #{channel}")
+
+          {:undefined, _} ->
+            Logger.debug("Undefined transport connecting to channel #{channel}")
+        end
+      end
+
+      defp get_kind(req) do
+        case Map.get(req.headers, "sec-websocket-key", :undefined) do
+          :undefined ->
+            path = Map.get(req, :path, "")
+            cond do
+              String.contains?(path, "longpoll") ->
+                {:longpoll, "longpoll"}
+              String.contains?(path, "sse") ->
+                {:sse, "sse"}
+              true ->
+                {:undefined, "undefined"}
+            end
+
+          socket_id -> {:websocket, socket_id}
+        end
       end
 
     end

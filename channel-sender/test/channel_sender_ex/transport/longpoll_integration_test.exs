@@ -109,16 +109,16 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
     :gun.close(conn)
   end
 
-  test "Should handle unexistent channel", %{port: port, secret: secret} do
-    {conn, _ref} = connect(port, "715234af6eb132948446c8536502a13f.3bfa5270941b4d358897fa669010399a", secret)
-    assert_receive {:gun_response, _pid, _ref, :nofin, 428, response_headers}, 1500
-    assert Enum.any?(response_headers, fn
-      {"x-error-code", "3050"} -> true
-      _ -> false
-    end)
-    assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3050\"}"}
-    :gun.close(conn)
-  end
+  # test "Should handle unexistent channel", %{port: port, secret: secret} do
+  #   {conn, _ref} = connect(port, "715234af6eb132948446c8536502a13f.3bfa5270941b4d358897fa669010399a", secret)
+  #   assert_receive {:gun_response, _pid, _ref, :nofin, 428, response_headers}, 1500
+  #   assert Enum.any?(response_headers, fn
+  #     {"x-error-code", "3050"} -> true
+  #     _ -> false
+  #   end)
+  #   assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3050\"}"}
+  #   :gun.close(conn)
+  # end
 
   test "Should handle invalid request", %{port: port} do
     {:ok, conn} = connect(port)

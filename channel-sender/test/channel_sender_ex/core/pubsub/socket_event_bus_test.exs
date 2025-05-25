@@ -12,7 +12,7 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBusTest do
     socket_pid = self()
 
     with_mock ChannelSupervisor, [whereis_channel: fn(_) -> :undefined end] do
-      assert_raise RuntimeError, "No channel found", fn -> SocketEventBus.notify_event({:connected, channel}, socket_pid) end
+      assert_raise RuntimeError, "No channel found", fn -> SocketEventBus.notify_event({:connected, channel, :websocket}, socket_pid) end
     end
   end
 
@@ -25,7 +25,7 @@ defmodule ChannelSenderEx.Core.PubSub.SocketEventBusTest do
       {ChannelSupervisor, [], [whereis_channel: fn(_) -> pid end]},
       {Channel, [], [socket_connected: fn(_, _, _) -> :ok end]}
       ]) do
-      assert SocketEventBus.notify_event({:connected, channel}, socket_pid) == pid
+      assert SocketEventBus.notify_event({:connected, channel, :websocket}, socket_pid) == pid
     end
   end
 

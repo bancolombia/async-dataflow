@@ -10,7 +10,7 @@ channel_sender_ex:
     # before it is closed
     max_age: 900
   
-  # initial time in seconds to wait before re-send a message not acked to a channel
+  # initial time in milliseconds to wait before re-send a message not acked to a channel
   initial_redelivery_time: 900
 
   # max time in milliseconds to wait the client to send the auth token

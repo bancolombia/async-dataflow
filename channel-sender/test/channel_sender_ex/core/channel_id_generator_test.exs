@@ -51,10 +51,11 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
   end
 
   test "Should indicate expired token", %{app_id: app_id, user_id: user_id} do
+    Helper.compile(:channel_sender_ex, max_age: 1)
+
     channel_id = ChannelIDGenerator.generate_channel_id(app_id, user_id)
     token = ChannelIDGenerator.generate_token(channel_id, app_id, user_id)
 
-    Helper.compile(:channel_sender_ex, max_age: 1)
     Process.sleep(1100)
 
     assert {:error, :expired} == ChannelIDGenerator.verify_token(channel_id, token)

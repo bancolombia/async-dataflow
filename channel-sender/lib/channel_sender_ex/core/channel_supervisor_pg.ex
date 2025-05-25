@@ -47,10 +47,11 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
   end
 
   @spec register_channel(channel_init_args()) :: any()
-  def register_channel(args = {channel_ref, _application, _user_ref, _meta}) do
+  def register_channel(args = {_channel_ref, _application, _user_ref, _meta}) do
     case start_channel(args) do
-      {:ok, pid} ->
-        register_pid(channel_ref, pid)
+      {:ok, _pid} = r ->
+        # register_pid(channel_ref, pid) # registration happens in init method of Channel
+        r
 
       {:error, reason} ->
         Logger.error(fn ->
@@ -86,7 +87,8 @@ defmodule ChannelSenderEx.Core.ChannelSupervisor do
 
     if pid == :undefined or not Channel.alive?(pid) do
       CustomTelemetry.execute_custom_event([:adf, :channel, :created_on_socket], %{count: 1})
-      register_channel(args)
+      # register_channel(args) #registration happens in init method of Channel
+      start_channel(args)
     else
       {:ok, pid}
     end

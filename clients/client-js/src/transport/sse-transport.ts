@@ -9,11 +9,9 @@ import { Utils } from "../utils";
 export class SseTransport implements Transport {
 
     private actualToken;
-    private eventSource: EventSourcePlus;
     private readonly serializer: MessageDecoder;
     private errorCount = 0;
     private controller: EventSourceController;
-    private tokenUpdated: boolean = false;
 
     private static readonly MAX_RETRY_INTERVAL = 6000;
     private static readonly SUCESS_STATUS = 299;
@@ -21,16 +19,25 @@ export class SseTransport implements Transport {
     public static create(config: AsyncConfig,
         handleMessage = (_message: ChannelMessage) => { },
         errorCallback = (_error: TransportError) => { },
-        transport: typeof EventSourcePlus = EventSourcePlus): Transport {
-        return new SseTransport(config, handleMessage, errorCallback, transport);
-    }
+        transport: EventSourcePlus = null): Transport {
+            return new SseTransport(config, handleMessage, errorCallback, transport);
+        }
 
     private constructor(private readonly config: AsyncConfig,
         private readonly handleMessage: (_message: ChannelMessage) => void,
         private readonly errorCallback: (_error: TransportError) => void,
-        private readonly transport: typeof EventSourcePlus) {
+        private readonly transport:EventSourcePlus = null) {
         this.serializer = new JsonDecoder();
         this.actualToken = config.channel_secret;
+        const self = this;
+        this.transport = transport || new EventSourcePlus(this.sseUrl(), {
+            headers: {
+                Authorization: "Bearer " + self.getToken(),
+            },
+            maxRetryInterval: SseTransport.MAX_RETRY_INTERVAL,
+            maxRetryCount: this.config.maxReconnectAttempts,
+        });
+        console.debug('async-client. sse transport created with transport: ', transport);
     }
 
     name(): string {
@@ -41,24 +48,18 @@ export class SseTransport implements Transport {
         if (this.connected()) {
             console.debug('async-client. sse already created and open');
             return;
+        } else {
+            console.debug('async-client. sse not connected, creating new EventSource');
         }
 
-        this.eventSource = new this.transport(this.sseUrl(), {
-            headers: {
-                Authorization: "Bearer " + this.actualToken,
-            },
-            maxRetryInterval: SseTransport.MAX_RETRY_INTERVAL,
-            maxRetryCount: this.config.maxReconnectAttempts,
-        });
-
         const self = this;
-        self.controller = this.eventSource.listen({
-            onMessage: (event) => {
+        self.controller = this.transport.listen({
+            onMessage: (event) => {             
                 try {
                     const message = this.serializer.decode_sse(event.data)
                     if (message.event == ":n_token") {
                         self.actualToken = message.payload;
-                        self.tokenUpdated = true;
+                        console.debug('async-client. sse received new token = ', self.actualToken);
                     }
                     this.errorCount = 0;
                     self.handleMessage(message);
@@ -66,10 +67,12 @@ export class SseTransport implements Transport {
                     console.error('Error processing message:', error);
                 }
             },
+            onRequest: ({ request, options }) => {
+                options.headers.append("Authorization", "Bearer " + self.getToken());
+            },
             async onResponse({ response }) {
                 console.debug(`Sse client received status code: ${response.status}`);
                 if (connectedCallback && response.status <= SseTransport.SUCESS_STATUS) {
-                    self.tokenUpdated = false;
                     connectedCallback();
                 }
             },
@@ -88,7 +91,7 @@ export class SseTransport implements Transport {
                 const reason = Utils.extractReason(parsed.error);
                 const stopRetries = response.status == 400 ||
                     response.status == 404 ||
-                    (response.status === 401 && !self.tokenUpdated) ||
+                    (response.status == 401 && reason < 3050) ||
                     (response.status == 428 && reason < 3050);
 
                 if (stopRetries || self.errorCount >= self.config.maxReconnectAttempts) {
@@ -121,19 +124,33 @@ export class SseTransport implements Transport {
     }
 
     public connected(): boolean {
-        return this.eventSource && this.controller && !this.controller.signal.aborted;
+        return this.transport && this.controller && !this.controller.signal.aborted;
+    }
+
+    public send(message: string): void {
+        console.warn('async-client. sse transport does not support sending messages. Use the WebSocket transport for sending messages.');
     }
 
     // only for testing or internal
-
     public getDecoder(): MessageDecoder {
         return this.serializer;
     }
 
+    private getToken(): string {
+        return this.actualToken;
+    }
+
     private sseUrl(): string {
+        if (this.config.sse_url) {
+            return `${this.config.sse_url}/ext/sse?channel=${this.config.channel_ref}`;
+        }
+        console.debug('async-client. sse config.sse_url not set, trying to compute from socket_url');
+        // try to compute the SSE URL from the socket URL
         let url = this.config.socket_url;
         if (url.startsWith('ws')) {
             url = url.replace('ws', 'http');
+        } else if (url.startsWith('wss')) {
+            url = url.replace('wss', 'https');
         }
         return `${url}/ext/sse?channel=${this.config.channel_ref}`;
     }

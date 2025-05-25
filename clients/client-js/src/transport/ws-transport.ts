@@ -45,8 +45,7 @@ export class WsTransport implements Transport {
         this.reconnectTimer = new RetryTimer(() => this.teardown(() => this.connect()),
             50,
             (num) => Utils.jitter(num, 0.25),
-            //config.maxReconnectAttempts,
-            2,
+            config.maxReconnectAttempts,
             () => this.errorCallback({ origin: 'ws', code: 1, message: "Max retries reached" })
         );
         this.actualToken = config.channel_secret;
@@ -86,6 +85,10 @@ export class WsTransport implements Transport {
 
     public connected(): boolean {
         return this.socket && this.socket.readyState == SocketState.OPEN;
+    }
+
+    public send(message: string): void {
+        this.socket.send(`Info::${message}`);
     }
 
     // internal functions

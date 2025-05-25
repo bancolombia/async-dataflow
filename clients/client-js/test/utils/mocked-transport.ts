@@ -15,6 +15,11 @@ export class MockedTransport implements Transport {
         return this.nameValue;
     }
 
+    send(message: string): void {
+        // Simulate sending a message
+        console.log(`MockedTransport: Sending message: ${message}`);
+    }
+
     simulateMessage(message: ChannelMessage) {
         this.handleMessage(message);
     }

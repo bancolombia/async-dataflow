@@ -5,10 +5,14 @@ defmodule ChannelSenderEx.Transport.Sse do
 
   require Logger
 
+  alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.PubSub.ReConnectProcess
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.JsonEncoder
   alias ChannelSenderEx.Transport.TransportSpec
+  alias ChannelSenderEx.Utils.CustomTelemetry
+
   use TransportSpec, option: :sse
 
   def init(req, state) do
@@ -70,8 +74,8 @@ defmodule ChannelSenderEx.Transport.Sse do
   def info({:deliver_msg, {pid, ref}, message = {msg_id, _, _, _, _}}, req, state) do
     {:ok, {:text, response}} = JsonEncoder.encode_message(message)
     send_event(req, response)
-    #send ack later to increase success rate of message delivery
-    Process.send_after(self(), {:ack, ref, msg_id, pid}, 2500)
+    #send ack
+    Process.send_after(self(), {:ack, ref, msg_id, pid}, 100)
     {:ok, req, state}
   end
 
@@ -86,6 +90,41 @@ defmodule ChannelSenderEx.Transport.Sse do
       val -> val
     end
     Logger.debug(fn -> "Sse for channel [#{inspect(ch)}] : received terminate_socket message" end)
+    {:ok, req, state}
+  end
+
+  def info({:DOWN, ref, :process, pid, cause}, req, state) do
+    {_, channel_ref} = get_channel_from_qs(req)
+    case cause do
+      :normal ->
+        Logger.info(fn ->
+          "SSE #{inspect(self())} for channel #{channel_ref}. Related process #{inspect(ref)} down normally."
+        end)
+
+        {:ok, req, state}
+      _ ->
+        Logger.warning("""
+          SSE #{inspect(self())} for channel #{channel_ref}. Related Process #{inspect(ref)}
+          received DOWN message: #{inspect({ref, pid, cause})}. Spawning process for re-conection
+        """)
+
+        ReConnectProcess.start(self(), channel_ref, :sse, [
+          min_backoff: 50,
+          max_backoff: 2000,
+          max_retries: 5
+        ])
+
+        {:ok, req, state}
+    end
+  end
+
+  def info({:monitor_channel, channel_ref, new_pid}, req, state) do
+    Logger.debug(fn ->
+      "SSE #{inspect(self())} for channel #{channel_ref} : channel process found for re-conection: #{inspect(new_pid)}"
+    end)
+
+    # Process.monitor(new_pid)
+
     {:ok, req, state}
   end
 
@@ -110,10 +149,12 @@ defmodule ChannelSenderEx.Transport.Sse do
   end
 
   defp authorize({channel, secret}) do
-    with {:ok, channel_pid} <- lookup_channel_addr(channel),
-         {:ok, _application, _user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret) do
-          _monitor_ref = notify_connected(channel_pid)
-          :ok
+    with {:ok, application, user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret),
+      :ok <- ensure_channel_exists_and_notify_socket(channel, application, user_ref) do
+
+        CustomTelemetry.execute_custom_event([:adf, :sse, :connection], %{count: 1})
+        :ok
+
     else
       :unauthorized ->
         Logger.error("Sse unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}")
@@ -125,8 +166,23 @@ defmodule ChannelSenderEx.Transport.Sse do
     end
   end
 
+  defp ensure_channel_exists_and_notify_socket(channel, application, user_ref) do
+    args = {channel, application, user_ref, []}
+    case ChannelSupervisor.start_channel_if_not_exists(args) do
+      {:ok, pid} ->
+        _monitor_ref = notify_connected(pid, :sse)
+        :ok
+      {:error, reason} = e ->
+        Logger.error(fn ->
+          "Channel #{channel} not exists and unable to start. Reason: #{inspect(reason)}"
+        end)
+        e
+    end
+  end
+
   @compile {:inline, invalid_request: 3}
   defp invalid_request(req, status, error_code) do
+    CustomTelemetry.execute_custom_event([:adf, :sse, :badrequest], %{count: 1}, %{status: status, code: error_code})
     req = send_cors_headers(req)
     :cowboy_req.reply(status,
       %{"content-type" => "application/json",
