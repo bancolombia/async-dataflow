@@ -4,31 +4,37 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoff do
   """
   require Logger
 
-  def execute(initial, max_delay, max_retries, action_fn, on_give_up) do
-    loop(initial, max_delay, max_retries, action_fn, normalize(on_give_up), 0)
+  def execute(initial, max_delay, max_retries, action_fn, on_give_up, key \\ "-") do
+    loop(initial, max_delay, max_retries, action_fn, normalize(on_give_up), 0, key)
   end
 
   defp normalize(value) when is_function(value), do: value
   defp normalize(value) when is_atom(value), do: fn -> exit(value) end
 
-  def loop(_, _, max_retries, _, on_give_up, current_tries) when max_retries == current_tries, do: on_give_up.()
+  def loop(_, _, max_retries, _, on_give_up, current_tries, _) when max_retries == current_tries, do: on_give_up.()
 
-  def loop(initial, max_delay, max_retries, action_fn, on_give_up, iter) do
+  def loop(initial, max_delay, max_retries, action_fn, on_give_up, iter, key) do
     actual_delay = exp_back_off(initial, max_delay, iter)
-    case do_action(action_fn, actual_delay) do
-      :retry -> loop(initial, max_delay, max_retries, action_fn, on_give_up, iter + 1)
+    case do_action(action_fn, actual_delay, key) do
+      :retry -> loop(initial, max_delay, max_retries, action_fn, on_give_up, iter + 1, key)
       value -> value
     end
   end
 
-  defp do_action(action_fn, actual_delay) do
+  defp do_action(action_fn, actual_delay, key) do
     {time_us, val} = :timer.tc(fn ->
       try do
         action_fn.(actual_delay)
       catch
         type, err ->
-          Logger.error("Error in retry action: #{inspect(type)}, #{inspect(err)}")
-          :retry
+          case err do
+            :timeout_value ->
+              Logger.warning("Retry time exhausted, action: #{key}. Waiting again...")
+              :retry
+            _ ->
+              Logger.error("Error in retry, action #{key} : #{inspect(type)}, #{inspect(err)}")
+              :retry
+          end
       end
     end)
     case val do

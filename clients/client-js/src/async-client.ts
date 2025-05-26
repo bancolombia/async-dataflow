@@ -68,11 +68,27 @@ export class AsyncClient {
         if (message.event == ":n_token") {
             console.debug('async-client. received new token');
             this.config.channel_secret = message.payload;
+            return;
         }
-        this.bindings
-            .filter(handler => this.matchHandlerExpr(handler.eventName, message.event))
-            .filter(_handler => this.deDupFilter(message.message_id))
-            .forEach(handler => handler.callBack(message))
+
+        if (this.bindings.length === 0) {
+            console.error(`async-client. No bindings defined. Discarding ALL messages.`);
+            this.currentTransport.send(`no-bindings-defined-msgid[${message.message_id}]`);
+            return;
+        }
+        
+        var candidateBindings = this.bindings
+            .filter(handler => this.matchHandlerExpr(handler.eventName, message.event));
+
+        if (candidateBindings.length === 0) {
+            console.debug(`async-client. No bindings found for event'${message.event}' with message_id: ${message.message_id}. Discarding message.`);
+            this.currentTransport.send(`no-bindings-for[${message.event}]-msgid[${message.message_id}]`);
+            return;
+        } else {
+            candidateBindings
+                .filter(_handler => this.deDupFilter(message.message_id))
+                .forEach(handler => handler.callBack(message))
+        }
     }
 
     private matchHandlerExpr(eventExpr: string, actualEventName: string): boolean {
@@ -94,6 +110,7 @@ export class AsyncClient {
     }
 
     private handleTransportError(error: TransportError) {
+        console.debug(`async-client. hanldling transport error: `, error);
         if (error.code === 1 && error.origin == this.currentTransport.name()) {
             this.retriesByTransport++;
             this.currentTransport.disconnect();

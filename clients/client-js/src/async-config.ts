@@ -1,5 +1,6 @@
 export interface AsyncConfig {
     socket_url: string;
+    sse_url?: string;
     channel_ref: string;
     channel_secret: string;
     enable_binary_transport?: boolean;

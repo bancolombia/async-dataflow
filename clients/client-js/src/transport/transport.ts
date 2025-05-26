@@ -3,4 +3,5 @@ export interface Transport {
     disconnect(): void;
     name(): string;
     connected(): boolean;
+    send(message: string): void;
 }

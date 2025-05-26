@@ -8,7 +8,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Utils.CustomTelemetry
-  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 5]
+  import ChannelSenderEx.Core.Retry.ExponentialBackoff, only: [execute: 6]
 
   @type channel_ref() :: String.t()
   @type app_ref() :: String.t()
@@ -29,7 +29,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
     execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
       CustomTelemetry.execute_custom_event([:adf, :message, :nodelivered], %{count: 1})
       raise("No channel found")
-    end)
+    end, "deliver_channel_#{channel_ref}")
   rescue
     e ->
       Logger.warning(
@@ -77,7 +77,7 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
     execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
       Logger.warning("Could not delete channel #{channel_ref} after #{@max_retries} retries")
       :ok
-    end)
+    end, "delete_channel_#{channel_ref}")
   end
 
   def do_delete_channel(channel_ref) do

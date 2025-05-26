@@ -11,7 +11,7 @@
     "sonar-scanner": "node_modules/sonar-scanner/bin/sonar-scanner",
     "prepare": "npm run build",
     "build": "tsc",
-    "publish-local": "npm run build && npm unpublish --registry http://localhost:4873 && npm publish --registry http://localhost:4873 && echo 'Deployed!'",
+    "publish-local": "npm unpublish --registry http://localhost:4873 && npm run build && npm publish --registry http://localhost:4873 && echo 'Deployed!'",
     "lint": "eslint --ext .ts ."
   },
   "nyc": {
@@ -42,7 +42,6 @@
   "devDependencies": {
     "@types/chai": "^4.1.6",
     "@types/mocha": "^5.2.5",
-    "@types/pusher-js": "^4.2.0",
     "@types/sinon": "^5.0.3",
     "@typescript-eslint/eslint-plugin": "^6.7.2",
     "@typescript-eslint/parser": "^6.7.2",

@@ -43,22 +43,19 @@ export class AsyncClientService {
   }
 
   private initChannel(channel_ref: string, channel_secret: string) {
-    console.log('Opening web socket with channel_ref:', channel_ref);
+    console.log('Opening channel with ref:', channel_ref);
     const settings = this.settingsProvider.load();
-    let url = environment.servers[settings.server].socket_url_async;
-    if (location.protocol === 'https:') {
-      console.log('Try using secure protocol to open channel');
-      url = url.replace('http://', 'https://');
-      url = url.replace('ws://', 'wss://');
-    }
 
-    this.client = new AsyncClient({
-      socket_url: url,
+    var config = {
+      socket_url: environment.servers[settings.server].socket_url_async,
+      sse_url: environment.servers[settings.server].sse_url_async,
       channel_ref,
       channel_secret,
       heartbeat_interval: settings.heartbeatDelay,
       maxReconnectAttempts: settings.maxRetries
-    }, settings.transports);
+    }
+    console.log('Configuring AsyncClient with:', config);
+    this.client = new AsyncClient(config, settings.transports);
 
     this.client.connect();
     this.listenEvents(this.client);

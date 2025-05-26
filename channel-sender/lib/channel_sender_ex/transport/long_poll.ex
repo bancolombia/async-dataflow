@@ -5,10 +5,12 @@ defmodule ChannelSenderEx.Transport.LongPoll do
 
   require Logger
 
+  alias ChannelSenderEx.Core.ChannelSupervisor
   alias ChannelSenderEx.Core.RulesProvider
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Encoders.JsonEncoder
   alias ChannelSenderEx.Transport.TransportSpec
+  alias ChannelSenderEx.Utils.CustomTelemetry
 
   use TransportSpec, option: :long_poll
 
@@ -86,10 +88,12 @@ defmodule ChannelSenderEx.Transport.LongPoll do
   end
 
   defp authorize({channel, secret}) do
-    with {:ok, channel_pid} <- lookup_channel_addr(channel),
-         {:ok, _application, _user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret) do
-          _monitor_ref = notify_connected(channel_pid)
-          :ok
+    with {:ok, application, user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret),
+      :ok <- ensure_channel_exists_and_notify_socket(channel, application, user_ref) do
+
+        CustomTelemetry.execute_custom_event([:adf, :longpoll, :connection], %{count: 1})
+        :ok
+
     else
       :unauthorized ->
         Logger.error("LongPoll unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}")
@@ -97,6 +101,20 @@ defmodule ChannelSenderEx.Transport.LongPoll do
 
       {:error, _} = e ->
         Logger.error("LongPoll unable to authorize connection. Error: #{inspect(e)}")
+        e
+    end
+  end
+
+  defp ensure_channel_exists_and_notify_socket(channel, application, user_ref) do
+    args = {channel, application, user_ref, []}
+    case ChannelSupervisor.start_channel_if_not_exists(args) do
+      {:ok, pid} ->
+        _monitor_ref = notify_connected(pid, :longpoll)
+        :ok
+      {:error, reason} = e ->
+        Logger.error(fn ->
+          "Channel #{channel} not exists and unable to start. Reason: #{inspect(reason)}"
+        end)
         e
     end
   end

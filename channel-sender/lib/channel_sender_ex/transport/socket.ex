@@ -152,7 +152,7 @@ defmodule ChannelSenderEx.Transport.Socket do
           received DOWN message: #{inspect({ref, proc, pid, cause})}. Spawning process for re-conection
         """)
 
-        ReConnectProcess.start(self(), channel_ref)
+        ReConnectProcess.start(self(), channel_ref, :websocket)
 
         {_commands = [], state}
     end
@@ -167,7 +167,7 @@ defmodule ChannelSenderEx.Transport.Socket do
       "Socket #{inspect(self())} for channel #{channel_ref} : spawning process for re-conection"
     end)
 
-    ReConnectProcess.start(self(), channel_ref)
+    ReConnectProcess.start(self(), channel_ref, :websocket)
 
     {_commands = [], state}
   end
@@ -369,7 +369,7 @@ defmodule ChannelSenderEx.Transport.Socket do
 
     case ChannelSupervisor.start_channel_if_not_exists(args) do
       {:ok, pid} ->
-        monitor_ref = notify_connected(pid)
+        monitor_ref = notify_connected(pid, :websocket)
 
         CustomTelemetry.execute_custom_event([:adf, :socket, :connection], %{count: 1})
 

@@ -18,7 +18,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
     with_mock(
       ChannelSupervisor, [whereis_channel: fn(_) -> :undefined end]
     ) do
-      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)) == :noproc
+      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0), :websocket) == :noproc
     end
   end
 
@@ -27,7 +27,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
       {ChannelSupervisor, [], [whereis_channel: fn(_) -> :c.pid(0, 200, 0) end]},
       {Channel, [], [socket_connected: fn(_, _, _) -> :ok end]},
     ]) do
-      assert is_pid(ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0)))
+      assert is_pid(ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0), :websocket))
     end
   end
 
