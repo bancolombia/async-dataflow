@@ -136,6 +136,7 @@ defmodule ChannelSenderEx.Core.Channel do
   @doc false
   def init({channel, application, user_ref, meta}) do
     ChannelSupervisor.register_pid(channel, self())
+
     data =
       Data.new(channel, application, user_ref, meta)
       |> Map.put(:token_expiry, calculate_token_expiration_time())
@@ -231,11 +232,14 @@ defmodule ChannelSenderEx.Core.Channel do
     )
 
     socket_ref = Process.monitor(socket_pid)
-    new_data = %{data |
-      socket: {socket_pid, socket_ref},
-      socket_kind: kind,
-      socket_stop_cause: nil,
-      connect_time: :erlang.system_time(:millisecond)}
+
+    new_data = %{
+      data
+      | socket: {socket_pid, socket_ref},
+        socket_kind: kind,
+        socket_stop_cause: nil,
+        connect_time: :erlang.system_time(:millisecond)
+    }
 
     actions = [
       _reply = {:reply, from, :ok}
@@ -315,9 +319,11 @@ defmodule ChannelSenderEx.Core.Channel do
 
   def connected(:enter, _old_state, data) do
     refresh_timeout = calculate_refresh_token_timeout(data.socket_kind)
+
     Logger.info(fn ->
       "Channel #{data.channel} entering connected state with refresh timeout: #{inspect(refresh_timeout / 1000)} seconds"
     end)
+
     {:keep_state_and_data, [{:state_timeout, refresh_timeout, :refresh_token_timeout}]}
   end
 
@@ -348,10 +354,13 @@ defmodule ChannelSenderEx.Core.Channel do
     Process.demonitor(old_socket_ref)
     send(old_socket_pid, :terminate_socket)
     socket_ref = Process.monitor(socket_pid)
-    new_data = %{data |
-      socket: {socket_pid, socket_ref},
-      socket_stop_cause: nil,
-      connect_time: :erlang.system_time(:millisecond)}
+
+    new_data = %{
+      data
+      | socket: {socket_pid, socket_ref},
+        socket_stop_cause: nil,
+        connect_time: :erlang.system_time(:millisecond)
+    }
 
     actions = [
       _reply = {:reply, from, :ok}
@@ -375,7 +384,8 @@ defmodule ChannelSenderEx.Core.Channel do
         _redelivery_timeout =
           {{:timeout, {:redelivery, ref}}, get_param(:initial_redelivery_time, 900), 0},
         _refresh_timeout =
-          {:state_timeout, calculate_refresh_token_timeout(data.socket_kind), :refresh_token_timeout}
+          {:state_timeout, calculate_refresh_token_timeout(data.socket_kind),
+           :refresh_token_timeout}
       ]
 
       Logger.debug(fn -> "Channel #{data.channel} sending message [:n_token] ref: #{msg_id}" end)
@@ -395,7 +405,8 @@ defmodule ChannelSenderEx.Core.Channel do
         :keep_state_and_data,
         [
           _refresh_timeout =
-            {:state_timeout, calculate_refresh_token_timeout(data.socket_kind), :refresh_token_timeout}
+            {:state_timeout, calculate_refresh_token_timeout(data.socket_kind),
+             :refresh_token_timeout}
         ]
       }
     end
@@ -664,13 +675,14 @@ defmodule ChannelSenderEx.Core.Channel do
   defp calculate_refresh_token_timeout(:websocket) do
     token_validity = get_param(:max_age, 900)
     min_timeout = token_validity / 6
-    round(min_timeout * 1000) # 15% of the token life for websocket connections
+    # 15% of the token life for websocket connections
+    round(min_timeout * 1000)
   end
 
   defp calculate_refresh_token_timeout(_) do
-    25_000 # 25 seconds for SSE and LONGPOLL connections
+    # 25 seconds for SSE and LONGPOLL connections
+    25_000
   end
-
 
   defp estimate_process_wait_time(data) do
     # when is a new socket connection this will resolve false
