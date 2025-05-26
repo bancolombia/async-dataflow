@@ -29,11 +29,7 @@ export class SseTransport implements Transport {
         private readonly transport:EventSourcePlus = null) {
         this.serializer = new JsonDecoder();
         this.actualToken = config.channel_secret;
-        const self = this;
         this.transport = transport || new EventSourcePlus(this.sseUrl(), {
-            headers: {
-                Authorization: "Bearer " + self.getToken(),
-            },
             maxRetryInterval: SseTransport.MAX_RETRY_INTERVAL,
             maxRetryCount: this.config.maxReconnectAttempts,
         });
@@ -67,7 +63,7 @@ export class SseTransport implements Transport {
                     console.error('Error processing message:', error);
                 }
             },
-            onRequest: ({ request, options }) => {
+            onRequest: ({ options }) => {
                 options.headers.append("Authorization", "Bearer " + self.getToken());
             },
             async onResponse({ response }) {
