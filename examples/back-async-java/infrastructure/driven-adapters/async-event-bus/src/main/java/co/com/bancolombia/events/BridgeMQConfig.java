@@ -41,7 +41,7 @@ public class BridgeMQConfig {
     private RabbitProperties loadProperties(GenericManager manager, String secretName) {
         RabbitProperties rabbitProperties = new RabbitProperties();
         Map<String, Object> secret = manager.getSecret(secretName, Map.class);
-        rabbitProperties.setHost((String) secret.get("host"));
+        rabbitProperties.setHost((String) secret.get("hostname"));
         rabbitProperties.setPort(((Double)secret.get("port")).intValue());
         rabbitProperties.setUsername((String) secret.get("username"));
         rabbitProperties.setPassword((String) secret.get("password"));
