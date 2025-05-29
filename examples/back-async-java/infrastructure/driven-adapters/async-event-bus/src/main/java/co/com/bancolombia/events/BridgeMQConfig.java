@@ -50,7 +50,7 @@ public class BridgeMQConfig {
         log.info("RabbitMQ properties: " + secret.keySet());
         rabbitProperties.setHost((String) secret.get("hostname"));
         log.info("RabbitMQ hostname: " + secret.get("hostname"));
-        rabbitProperties.setPort(((Double)secret.get("port")).intValue());
+        rabbitProperties.setPort(Integer.parseInt((String) secret.get("port")));
         rabbitProperties.setUsername((String) secret.get("username"));
         rabbitProperties.setPassword((String) secret.get("password"));
         rabbitProperties.setVirtualHost((String) secret.get("virtualhost"));
