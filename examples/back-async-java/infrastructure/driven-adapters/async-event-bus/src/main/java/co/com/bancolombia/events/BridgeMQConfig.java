@@ -54,7 +54,7 @@ public class BridgeMQConfig {
         rabbitProperties.setUsername((String) secret.get("username"));
         rabbitProperties.setPassword((String) secret.get("password"));
         rabbitProperties.setVirtualHost((String) secret.get("virtualhost"));
-        rabbitProperties.getSsl().setEnabled((Boolean) secret.get("ssl"));
+        rabbitProperties.getSsl().setEnabled(Boolean.valueOf((String) secret.get("ssl")));
         return rabbitProperties;
     }
 }
