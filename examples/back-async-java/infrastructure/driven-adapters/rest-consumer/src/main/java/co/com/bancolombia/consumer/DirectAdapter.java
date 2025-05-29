@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = "adapter.reply-mode", havingValue = "DIRECT")
@@ -55,6 +57,11 @@ public class DirectAdapter implements AsyncDataFlowGateway {
                 .post().uri("/deliver_message")
                 .bodyValue(mapperDTO(deliverMessage))
                 .retrieve().toBodilessEntity().then();
+    }
+
+    @Override
+    public Mono<Void> deliverCloudEvent(String messageType, Map<String, Object> message) {
+        return Mono.error(() -> new UnsupportedOperationException("This method is not implemented in DirectAdapter"));
     }
 
     private static DTODeliverMessage mapperDTO(DeliverMessage deliverMessage) {

@@ -55,3 +55,7 @@ resilience4j:
         slidingWindowSize: 10
         minimumNumberOfCalls: 10
         waitDurationInOpenState: "10s"
+app:
+  async:
+    app:
+      secret: "${RABBITMQ_SECRET}"

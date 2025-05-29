@@ -1,5 +1,6 @@
 package co.com.bancolombia.events;
 
+import co.com.bancolombia.events.model.CustomMessage;
 import co.com.bancolombia.events.model.DTODeliverMessage;
 import co.com.bancolombia.events.model.ObjectResponse;
 import co.com.bancolombia.model.async.Credentials;
@@ -20,6 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -72,6 +74,12 @@ public class BridgeAdapter implements AsyncDataFlowGateway {
                 .build();
 
         return from(domainEventBus.emit(eventCloudEvent));
+    }
+
+    @Override
+    public Mono<Void> deliverCloudEvent(String messageType, Map<String, Object> message) {
+        CustomMessage rawMessage = new CustomMessage(message, messageType);
+        return from(domainEventBus.emit(rawMessage));
     }
 
     private static Credentials mapperToCredentials(ObjectResponse dtoCredentials) {

@@ -10,6 +10,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 
 @Log
@@ -47,4 +48,12 @@ public class BusinessUseCase {
                 .subscribe();
         return Mono.empty();
     }
+
+
+    public Mono<Void> asyncBusinessFlow(String messageType, Map<String, Object> message) {
+        log.info("Delivering async flow message: " + messageType);
+        return asyncDataFlowGateway.deliverCloudEvent(messageType, message)
+                .doOnSuccess(ignored -> log.info("Async flow message delivered: " + messageType));
+    }
+
 }

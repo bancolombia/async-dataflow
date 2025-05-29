@@ -1,5 +1,6 @@
 package co.com.bancolombia.api;
 
+import co.com.bancolombia.usecase.business.BusinessUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -8,8 +9,8 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
-import co.com.bancolombia.usecase.business.BusinessUseCase;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -26,6 +27,15 @@ public class Handler {
                                 serverRequest.queryParam("user_ref").toString(),
                                 serverRequest.queryParam("correlationId").orElse(UUID.randomUUID().toString())),
                         String.class);
+    }
+
+    public Mono<ServerResponse> deliverMessage(ServerRequest serverRequest) {
+        return serverRequest.bodyToMono(Map.class)
+                .flatMap(request ->
+                        ServerResponse.accepted()
+                                .body(useCase.asyncBusinessFlow(serverRequest.queryParam("message_type").orElse("not.set"),
+                                                request),
+                                        String.class));
     }
 
 
