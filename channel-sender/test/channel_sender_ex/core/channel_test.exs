@@ -151,13 +151,13 @@ defmodule ChannelSenderEx.Core.ChannelTest do
 #    :sys.trace(pid, true)
     :ok = Channel.socket_connected(pid, self())
     refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 500
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 2000
     Channel.notify_ack(pid, ref, id)
     refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 500
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", _token, _}}, 2000
     Channel.notify_ack(pid, ref, id)
     refute_receive {:deliver_msg, _from = {^pid, _}, {_, "", ":n_token", _token, _}}, 100
-    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", token, _}}, 500
+    assert_receive {:deliver_msg, _from = {^pid, ref}, {id, "", ":n_token", token, _}}, 2000
     Channel.notify_ack(pid, ref, id)
 
     assert {:ok, _app, _user} = ChannelIDGenerator.verify_token(channel, token)

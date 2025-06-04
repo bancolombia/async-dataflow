@@ -36,19 +36,19 @@ defmodule ChannelSenderEx.MixProject do
   defp deps do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
-      {:benchee, "~> 0.13", only: [:dev, :benchee]},
+      {:benchee, "~> 1.4.0", only: [:dev, :benchee]},
       {:cowboy, "~> 2.8"},
       {:cowlib, "~> 2.9", override: true},
       {:plug_cowboy, "~> 2.0"},
       {:elixir_uuid, "~> 1.2"},
-      {:gen_state_machine, "~> 2.0"},
+      {:gen_state_machine, "~> 3.0"},
       {:jason, "~> 1.2"},
       {:cors_plug, "~> 3.0"},
       {:hackney, "~> 1.20.1", only: :test},
       {:plug_crypto, "~> 2.1"},
       {:stream_data, "~> 0.4", only: [:test]},
       {:gun, "~> 1.3", only: [:test, :benchee]},
-      {:libcluster, "~> 3.4.1"},
+      {:libcluster, "~> 3.5"},
       {:vapor, "~> 0.10.0"},
       {:mock, "~> 0.3.0", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
@@ -58,9 +58,9 @@ defmodule ChannelSenderEx.MixProject do
       {:telemetry_poller, "~> 1.1"},
       {:cowboy_telemetry, "~> 0.4.0"},
       {:telemetry, "~> 1.3"},
-      {:eflambe, "~> 0.3.0"},
-      {:meck, "0.9.2"},
-      {:observer_cli, "~> 1.8"}
+      # {:eflambe, "~> 0.3.0"},
+      # {:meck, "0.9.2"},
+      # {:observer_cli, "~> 1.8"}
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
   end
