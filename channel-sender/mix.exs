@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.2.5",
+      version: "0.2.6",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
