@@ -29,20 +29,22 @@
 /// within the EventFlux system, ensuring consistency and ease of access to
 /// different parts of an event's information.
 class EventFluxData {
-  /// Event ID
+  /// Event ID.
   String id = '';
 
-  /// Event Name
+  /// Event Name.
   String event = '';
 
-  /// Event Data
+  /// Event Data.
   String data = '';
 
   /// Constructs an instance of `EventFluxData` with given id, event, and data.
   EventFluxData({required this.data, required this.id, required this.event});
   EventFluxData.fromData(String data) {
-    id = data.split("\n")[0].split('id:')[1];
-    event = data.split("\n")[1].split('event:')[1];
-    this.data = data.split("\n")[2].split('data:')[1];
+    List<String> dataSplitted = data.split('\n');
+
+    id = dataSplitted.first.split('id:')[1];
+    event = dataSplitted[1].split('event:')[1];
+    this.data = dataSplitted[2].split('data:')[1];
   }
 }
