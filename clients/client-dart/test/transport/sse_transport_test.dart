@@ -113,40 +113,39 @@ void main() {
       await transport.disconnect();
     });
 
-    //   test('Should get error', () async {
-    //     final controller = StreamController<SSEModel>();
+    test('Should handle connection error', () async {
+      server.listen((HttpRequest request) {
+        request.response.statusCode = HttpStatus.internalServerError;
+        request.response.close();
+      });
 
-    //     final stream = controller.stream;
-    //     for (int i = 1; i <= 11; i++) {
-    //       controller.addError('error $i');
-    //     }
+      var signalSocketCloseFn = (int code, String reason) {
+        log.finest('socket closed');
+      };
+      var signalSocketErrorFn = (error) {
+        log.severe('socket error');
+      };
 
-    //     var signalSocketCloseFn = (int code, String reason) {
-    //       log.finest('sse closed');
-    //     };
-    //     var signalSocketErrorFn = (error) {
-    //       log.severe('sse error');
-    //     };
-    //     AsyncConfig config = AsyncConfig(
-    //         socketUrl: 'ws://localhost:8787',
-    //         channelRef: 'channelRef',
-    //         channelSecret: 'channelSecret',
-    //         heartbeatInterval: 1000);
+      AsyncConfig config = AsyncConfig(
+        socketUrl: 'ws://localhost:8787',
+        channelRef: 'channelRef',
+        channelSecret: 'channelSecret',
+        heartbeatInterval: 1000,
+      );
 
-    //     var transport =
-    //         SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
-    //     transport.eventSource = stream;
+      var transport =
+          SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
 
-    //     await transport.connect();
-    //     transport.stream.listen((event) {
-    //       log.info('event: $event');
-    //     });
-    //     await Future.delayed(const Duration(seconds: 10));
-    //     expect(transport, isNotNull);
+      bool connected = await transport.connect();
 
-    //     await transport.disconnect();
+      expect(connected, true);
+      expect(transport, isNotNull);
 
-    //     await controller.close();
-    //   });
+      await Future.delayed(const Duration(seconds: 2));
+
+      expect(transport.currentToken, equals('channelSecret'));
+
+      await transport.disconnect();
+    });
   });
 }

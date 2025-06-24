@@ -471,8 +471,8 @@ class EventFlux extends EventFluxBase {
   Future<EventFluxStatus> _stop() async {
     eventFluxLog('Disconnecting', LogEvent.info, _tag);
     try {
-      await _streamSubscription?.cancel();
-      await _streamController?.close();
+      unawaited(_streamSubscription?.cancel());
+      unawaited(_streamController?.close());
       _client?.close();
       Future.delayed(
         const Duration(seconds: 1),

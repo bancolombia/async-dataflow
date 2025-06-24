@@ -53,25 +53,28 @@ class RetryTimer {
   void schedule() {
     var delay = _delay();
     _log.info('[async-client][RetyTimer] scheduling retry in $delay ms');
-    _timer = Timer(Duration(milliseconds: delay), () async {
-      try {
-        if (_tries <= _maxRetries) {
-          _log.info(
-            '[async-client][RetyTimer] retrying $_tries of $_maxRetries',
+    _timer = Timer(
+      Duration(milliseconds: delay),
+      () async {
+        try {
+          if (_tries <= _maxRetries) {
+            _log.info(
+              '[async-client][RetyTimer] retrying $_tries of $_maxRetries',
+            );
+            await _callback();
+          } else {
+            _log.info('[async-client][RetyTimer] notifying limit reached.');
+            reset();
+            await _limitReachedCallback();
+            _log.severe('[async-client][RetyTimer] max retries reached.');
+          }
+        } catch (e) {
+          _log.severe(
+            '[async-client][RetyTimer] captured error calling delayed function: $e',
           );
-          await _callback();
-        } else {
-          _log.info('[async-client][RetyTimer] notifying limit reached.');
-          reset();
-          await _limitReachedCallback();
-          _log.severe('[async-client][RetyTimer] max retries reached.');
         }
-      } catch (e) {
-        _log.severe(
-          '[async-client][RetyTimer] captured error calling delayed function: $e',
-        );
-      }
-    });
+      },
+    );
     _tries = _tries + 1;
   }
 
