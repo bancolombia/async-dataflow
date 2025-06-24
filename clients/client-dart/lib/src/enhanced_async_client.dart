@@ -27,7 +27,7 @@ class EnhancedAsyncClient {
 
   // Connectivity monitoring
   final Connectivity _connectivity = Connectivity();
-  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
 
   // Background handling
   StreamSubscription<AppLifecycleState>? _lifecycleSubscription;
@@ -42,9 +42,9 @@ class EnhancedAsyncClient {
   // Stream management
   final BehaviorSubject<ConnectionState> _connectionStateSubject =
       BehaviorSubject<ConnectionState>.seeded(ConnectionState.disconnected);
-  final BehaviorSubject<List<ConnectivityResult>> _connectivitySubject =
-      BehaviorSubject<List<ConnectivityResult>>.seeded(
-    [ConnectivityResult.none],
+  final BehaviorSubject<ConnectivityResult> _connectivitySubject =
+      BehaviorSubject<ConnectivityResult>.seeded(
+    ConnectivityResult.none,
   );
 
   EnhancedAsyncClient(this._config) {
@@ -63,7 +63,7 @@ class EnhancedAsyncClient {
   /// Initialize connectivity monitoring.
   void _initializeConnectivityMonitoring() {
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
-      (List<ConnectivityResult> results) {
+      (ConnectivityResult results) {
         _connectivitySubject.add(results);
         _handleConnectivityChange(results);
       },
@@ -80,9 +80,8 @@ class EnhancedAsyncClient {
   }
 
   /// Handle connectivity changes.
-  void _handleConnectivityChange(List<ConnectivityResult> results) {
-    final hasConnection =
-        results.any((result) => result != ConnectivityResult.none);
+  void _handleConnectivityChange(ConnectivityResult results) {
+    final hasConnection = results != ConnectivityResult.none;
 
     _log.info('Connectivity changed: $results');
 
@@ -183,7 +182,7 @@ class EnhancedAsyncClient {
     try {
       final results = await _connectivity.checkConnectivity();
 
-      return results.any((result) => result != ConnectivityResult.none);
+      return results != ConnectivityResult.none;
     } catch (error) {
       _log.warning('Failed to check connectivity: $error');
 
@@ -191,7 +190,7 @@ class EnhancedAsyncClient {
     }
   }
 
-  /// Attempt to reconnect with exponential backoff
+  /// Attempt to reconnect with exponential backoff.
   void _attemptReconnect() {
     if (_isManualDisconnect || _connectionState == ConnectionState.connecting) {
       return;
@@ -281,7 +280,7 @@ class EnhancedAsyncClient {
   Stream<ConnectionState> get connectionState => _connectionStateSubject.stream;
 
   /// Stream of connectivity changes.
-  Stream<List<ConnectivityResult>> get connectivityState =>
+  Stream<ConnectivityResult> get connectivityState =>
       _connectivitySubject.stream;
 
   /// Stream of messages filtered by event name(s).

@@ -42,23 +42,24 @@ class AsyncClientService extends InheritedWidget {
   final Widget child;
 
   final List<String> eventListen;
-  late AsyncClient asyncClient;
+  late EnhancedAsyncClient asyncClient;
   final AsyncClientGateway asyncClientGateway;
   final _log = Logger('AsyncClientService');
 
   late SharedPreferences prefs;
   ResponsesNotifier responsesNotifier = ResponsesNotifier();
-  CurrentTransportNotifier currentTransportNotifier = CurrentTransportNotifier();
+  CurrentTransportNotifier currentTransportNotifier =
+      CurrentTransportNotifier();
   final AppConfig appConfig;
 
   void _handleEvent(dynamic msg) {
-     // The client app can subscrtibe to bussines events with different names
+    // The client app can subscrtibe to bussines events with different names
     if (msg.event == 'businessEvent') {
       responsesNotifier.addResponse(
           'Message from async dataflow, title: ${msg.payload['title']} detail: ${msg.payload['detail']}');
     }
 
-     // Another bussines event
+    // Another bussines event
     if (msg.event == 'ch-ms-async-callback.svp.reply') {
       responsesNotifier.addResponse(
           'Message from async dataflow, title: ${msg.payload['data']['reply']['messageData']['title']} detail: ${msg.payload['data']['reply']['messageData']['detail']}');
@@ -83,12 +84,12 @@ class AsyncClientService extends InheritedWidget {
     prefs = await SharedPreferences.getInstance();
     await deleteChannelCreated();
     await asyncClient.disconnect();
-    currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
+    currentTransportNotifier.setTransport(asyncClient.currentTransportType);
   }
 
   Future<void> switchProtocols() async {
-    await asyncClient.switchProtocols();
-    currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
+    await asyncClient.switchTransport();
+    currentTransportNotifier.setTransport(asyncClient.currentTransportType);
   }
 
   Future<void> deleteChannelCreated() async {
@@ -143,20 +144,27 @@ class AsyncClientService extends InheritedWidget {
             return transportFromString(e);
           }).toList());
 
-      asyncClient = AsyncClient(conf);
+      asyncClient = EnhancedAsyncClient(conf);
       bool connected = await asyncClient.connect();
       if (connected) {
-        currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
+        currentTransportNotifier.setTransport(asyncClient.currentTransportType);
         _log.info("Connected to ADF");
-        asyncClient.subscribeToMany(eventListen, (eventResult) {
-          _handleEvent(eventResult);
-        }, onError: (err) {
-          _handleEvent(err);
-        });
+
+        asyncClient
+            .messagesWhere(
+          eventListen,
+        )
+            .listen(
+          (eventResult) {
+            _handleEvent(eventResult);
+          },
+          onError: (err) {
+            _handleEvent(err);
+          },
+        );
       } else {
         _log.severe("Not connected");
       }
-
     } else {
       throw Exception("AsyncClient could not be initialized");
     }

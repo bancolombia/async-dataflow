@@ -25,7 +25,7 @@ class _RequestPageState extends State<RequestPage> {
   @override
   Widget build(BuildContext context) {
     asyncClientService = AsyncClientService.of(context)!;
-    homeHelper = HomeHelper(context, asyncClientService);
+    homeHelper = HomeHelper(asyncClientService);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -41,7 +41,8 @@ class _RequestPageState extends State<RequestPage> {
           AnimatedBuilder(
             animation: asyncClientService.currentTransportNotifier,
             builder: (context, _) {
-              return Text('Current transport: ${asyncClientService.currentTransportNotifier.currentTransport}');
+              return Text(
+                  'Current transport: ${asyncClientService.currentTransportNotifier.currentTransport}');
             },
           ),
           const SizedBox(height: 10),
@@ -60,7 +61,9 @@ class _RequestPageState extends State<RequestPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Button(text: "Switch Prot", onTap: () => homeHelper.switchProtocols()),
+              Button(
+                  text: "Switch Prot",
+                  onTap: () => homeHelper.switchProtocols()),
               const SizedBox(width: 10),
               Button(text: "Disconnect", onTap: () => homeHelper.disconnect()),
             ],
