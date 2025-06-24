@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:channel_sender_client/src/enhanced_async_client.dart' as ac;
 
 class ResponsesNotifier extends ChangeNotifier {
   List<String> responses = [];
@@ -42,7 +43,7 @@ class AsyncClientService extends InheritedWidget {
   final Widget child;
 
   final List<String> eventListen;
-  late EnhancedAsyncClient asyncClient;
+  late FlutterAsyncClient asyncClient;
   final AsyncClientGateway asyncClientGateway;
   final _log = Logger('AsyncClientService');
 
@@ -144,22 +145,27 @@ class AsyncClientService extends InheritedWidget {
             return transportFromString(e);
           }).toList());
 
-      asyncClient = EnhancedAsyncClient(conf);
+      asyncClient = FlutterAsyncClient(conf);
+
+      // Listen to connection state changes
+      asyncClient.connectionState.listen((state) {
+        _log.info("Connection state changed to: $state");
+        if (state == ac.ConnectionState.connected) {
+          currentTransportNotifier
+              .setTransport(asyncClient.currentTransportType);
+        }
+      });
+
       bool connected = await asyncClient.connect();
       if (connected) {
-        currentTransportNotifier.setTransport(asyncClient.currentTransportType);
         _log.info("Connected to ADF");
 
-        asyncClient
-            .messagesWhere(
-          eventListen,
-        )
-            .listen(
+        asyncClient.messagesWhere(eventListen).listen(
           (eventResult) {
             _handleEvent(eventResult);
           },
           onError: (err) {
-            _handleEvent(err);
+            _log.severe("Error in message stream: $err");
           },
         );
       } else {
