@@ -1,0 +1,10 @@
+flutter: INFO: 2025-06-24 17:31:12.736629: Connected to server
+flutter: INFO: 2025-06-24 17:31:12.737003: Connected to ADF
+flutter: INFO: 2025-06-24 17:31:12.737432: Connection state changed to: ConnectionState.connected
+flutter: updating transport ws
+flutter: FINEST: 2025-06-24 17:31:12.752262: [async-client][WSTransport] Stream from socket DONE.
+flutter: WARNING: 2025-06-24 17:31:12.752706: [async-client][WSTransport] onSocketClose, code: 1001, reason: 3008
+flutter: INFO: 2025-06-24 17:31:12.753010: [async-client][WSTransport] shouldRetry: false
+flutter: INFO: 2025-06-24 17:31:12.753230: [async-client][WSTransport] Not scheduling reconnect, clean: false
+flutter: INFO: 2025-06-24 17:31:12.753457: [async-client][WSTransport] disconnect() called.
+flutter: FINEST: 2025-06-24 17:31:12.753773: [async-client][RetyTimer] Retry timer reset
