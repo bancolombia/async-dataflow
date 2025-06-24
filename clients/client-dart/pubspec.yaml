@@ -12,6 +12,8 @@ dependencies:
   logging: ^1.1.0
   validators: ^3.0.0
   http: ^1.1.0
+  connectivity_plus: ^6.0.5
+  rxdart: ^0.27.7
 
 # dependency_overrides:
 #   http: ^1.1.0 
