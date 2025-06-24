@@ -39,10 +39,11 @@ void main() {
         log.severe('socket error');
       };
       AsyncConfig config = AsyncConfig(
-          socketUrl: 'ws://localhost:8787',
-          channelRef: 'channelRef',
-          channelSecret: 'channelSecret',
-          heartbeatInterval: 1000);
+        socketUrl: 'ws://localhost:8787',
+        channelRef: 'channelRef',
+        channelSecret: 'channelSecret',
+        heartbeatInterval: 1000,
+      );
 
       var transport =
           SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);

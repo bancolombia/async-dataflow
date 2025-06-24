@@ -70,9 +70,8 @@ class DefaultTransportStrategy {
       '[async-client][DefaultTransportStrategy] Calling connect on transport ${_currentTransport.name()}',
     );
 
-    final transportConnect = _currentTransport.connect();
+    var connected = await _currentTransport.connect();
 
-    var connected = await transportConnect;
     while (!connected &&
         retries <= (_config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES)) {
       _log.severe(
@@ -84,7 +83,7 @@ class DefaultTransportStrategy {
       await Future.delayed(Duration(milliseconds: wait));
       // ignore: avoid-ignoring-return-values
       await iterateTransport();
-      connected = await transportConnect;
+      connected = await _currentTransport.connect();
     }
 
     //reset
