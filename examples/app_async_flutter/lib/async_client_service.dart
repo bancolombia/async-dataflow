@@ -99,6 +99,12 @@ class AsyncClientService extends InheritedWidget {
     await prefs.remove('userRef');
   }
 
+  Future<void> refreshCredentials() async {
+    _log.info("Refreshing credentials due to authentication failure");
+    await deleteChannelCreated();
+    await initAsyncClient();
+  }
+
   bool hasUserRef() {
     return prefs.getString('userRef') != null;
   }
@@ -133,6 +139,7 @@ class AsyncClientService extends InheritedWidget {
     ChannelCredential? channelCredential =
         await _requestChannelCredentials(userRef);
     if (channelCredential != null) {
+      _log.info("Channel credentials - Ref: ${channelCredential.channelRef}, Secret: ${channelCredential.channelSecret.substring(0, 10)}...");
       final conf = AsyncConfig(
           socketUrl: appConfig.socketUrl,
           sseUrl: appConfig.sseUrl,
@@ -178,12 +185,20 @@ class AsyncClientService extends InheritedWidget {
 
   Future<ChannelCredential?> _requestChannelCredentials(String userRef) async {
     ChannelCredential? channelCredential;
+    
+    // First try cached credentials
     if (hasChannelCreated()) {
-      return getChannelCreated();
+      channelCredential = getChannelCreated();
+      _log.info("Using cached credentials for channel: ${channelCredential.channelRef}");
+    } else {
+      // Request new credentials
+      _log.info("Requesting new credentials for user: $userRef");
+      channelCredential = await asyncClientGateway.getCredentials(userRef);
+      if (channelCredential != null) {
+        _log.info("Received new credentials for channel: ${channelCredential.channelRef}");
+        persistCredentials(channelCredential);
+      }
     }
-    channelCredential = await asyncClientGateway.getCredentials(userRef);
-    print(channelCredential!.channelRef);
-    persistCredentials(channelCredential);
     return channelCredential;
   }
 
