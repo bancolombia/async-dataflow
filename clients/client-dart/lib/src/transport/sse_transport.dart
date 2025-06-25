@@ -116,12 +116,24 @@ class SSETransport implements Transport {
   }
 
   void _onResponseError(error, stackTrace) {
-    var parsedException = error as EventFluxException;
+    EventFluxException parsedException;
+
+    parsedException = error is EventFluxException
+        ? error
+        : EventFluxException(
+            message: error?.toString() ?? 'Unknown SSE error',
+            statusCode: null,
+            reasonPhrase: null,
+          );
+
+    // Provide default values for null status codes and reason phrases
+    int? statusCode = parsedException.statusCode;
+    String? reasonPhrase = parsedException.reasonPhrase ?? 'Unknown error';
 
     // close code 200 is ok to ignore
-    if (parsedException.statusCode != SSE_OK_CLOSE_CODE) {
+    if (statusCode != SSE_OK_CLOSE_CODE) {
       _log.severe(
-          '[async-client][SSETransport] Error in SSE connection: ${parsedException.statusCode}, ${parsedException.reasonPhrase}');
+          '[async-client][SSETransport] Error in SSE connection: ${statusCode ?? 'unknown'}, $reasonPhrase');
       EventFlux.instance.disconnect().then((_) {
         if (!_connectRetryTimer.isActive()) {
           _connectRetryTimer.schedule();
@@ -133,7 +145,6 @@ class SSETransport implements Transport {
         _log.severe(
             '[async-client][SSETransport] Error calling EventFlux.disconnect(): $e');
       });
-
     }
   }
 
