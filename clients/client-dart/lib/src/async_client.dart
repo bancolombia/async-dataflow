@@ -1,3 +1,4 @@
+//ignore_for_file: avoid_ignoring_returns
 import 'dart:async';
 
 import 'package:logging/logging.dart';
@@ -8,7 +9,7 @@ import 'transport/transport.dart';
 
 /// Async Data Flow Low Level Client
 ///
-/// This library allows you to connect do Async Dataflow Channel
+/// This library allows you to connect to Async Dataflow Channel
 /// Sender.
 ///
 class AsyncClient {
@@ -114,7 +115,7 @@ class AsyncClient {
         );
         if (onError != null) {
           onError(error);
-        } 
+        }
       },
       onDone: () {
         _log.warning(
@@ -129,20 +130,23 @@ class AsyncClient {
   }
 
   Future<bool> switchProtocols() async {
-
-    TransportType currentTransportType = _transportStrategy.getTransport().name();
+    TransportType currentTransportType =
+        _transportStrategy.getTransport().name();
 
     // reconnect using (potentially) a different transport. It depends on the strategy.
-    TransportType newTransportType = await _transportStrategy.iterateTransport();
+    TransportType newTransportType =
+        await _transportStrategy.iterateTransport();
 
-    if (newTransportType == currentTransportType)  {
-      _log.severe('[async-client][Main] Not switching protocols. Transport is the same');
-      
+    if (newTransportType == currentTransportType) {
+      _log.severe(
+        '[async-client][Main] Not switching protocols. Transport is the same',
+      );
+
       return false;
     }
 
     return await connect();
-  } 
+  }
 
   String getCurrentTransportType() {
     return _transportStrategy.getTransport().name().toString();
@@ -154,11 +158,17 @@ class AsyncClient {
 
     await _transportStrategy.disconnect();
     _log.finer('[async-client][Main] async-client. disconnect() called end');
-    
+
     return true;
   }
 
-  void _onTransportClose(int code, String reason) {}
+  void _onTransportClose(int code, String reason) {
+    _log.severe(
+      '[async-client][Main] Transport signaled close: ${_transportStrategy.getTransport().name()} code: $code reason: $reason',
+    );
+
+    /// if the close was clean, we don't need to switch protocols.
+  }
 
   void _onTransportError(Object error) async {
     _log.severe(
