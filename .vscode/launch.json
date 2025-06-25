@@ -5,6 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "java",
+            "name": "MainApplication",
+            "request": "launch",
+            "mainClass": "co.com.bancolombia.MainApplication"
+        },
+        {
             "name": "client-dart",
             "cwd": "clients/client-dart",
             "request": "launch",

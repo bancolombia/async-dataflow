@@ -1,6 +1,5 @@
-import 'package:channel_sender_client/src/transport/capped_list.dart';
+import 'package:channel_sender_client/src/utils/capped_list.dart';
 import 'package:test/test.dart';
-
 
 void main() {
   group('CappedList', () {
