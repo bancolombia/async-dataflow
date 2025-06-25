@@ -196,6 +196,9 @@ class EnhancedAsyncClient {
       return;
     }
 
+    // Cancel any existing reconnect timer to prevent multiple concurrent attempts
+    _reconnectTimer?.cancel();
+
     final maxRetries = _config.maxRetries ?? 5;
     if (_reconnectAttempts >= maxRetries) {
       _log.warning('Max reconnection attempts reached');
@@ -209,7 +212,7 @@ class EnhancedAsyncClient {
         'Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$maxRetries)');
 
     _reconnectTimer = Timer(delay, () async {
-      if (!_isManualDisconnect) {
+      if (!_isManualDisconnect && _connectionState != ConnectionState.connecting) {
         await connect();
       }
     });

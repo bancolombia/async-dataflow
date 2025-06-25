@@ -62,7 +62,12 @@ class DefaultTransportStrategy {
       int wait = Utils.expBackoff(400, 2000, retries);
       retries++;
       await Future.delayed(Duration(milliseconds: wait));
-      await iterateTransport();
+      
+      // Only iterate transport if we have multiple transport types
+      if (_transportTypes.length > 1) {
+        await iterateTransport();
+      }
+      
       connected = await _currentTransport.connect();
     }
 
