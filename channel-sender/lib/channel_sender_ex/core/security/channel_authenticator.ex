@@ -4,6 +4,7 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   """
   alias ChannelSenderEx.Core.ChannelIDGenerator
   alias ChannelSenderEx.Core.ChannelSupervisor
+  alias ChannelSenderEx.Core.RulesProvider
 
   @type application() :: String.t()
   @type user_ref() :: String.t()
@@ -14,7 +15,7 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
   @spec create_channel(application(), user_ref(), meta()) :: {channel_ref(), channel_secret()}
   def create_channel(application, user_ref, meta \\ []) do
     {channel_ref, _channel_secret} = credentials = create_channel_data_for(application, user_ref)
-    {:ok, _pid} = ChannelSupervisor.register_channel({channel_ref, application, user_ref, meta})
+    if create_channel_early?(), do: ChannelSupervisor.register_channel({channel_ref, application, user_ref, meta})
     credentials
   end
 
@@ -35,5 +36,11 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
     channel_ref = ChannelIDGenerator.generate_channel_id(app_id, user_ref)
     channel_secret = ChannelIDGenerator.generate_token(channel_ref, app_id, user_ref)
     {channel_ref, channel_secret}
+  end
+
+  defp create_channel_early? do
+    RulesProvider.get(:create_channel_early)
+    rescue
+      _ -> true
   end
 end

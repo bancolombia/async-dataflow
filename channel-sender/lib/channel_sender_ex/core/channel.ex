@@ -674,8 +674,8 @@ defmodule ChannelSenderEx.Core.Channel do
 
   defp calculate_refresh_token_timeout(:websocket) do
     token_validity = get_param(:max_age, 900)
-    min_timeout = token_validity / 6
-    # 15% of the token life for websocket connections
+    # 15% of the token life for websocket connections, plus a random drift between 1 and min_disconnection_tolerance time
+    min_timeout = (token_validity / 6) + :rand.uniform(get_param(:min_disconnection_tolerance, 50))
     round(min_timeout * 1000)
   end
 
