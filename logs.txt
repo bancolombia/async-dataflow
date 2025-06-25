@@ -1,0 +1,11 @@
+[EventFlux 2025-06-25 09:02:40.320379] ℹ️ Connection Initiated
+[EventFlux 2025-06-25 09:02:40.321693] ℹ️ Disconnecting
+[EventFlux 2025-06-25 09:02:40.322021] ℹ️ Disconnected
+[EventFlux 2025-06-25 09:02:40.322225] ℹ️ Disconnecting
+[EventFlux 2025-06-25 09:02:40.322636] ℹ️ Disconnected
+flutter: INFO: 2025-06-25 09:02:40.318453: [async-client][RetyTimer] retrying 4 of 12
+flutter: FINER: 2025-06-25 09:02:40.319548: [async-client][SSETransport] connect() started.
+flutter: INFO: 2025-06-25 09:02:40.319834: [async-client][SSETransport] url is ?channel=27b57689e1e35503b62444f3e4622b51
+flutter: FINEST: 2025-06-25 09:02:40.320973: [async-client][SSETransport] connect() called
+flutter: SEVERE: 2025-06-25 09:02:40.321475: [async-client][SSETransport] Error in SSE connection: null, null
+flutter: INFO: 2025-06-25 09:02:40.323132: [async-client][RetyTimer] scheduling retry in 1925 ms
