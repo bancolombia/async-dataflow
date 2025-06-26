@@ -4,7 +4,7 @@ defmodule AdfSenderConnector.MixProject do
   def project do
     [
       app: :adf_sender_connector,
-      version: "0.4.0",
+      version: "0.4.1",
       elixir: "~> 1.16",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -21,7 +21,7 @@ defmodule AdfSenderConnector.MixProject do
       ],
       aliases: aliases(),
       releases: [
-        adf_sender_connector: [ 
+        adf_sender_connector: [
           include_executables_for: [:unix],
           applications: [
             runtime_tools: :permanent
@@ -45,6 +45,8 @@ defmodule AdfSenderConnector.MixProject do
       {:jason, "~> 1.2"},
       {:finch, "~> 0.19"},
       {:uuid, "~> 1.1"},
+      # traces
+      {:opentelemetry_api, "~> 1.0"},
       ## testing deps
       {:mock, "~> 0.3.0", only: :test},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
