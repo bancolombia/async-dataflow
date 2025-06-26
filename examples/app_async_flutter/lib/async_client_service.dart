@@ -88,7 +88,7 @@ class AsyncClientService extends InheritedWidget {
   }
 
   Future<void> switchProtocols() async {
-    await asyncClient.switchTransport();
+    await asyncClient.switchProtocols();
     currentTransportNotifier.setTransport(asyncClient.currentTransportType);
   }
 
