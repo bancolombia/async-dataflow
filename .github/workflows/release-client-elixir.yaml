@@ -31,10 +31,8 @@ jobs:
       - name: Run tests
         run: mix test
       - name: Upgrade mix.exs
-        if: github.event_name == 'release'
         run: sed -i 's/@version \".*\"/@version "${GITHUB_REF##*_}"/g' mix.exs
       - name: Publish
-        if: github.event_name == 'release'
         run: mix hex.publish --replace --yes
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
