@@ -1,4 +1,6 @@
+//ignore_for_file: avoid-ignoring-return-values
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
@@ -23,7 +25,7 @@ class EnhancedAsyncClient {
   // Core components
   late DefaultTransportStrategy _transportStrategy;
   late StreamController<ChannelMessage> _eventStreamController;
-  late StreamController<ConnectionState> _connectionStateController;
+  late StreamController<CustomConnectionState> _connectionStateController;
 
   // Connectivity monitoring
   final Connectivity _connectivity = Connectivity();
@@ -31,17 +33,20 @@ class EnhancedAsyncClient {
 
   // Background handling
   StreamSubscription<AppLifecycleState>? _lifecycleSubscription;
-  AppLifecycleState _currentLifecycleState = AppLifecycleState.resumed;
+  CustomAppLifecycleState _currentLifecycleState =
+      CustomAppLifecycleState.resumed;
 
   // State management
-  ConnectionState _connectionState = ConnectionState.disconnected;
+  CustomConnectionState _connectionState = CustomConnectionState.disconnected;
   bool _isManualDisconnect = false;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
 
   // Stream management
-  final BehaviorSubject<ConnectionState> _connectionStateSubject =
-      BehaviorSubject<ConnectionState>.seeded(ConnectionState.disconnected);
+  final BehaviorSubject<CustomConnectionState> _connectionStateSubject =
+      BehaviorSubject<CustomConnectionState>.seeded(
+    CustomConnectionState.disconnected,
+  );
   final BehaviorSubject<ConnectivityResult> _connectivitySubject =
       BehaviorSubject<ConnectivityResult>.seeded(
     ConnectivityResult.none,
@@ -54,10 +59,10 @@ class EnhancedAsyncClient {
       _onTransportError,
     );
     _eventStreamController = StreamController<ChannelMessage>.broadcast();
-    _connectionStateController = StreamController<ConnectionState>.broadcast();
+    _connectionStateController =
+        StreamController<CustomConnectionState>.broadcast();
 
     _initializeConnectivityMonitoring();
-    _initializeLifecycleHandling();
   }
 
   /// Initialize connectivity monitoring.
@@ -73,12 +78,6 @@ class EnhancedAsyncClient {
     );
   }
 
-  /// Initialize app lifecycle handling.
-  void _initializeLifecycleHandling() {
-    // Note: In a real Flutter app, you would bind this to WidgetsBindingObserver
-    // This is a simplified version for demonstration
-  }
-
   /// Handle connectivity changes.
   void _handleConnectivityChange(ConnectivityResult results) {
     final hasConnection = results != ConnectivityResult.none;
@@ -86,39 +85,43 @@ class EnhancedAsyncClient {
     _log.info('Connectivity changed: $results');
 
     if (hasConnection &&
-        _connectionState == ConnectionState.disconnected &&
+        _connectionState == CustomConnectionState.disconnected &&
         !_isManualDisconnect) {
       _log.info('Network available, attempting to reconnect');
       _attemptReconnect();
     } else if (!hasConnection &&
-        _connectionState == ConnectionState.connected) {
+        _connectionState == CustomConnectionState.connected) {
       _log.info('Network unavailable, connection lost');
-      _updateConnectionState(ConnectionState.disconnected);
+      _updateConnectionState(CustomConnectionState.disconnected);
     }
   }
 
   /// Handle app lifecycle changes.
-  void handleAppLifecycleStateChanged(AppLifecycleState state) {
+  void handleAppLifecycleStateChanged(CustomAppLifecycleState state) {
     _currentLifecycleState = state;
 
     switch (state) {
-      case AppLifecycleState.resumed:
-        if (_connectionState == ConnectionState.disconnected &&
+      case CustomAppLifecycleState.resumed:
+        if (_connectionState == CustomConnectionState.disconnected &&
             !_isManualDisconnect) {
-          _log.info('App resumed, checking connection');
+          _log.info(
+            '[flutter-async-client][LifeCycle] App resumed, checking connection',
+          );
           _attemptReconnect();
         }
         break;
-      case AppLifecycleState.paused:
-        _log.info('App paused, maintaining connection');
+      case CustomAppLifecycleState.paused:
+        _log.info(
+          '[flutter-async-client][LifeCycle] App paused, maintaining connection',
+        );
         break;
-      case AppLifecycleState.detached:
+      case CustomAppLifecycleState.detached:
         _log.info('App detached, disconnecting');
         _gracefulDisconnect();
         break;
-      case AppLifecycleState.inactive:
+      case CustomAppLifecycleState.inactive:
         break;
-      case AppLifecycleState.hidden:
+      case CustomAppLifecycleState.hidden:
         break;
     }
   }
@@ -126,13 +129,13 @@ class EnhancedAsyncClient {
   /// Connect to the server.
   Future<bool> connect() async {
     _isManualDisconnect = false;
-    _updateConnectionState(ConnectionState.connecting);
+    _updateConnectionState(CustomConnectionState.connecting);
 
     try {
       final hasConnection = await _checkConnectivity();
       if (!hasConnection) {
         _log.warning('No network connectivity, cannot connect');
-        _updateConnectionState(ConnectionState.disconnected);
+        _updateConnectionState(CustomConnectionState.disconnected);
 
         return false;
       }
@@ -140,20 +143,20 @@ class EnhancedAsyncClient {
       final connected = await _transportStrategy.connect();
       if (connected) {
         _log.info('Connected to server');
-        _updateConnectionState(ConnectionState.connected);
+        _updateConnectionState(CustomConnectionState.connected);
         _reconnectAttempts = 0;
         _listenToTransportStream();
 
         return true;
       } else {
         _log.severe('Failed to connect to server');
-        _updateConnectionState(ConnectionState.disconnected);
+        _updateConnectionState(CustomConnectionState.disconnected);
 
         return false;
       }
     } catch (error) {
       _log.severe('Connection error: $error');
-      _updateConnectionState(ConnectionState.disconnected);
+      _updateConnectionState(CustomConnectionState.disconnected);
 
       return false;
     }
@@ -163,11 +166,11 @@ class EnhancedAsyncClient {
   Future<bool> disconnect() async {
     _isManualDisconnect = true;
     _reconnectTimer?.cancel();
-    _updateConnectionState(ConnectionState.disconnecting);
+    _updateConnectionState(CustomConnectionState.disconnecting);
 
     try {
       await _transportStrategy.disconnect();
-      _updateConnectionState(ConnectionState.disconnected);
+      _updateConnectionState(CustomConnectionState.disconnected);
 
       return true;
     } catch (error) {
@@ -192,16 +195,17 @@ class EnhancedAsyncClient {
 
   /// Attempt to reconnect with exponential backoff.
   void _attemptReconnect() {
-    if (_isManualDisconnect || _connectionState == ConnectionState.connecting) {
+    if (_isManualDisconnect ||
+        _connectionState == CustomConnectionState.connecting) {
       return;
     }
 
-    // Cancel any existing reconnect timer to prevent multiple concurrent attempts
     _reconnectTimer?.cancel();
 
     final maxRetries = _config.maxRetries ?? 5;
     if (_reconnectAttempts >= maxRetries) {
       _log.warning('Max reconnection attempts reached');
+
       return;
     }
 
@@ -209,23 +213,25 @@ class EnhancedAsyncClient {
     _reconnectAttempts++;
 
     _log.info(
-        'Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$maxRetries)');
+      'Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$maxRetries)',
+    );
 
-    _reconnectTimer = Timer(delay, () async {
-      if (!_isManualDisconnect && _connectionState != ConnectionState.connecting) {
-        await connect();
+    _reconnectTimer = Timer(delay, () {
+      if (!_isManualDisconnect &&
+          _connectionState != CustomConnectionState.connecting) {
+        connect(); // Removed the await to allow multiple attempts
       }
     });
   }
 
-  /// Graceful disconnect (for background handling)
+  /// Graceful disconnect (for background handling).
   void _gracefulDisconnect() {
     // Don't set _isManualDisconnect to true, so we can reconnect when app resumes
     _transportStrategy.disconnect();
   }
 
-  /// Update connection state and notify listeners
-  void _updateConnectionState(ConnectionState newState) {
+  /// Update connection state and notify listeners.
+  void _updateConnectionState(CustomConnectionState newState) {
     if (_connectionState != newState) {
       _connectionState = newState;
       _connectionStateSubject.add(newState);
@@ -246,7 +252,7 @@ class EnhancedAsyncClient {
         onDone: () {
           _log.info('Transport stream closed');
           if (!_isManualDisconnect) {
-            _updateConnectionState(ConnectionState.disconnected);
+            _updateConnectionState(CustomConnectionState.disconnected);
             _attemptReconnect();
           }
         },
@@ -260,7 +266,7 @@ class EnhancedAsyncClient {
   void _onTransportClose(int code, String reason) {
     _log.info('Transport closed: $code - $reason');
     if (!_isManualDisconnect) {
-      _updateConnectionState(ConnectionState.disconnected);
+      _updateConnectionState(CustomConnectionState.disconnected);
       _attemptReconnect();
     }
   }
@@ -269,32 +275,100 @@ class EnhancedAsyncClient {
   void _onTransportError(Object error) {
     _log.severe('Transport error: $error');
     if (!_isManualDisconnect) {
-      _updateConnectionState(ConnectionState.disconnected);
+      _updateConnectionState(CustomConnectionState.disconnected);
       _attemptReconnect();
     }
   }
-
-  // REACTIVE STREAMS API
 
   /// Stream of all channel messages.
   Stream<ChannelMessage> get messageStream => _eventStreamController.stream;
 
   /// Stream of connection state changes.
-  Stream<ConnectionState> get connectionState => _connectionStateSubject.stream;
+  Stream<CustomConnectionState> get connectionState =>
+      _connectionStateSubject.stream;
 
   /// Stream of connectivity changes.
   Stream<ConnectivityResult> get connectivityState =>
       _connectivitySubject.stream;
 
   /// Stream of messages filtered by event name(s).
-  Stream<ChannelMessage> messagesWhere(List<String> eventFilters) {
-    return messageStream
-        .where((message) => eventFilters.contains(message.event));
+  StreamSubscription<ChannelMessage> subscribeToMany(
+    List<String>? eventFilters,
+    Function? onData, {
+    Function? onError,
+  }) {
+    if (eventFilters == null || eventFilters.isEmpty) {
+      throw ArgumentError('Invalid event filter(s)');
+    } else {
+      for (var element in eventFilters) {
+        if (element.trim().isEmpty) {
+          throw ArgumentError('Invalid event filter');
+        }
+      }
+    }
+
+    return messageStream.listen(
+      (message) {
+        if (eventFilters.contains(message.event)) {
+          onData?.call(message);
+        } else {
+          _log.warning(
+            '[EnhancedAsyncClient] received event name "${message.event}" does not match event filters: "$eventFilters"',
+          );
+          _transportStrategy.sendInfo('not-subscribed-to[${message.event}]');
+        }
+      },
+      onError: (error, stackTrace) {
+        _log.warning(
+          '[async-client][Main] Event stream signaled an error',
+        );
+        if (onError != null) {
+          onError(error);
+        }
+      },
+      onDone: () {
+        _log.warning(
+          '[async-client][Main] Subscription for "$eventFilters" terminated.',
+        );
+      },
+    );
   }
 
   /// Stream of messages for a specific event.
-  Stream<ChannelMessage> messagesFor(String eventName) {
-    return messageStream.where((message) => message.event == eventName);
+  StreamSubscription<ChannelMessage> subscribeTo(
+    String eventName,
+    Function? onData, {
+    Function? onError,
+  }) {
+    if (eventName.trim().isEmpty) {
+      throw ArgumentError('Invalid event name');
+    }
+
+    return messageStream.listen(
+      (message) {
+        if (message.event == eventName) {
+          onData?.call(message);
+        } else {
+          _log.warning(
+            '[EnhancedAsyncClient] received event name "${message.event}" does not match requested event: "$eventName"',
+          );
+          _transportStrategy.sendInfo('not-subscribed-to[$eventName]');
+        }
+      },
+      onError: (error, stackTrace) {
+        _log.warning(
+          '[async-client][Main] Event stream signaled an error',
+        );
+        if (onError != null) {
+          onError(error);
+        }
+      },
+      onDone: () {
+        _log.warning(
+          '[async-client][Main] Subscription for "$eventName" terminated.',
+        );
+      },
+    );
   }
 
   /// Stream of messages matching a pattern.
@@ -311,42 +385,33 @@ class EnhancedAsyncClient {
     return Rx.combineLatest2(
       messageStream,
       connectionState,
-      (ChannelMessage message, ConnectionState state) =>
+      (ChannelMessage message, CustomConnectionState state) =>
           MessageWithState(message, state),
     );
   }
 
-  /// Stream that emits when connected and ready to receive messages.
-  Stream<void> get onReady {
-    return connectionState
-        .where((state) => state == ConnectionState.connected)
-        .map((_) => null);
-  }
-
-  /// Stream that emits when disconnected
+  /// Stream that emits when disconnected.
   Stream<void> get onDisconnected {
     return connectionState
-        .where((state) => state == ConnectionState.disconnected)
-        .map((_) => null);
+        .where((state) => state == CustomConnectionState.disconnected)
+        .map((_) => {});
   }
 
-  // UTILITY METHODS
-
   /// Check if currently connected.
-  bool get isConnected => _connectionState == ConnectionState.connected;
+  bool get isConnected => _connectionState == CustomConnectionState.connected;
 
   /// Check if currently connecting.
-  bool get isConnecting => _connectionState == ConnectionState.connecting;
+  bool get isConnecting => _connectionState == CustomConnectionState.connecting;
 
   /// Get current connection state.
-  ConnectionState get currentConnectionState => _connectionState;
+  CustomConnectionState get currentConnectionState => _connectionState;
 
   /// Get current transport type.
   String get currentTransportType =>
       _transportStrategy.getTransport().name().toString();
 
   /// Switch to different transport protocol.
-  Future<bool> switchTransport() async {
+  Future<bool> switchProtocols() async {
     final currentType = _transportStrategy.getTransport().name();
     final newType = await _transportStrategy.iterateTransport();
 
@@ -377,7 +442,7 @@ class EnhancedAsyncClient {
 }
 
 /// Connection state enumeration.
-enum ConnectionState {
+enum CustomConnectionState {
   disconnected,
   connecting,
   connected,
@@ -385,7 +450,7 @@ enum ConnectionState {
 }
 
 /// App lifecycle state (simplified for non-Flutter usage).
-enum AppLifecycleState {
+enum CustomAppLifecycleState {
   resumed,
   inactive,
   paused,
@@ -396,7 +461,7 @@ enum AppLifecycleState {
 /// Combined message and connection state.
 class MessageWithState {
   final ChannelMessage message;
-  final ConnectionState connectionState;
+  final CustomConnectionState connectionState;
 
   MessageWithState(this.message, this.connectionState);
 }

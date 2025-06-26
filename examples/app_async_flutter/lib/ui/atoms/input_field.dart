@@ -19,6 +19,7 @@ class InputField extends StatelessWidget {
     return TextField(
       controller: textEditingController,
       keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         border: const UnderlineInputBorder(),
         icon: Icon(icon),

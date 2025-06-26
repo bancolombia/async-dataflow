@@ -4,15 +4,14 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
 
-import 'async_config.dart';
-import 'enhanced_async_client.dart' as enhanced_async_client;
-import 'model/channel_message.dart';
+import '../channel_sender_client.dart';
 
 export 'package:connectivity_plus/connectivity_plus.dart'
     show ConnectivityResult;
 
 /// Re-export types for convenience.
-export 'enhanced_async_client.dart' show ConnectionState, MessageWithState;
+export 'enhanced_async_client.dart'
+    show CustomConnectionState, MessageWithState;
 
 /// Flutter-specific wrapper for EnhancedAsyncClient
 ///
@@ -55,11 +54,11 @@ export 'enhanced_async_client.dart' show ConnectionState, MessageWithState;
 /// ```
 class FlutterAsyncClient with WidgetsBindingObserver {
   final _log = Logger('FlutterAsyncClient');
-  late enhanced_async_client.EnhancedAsyncClient _client;
+  late EnhancedAsyncClient _client;
   bool _isObserverAdded = false;
 
   FlutterAsyncClient(AsyncConfig config) {
-    _client = enhanced_async_client.EnhancedAsyncClient(config);
+    _client = EnhancedAsyncClient(config);
     _addLifecycleObserver();
   }
 
@@ -68,7 +67,7 @@ class FlutterAsyncClient with WidgetsBindingObserver {
     if (!_isObserverAdded) {
       WidgetsBinding.instance.addObserver(this);
       _isObserverAdded = true;
-      _log.info('Added lifecycle observer');
+      _log.info('[flutter-async-client][LifeCycle] Added lifecycle observer');
     }
   }
 
@@ -77,38 +76,36 @@ class FlutterAsyncClient with WidgetsBindingObserver {
     if (_isObserverAdded && WidgetsBinding.instance != null) {
       WidgetsBinding.instance.removeObserver(this);
       _isObserverAdded = false;
-      _log.info('Removed lifecycle observer');
+      _log.info('[flutter-async-client][LifeCycle] Removed lifecycle observer');
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _log.info('App lifecycle changed to: $state');
+    _log.info(
+      '[flutter-async-client][LifeCycle] App lifecycle changed to: $state',
+    );
 
-    // Convert Flutter's AppLifecycleState to our custom enum
+    // Convert Flutter's AppLifecycleState to custom enum
     final customState = _convertLifecycleState(state);
     _client.handleAppLifecycleStateChanged(customState);
   }
 
-  /// Convert Flutter's AppLifecycleState to our custom enum.
-  enhanced_async_client.AppLifecycleState _convertLifecycleState(
+  /// Convert Flutter's AppLifecycleState to custom enum.
+  CustomAppLifecycleState _convertLifecycleState(
     AppLifecycleState state,
   ) {
     switch (state) {
       case AppLifecycleState.resumed:
-        return enhanced_async_client.AppLifecycleState.resumed;
+        return CustomAppLifecycleState.resumed;
       case AppLifecycleState.inactive:
-        return enhanced_async_client.AppLifecycleState.inactive;
+        return CustomAppLifecycleState.inactive;
       case AppLifecycleState.paused:
-        return enhanced_async_client.AppLifecycleState.paused;
+        return CustomAppLifecycleState.paused;
       case AppLifecycleState.detached:
-        return enhanced_async_client.AppLifecycleState.detached;
-      // case AppLifecycleState.hidden:
-      //   return enhanced_async_client.AppLifecycleState.hidden;
+        return CustomAppLifecycleState.detached;
     }
   }
-
-  // Delegate all methods to the enhanced client
 
   /// Connect to the server.
   Future<bool> connect() => _client.connect();
@@ -120,30 +117,42 @@ class FlutterAsyncClient with WidgetsBindingObserver {
   Stream<ChannelMessage> get messageStream => _client.messageStream;
 
   /// Stream of connection state changes.
-  Stream<enhanced_async_client.ConnectionState> get connectionState =>
-      _client.connectionState;
+  Stream<CustomConnectionState> get connectionState => _client.connectionState;
 
   /// Stream of connectivity changes.
   Stream<ConnectivityResult> get connectivityState => _client.connectivityState;
 
   /// Stream of messages filtered by event name(s).
-  Stream<ChannelMessage> messagesWhere(List<String> eventFilters) =>
-      _client.messagesWhere(eventFilters);
+  StreamSubscription<ChannelMessage> subscribeToMany(
+    List<String> eventFilters,
+    Function? onData, {
+    Function? onError,
+  }) =>
+      _client.subscribeToMany(
+        eventFilters,
+        onData,
+        onError: onError,
+      );
 
   /// Stream of messages for a specific event.
-  Stream<ChannelMessage> messagesFor(String eventName) =>
-      _client.messagesFor(eventName);
+  StreamSubscription<ChannelMessage> subscribeTo(
+    String eventName,
+    Function? onData, {
+    Function? onError,
+  }) =>
+      _client.subscribeTo(
+        eventName,
+        onData,
+        onError: onError,
+      );
 
   /// Stream of messages matching a pattern.
   Stream<ChannelMessage> messagesMatching(String pattern) =>
       _client.messagesMatching(pattern);
 
   /// Combined stream of messages with connection state.
-  Stream<enhanced_async_client.MessageWithState>
-      get messagesWithConnectionState => _client.messagesWithConnectionState;
-
-  /// Stream that emits when connected and ready.
-  Stream<void> get onReady => _client.onReady;
+  Stream<MessageWithState> get messagesWithConnectionState =>
+      _client.messagesWithConnectionState;
 
   /// Stream that emits when disconnected.
   Stream<void> get onDisconnected => _client.onDisconnected;
@@ -155,14 +164,14 @@ class FlutterAsyncClient with WidgetsBindingObserver {
   bool get isConnecting => _client.isConnecting;
 
   /// Get current connection state.
-  enhanced_async_client.ConnectionState get currentConnectionState =>
+  CustomConnectionState get currentConnectionState =>
       _client.currentConnectionState;
 
   /// Get current transport type.
   String get currentTransportType => _client.currentTransportType;
 
   /// Switch to different transport protocol.
-  Future<bool> switchTransport() => _client.switchTransport();
+  Future<bool> switchTransport() => _client.switchProtocols();
 
   /// Handle app lifecycle change manually (usually not needed).
   void handleAppLifecycleChange(AppLifecycleState state) {

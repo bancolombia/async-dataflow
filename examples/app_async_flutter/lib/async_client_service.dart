@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import 'package:channel_sender_client/src/enhanced_async_client.dart' as ac;
 
 class ResponsesNotifier extends ChangeNotifier {
   List<String> responses = [];
@@ -99,6 +98,11 @@ class AsyncClientService extends InheritedWidget {
     await prefs.remove('userRef');
   }
 
+  void dispose() {
+    _log.info("Disposing AsyncClientService");
+    asyncClient.dispose();
+  }
+
   Future<void> refreshCredentials() async {
     _log.info("Refreshing credentials due to authentication failure");
     await deleteChannelCreated();
@@ -139,35 +143,42 @@ class AsyncClientService extends InheritedWidget {
     ChannelCredential? channelCredential =
         await _requestChannelCredentials(userRef);
     if (channelCredential != null) {
-      _log.info("Channel credentials - Ref: ${channelCredential.channelRef}, Secret: ${channelCredential.channelSecret.substring(0, 10)}...");
+      _log.info(
+          "Channel credentials - Ref: ${channelCredential.channelRef}, Secret: ${channelCredential.channelSecret.substring(0, 10)}...");
       final conf = AsyncConfig(
-          socketUrl: appConfig.socketUrl,
-          sseUrl: appConfig.sseUrl,
-          enableBinaryTransport: false,
-          channelRef: channelCredential.channelRef,
-          channelSecret: channelCredential.channelSecret,
-          heartbeatInterval: appConfig.heartbeatInterval,
-          maxRetries: appConfig.maxRetries,
-          transportsProvider: appConfig.transports.map((e) {
+        socketUrl: appConfig.socketUrl,
+        sseUrl: appConfig.sseUrl,
+        enableBinaryTransport: false,
+        channelRef: channelCredential.channelRef,
+        channelSecret: channelCredential.channelSecret,
+        heartbeatInterval: appConfig.heartbeatInterval,
+        maxRetries: appConfig.maxRetries,
+        transportsProvider: appConfig.transports.map(
+          (e) {
             return transportFromString(e);
-          }).toList());
+          },
+        ).toList(),
+      );
 
-      asyncClient = FlutterAsyncClient(conf);
+      asyncClient = FlutterAsyncClient(conf); //Breaking change
 
       // Listen to connection state changes
-      asyncClient.connectionState.listen((state) {
-        _log.info("Connection state changed to: $state");
-        if (state == ac.ConnectionState.connected) {
-          currentTransportNotifier
-              .setTransport(asyncClient.currentTransportType);
-        }
-      });
+      asyncClient.connectionState.listen(
+        (state) {
+          _log.info("Connection state changed to: $state");
+          if (state == CustomConnectionState.connected) {
+            currentTransportNotifier
+                .setTransport(asyncClient.currentTransportType);
+          }
+        },
+      );
 
       bool connected = await asyncClient.connect();
       if (connected) {
         _log.info("Connected to ADF");
 
-        asyncClient.messagesWhere(eventListen).listen(
+        asyncClient.subscribeToMany(
+          eventListen,
           (eventResult) {
             _handleEvent(eventResult);
           },
@@ -185,17 +196,19 @@ class AsyncClientService extends InheritedWidget {
 
   Future<ChannelCredential?> _requestChannelCredentials(String userRef) async {
     ChannelCredential? channelCredential;
-    
+
     // First try cached credentials
     if (hasChannelCreated()) {
       channelCredential = getChannelCreated();
-      _log.info("Using cached credentials for channel: ${channelCredential.channelRef}");
+      _log.info(
+          "Using cached credentials for channel: ${channelCredential.channelRef}");
     } else {
       // Request new credentials
       _log.info("Requesting new credentials for user: $userRef");
       channelCredential = await asyncClientGateway.getCredentials(userRef);
       if (channelCredential != null) {
-        _log.info("Received new credentials for channel: ${channelCredential.channelRef}");
+        _log.info(
+            "Received new credentials for channel: ${channelCredential.channelRef}");
         persistCredentials(channelCredential);
       }
     }
@@ -209,8 +222,9 @@ class AsyncClientService extends InheritedWidget {
 
   ChannelCredential getChannelCreated() {
     return ChannelCredential(
-        channelRef: prefs.getString('channelRef')!,
-        channelSecret: prefs.getString('channelSecret')!);
+      channelRef: prefs.getString('channelRef')!,
+      channelSecret: prefs.getString('channelSecret')!,
+    );
   }
 
   void persistCredentials(ChannelCredential? channelCredential) async {
