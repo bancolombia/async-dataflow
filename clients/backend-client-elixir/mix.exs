@@ -59,6 +59,7 @@ defmodule AdfSenderConnector.MixProject do
       # traces
       {:opentelemetry_api, "~> 1.0"},
       ## testing deps
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:mock, "~> 0.3.0", only: :test},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:credo_sonarqube, "~> 0.1.3", only: [:dev, :test]},
