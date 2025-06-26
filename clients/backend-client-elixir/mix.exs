@@ -1,11 +1,18 @@
 defmodule AdfSenderConnector.MixProject do
   use Mix.Project
 
+  @version "0.4.0"
+
   def project do
     [
       app: :adf_sender_connector,
-      version: "0.4.0",
+      version: @version,
       elixir: "~> 1.16",
+      docs: [
+        extras: ["README.md"],
+        main: "readme",
+        source_ref: "v#{@version}"
+      ],
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -28,7 +35,11 @@ defmodule AdfSenderConnector.MixProject do
           ],
           steps: [:assemble, :tar]
         ]
-      ]
+      ],
+      package: package(),
+      description: description(),
+      source_url:
+        "https://github.com/bancolombia/async-dataflow/tree/master/clients/backend-client-elixir"
     ]
   end
 
@@ -66,4 +77,19 @@ defmodule AdfSenderConnector.MixProject do
   defp elixirc_paths(:test), do: ["lib", "test"]
   defp elixirc_paths(_), do: ["lib"]
 
+  defp description() do
+    "This package provides an elixir connector to the API exposed by ChannelSender"
+  end
+
+  defp package do
+    [
+      files: ["lib", "mix.exs", "README.md", "LICENSE"],
+      maintainers: ["gabheadz", "juancgalvis"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" =>
+          "https://github.com/bancolombia/async-dataflow/tree/master/clients/backend-client-elixir"
+      }
+    ]
+  end
 end
