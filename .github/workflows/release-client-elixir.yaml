@@ -30,9 +30,11 @@ jobs:
         run: mix deps.get
       - name: Run tests
         run: mix test
+      - name: Set release env
+        run: echo "RELEASE_VERSION=${GITHUB_REF##*_}" >> $GITHUB_ENV
       - name: Upgrade mix.exs
-        run: sed -i 's/@version \".*\"/@version "${GITHUB_REF##*_}"/g' mix.exs
-      - name: Publish
-        run: mix hex.publish --replace --yes
-        env:
-          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: sed -i 's/@version \".*\"/@version "${{ env.RELEASE_VERSION }}"/g' mix.exs && cat mix.exs
+      # - name: Publish
+      #   run: mix hex.publish --replace --yes
+      #   env:
+      #     HEX_API_KEY: $#{{ secrets.HEX_API_KEY }}
