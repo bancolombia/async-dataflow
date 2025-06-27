@@ -317,6 +317,12 @@ class WSTransport implements Transport {
     int reasonCode = extractCode(reason);
     bool shouldRetry = code > SOCKET_GOING_AWAY ||
         (code == SOCKET_GOING_AWAY && reasonCode >= SENDER_INVALID_REF);
+    
+    // Don't retry on invalid secret (3008) or invalid token
+    if (reasonCode == 3008 || reason == 'Invalid token for channel') {
+      shouldRetry = false;
+    }
+    
     _log.info('[async-client][WSTransport] shouldRetry: $shouldRetry');
 
     if (!_closeWasClean &&
