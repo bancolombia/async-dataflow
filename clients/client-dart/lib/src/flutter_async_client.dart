@@ -168,7 +168,7 @@ class FlutterAsyncClient with WidgetsBindingObserver {
       _client.currentConnectionState;
 
   /// Get current transport type.
-  String get currentTransportType => _client.currentTransportType;
+  String getCurrentTransportType() => _client.currentTransportType;
 
   /// Switch to different transport protocol.
   Future<bool> switchProtocols() => _client.switchProtocols();

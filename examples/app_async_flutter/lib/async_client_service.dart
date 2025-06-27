@@ -84,12 +84,14 @@ class AsyncClientService extends InheritedWidget {
     prefs = await SharedPreferences.getInstance();
     await deleteChannelCreated();
     await asyncClient.disconnect();
-    currentTransportNotifier.setTransport(asyncClient.currentTransportType);
+    currentTransportNotifier
+        .setTransport(asyncClient.getCurrentTransportType());
   }
 
   Future<void> switchProtocols() async {
     await asyncClient.switchProtocols();
-    currentTransportNotifier.setTransport(asyncClient.currentTransportType);
+    currentTransportNotifier
+        .setTransport(asyncClient.getCurrentTransportType());
   }
 
   Future<void> deleteChannelCreated() async {
@@ -100,7 +102,7 @@ class AsyncClientService extends InheritedWidget {
 
   void dispose() {
     _log.info("Disposing AsyncClientService");
-    asyncClient.dispose();
+    // asyncClient.dispose();
   }
 
   Future<void> refreshCredentials() async {
@@ -163,15 +165,15 @@ class AsyncClientService extends InheritedWidget {
       asyncClient = FlutterAsyncClient(conf); //Breaking change
 
       // Listen to connection state changes
-      asyncClient.connectionState.listen(
-        (state) {
-          _log.info("Connection state changed to: $state");
-          if (state == CustomConnectionState.connected) {
-            currentTransportNotifier
-                .setTransport(asyncClient.currentTransportType);
-          }
-        },
-      );
+      // asyncClient.connectionState.listen(
+      //   (state) {
+      //     _log.info("Connection state changed to: $state");
+      //     if (state == CustomConnectionState.connected) {
+      //       currentTransportNotifier
+      //           .setTransport(asyncClient.getCurrentTransportType());
+      //     }
+      //   },
+      // );
 
       bool connected = await asyncClient.connect();
       if (connected) {
