@@ -1,6 +1,5 @@
 //ignore_for_file: avoid-ignoring-return-values
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
@@ -9,6 +8,7 @@ import 'package:rxdart/rxdart.dart';
 import 'async_config.dart';
 import 'model/channel_message.dart';
 import 'transport/default_transport_strategy.dart';
+import 'transport/transport.dart';
 
 /// Enhanced Async Data Flow Client with reactive patterns,
 /// connectivity awareness, and background handling
@@ -18,8 +18,8 @@ import 'transport/default_transport_strategy.dart';
 /// - Automatic connectivity monitoring
 /// - Background/foreground handling
 /// - Advanced error recovery.
-class EnhancedAsyncClient {
-  final _log = Logger('EnhancedAsyncClient');
+class AsyncClientConf {
+  final _log = Logger('AsyncClientConf');
   final AsyncConfig _config;
 
   // Core components
@@ -32,7 +32,6 @@ class EnhancedAsyncClient {
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
 
   // Background handling
-  StreamSubscription<AppLifecycleState>? _lifecycleSubscription;
   CustomAppLifecycleState _currentLifecycleState =
       CustomAppLifecycleState.resumed;
 
@@ -52,7 +51,7 @@ class EnhancedAsyncClient {
     ConnectivityResult.none,
   );
 
-  EnhancedAsyncClient(this._config) {
+  AsyncClientConf(this._config) {
     _transportStrategy = DefaultTransportStrategy(
       _config,
       _onTransportClose,
@@ -410,6 +409,10 @@ class EnhancedAsyncClient {
   String get currentTransportType =>
       _transportStrategy.getTransport().name().toString();
 
+  Transport get currentTransport {
+    return _transportStrategy.getTransport();
+  }
+
   /// Switch to different transport protocol.
   Future<bool> switchProtocols() async {
     final currentType = _transportStrategy.getTransport().name();
@@ -430,7 +433,6 @@ class EnhancedAsyncClient {
     _reconnectTimer?.cancel();
 
     await _connectivitySubscription?.cancel();
-    await _lifecycleSubscription?.cancel();
 
     await _transportStrategy.disconnect();
 

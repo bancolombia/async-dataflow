@@ -42,7 +42,7 @@ class AsyncClientService extends InheritedWidget {
   final Widget child;
 
   final List<String> eventListen;
-  late FlutterAsyncClient asyncClient;
+  late AsyncClient asyncClient;
   final AsyncClientGateway asyncClientGateway;
   final _log = Logger('AsyncClientService');
 
@@ -162,18 +162,7 @@ class AsyncClientService extends InheritedWidget {
         ).toList(),
       );
 
-      asyncClient = FlutterAsyncClient(conf); //Breaking change
-
-      // Listen to connection state changes
-      // asyncClient.connectionState.listen(
-      //   (state) {
-      //     _log.info("Connection state changed to: $state");
-      //     if (state == CustomConnectionState.connected) {
-      //       currentTransportNotifier
-      //           .setTransport(asyncClient.getCurrentTransportType());
-      //     }
-      //   },
-      // );
+      asyncClient = AsyncClient(conf);
 
       bool connected = await asyncClient.connect();
       if (connected) {
