@@ -141,7 +141,7 @@ class SSETransport implements Transport {
     // close code 200 is ok to ignore
     if (statusCode != SSE_OK_CLOSE_CODE) {
       _log.severe(
-        '[async-client][SSETransport] Error in SSE connection: ${parsedException.statusCode}, ${parsedException.reasonPhrase}, stackTrace: $stackTrace',
+        '[async-client][SSETransport] Error in SSE connection: $statusCode, $reasonPhrase, stackTrace: $stackTrace',
       );
       // ignore: prefer-async-await
       EventFlux.instance.disconnect().then(
