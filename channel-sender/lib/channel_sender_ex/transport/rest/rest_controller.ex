@@ -6,6 +6,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias Plug.Conn.Query
+  alias OpenTelemetry.Tracer
 
   use Plug.Router
   use Plug.ErrorHandler
@@ -15,6 +16,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   # @metadata_headers_max 3
   # @metadata_headers_prefix "x-meta-"
 
+  plug(OpentelemetryPlug.Propagation)
   plug(Plug.Telemetry, event_prefix: [:channel_sender_ex, :plug])
   plug(CORSPlug)
   plug(:match)
@@ -39,6 +41,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     # |> Enum.filter(fn {key, _} -> String.starts_with?(key, @metadata_headers_prefix) end)
     # |> Enum.map(fn {key, value} -> {String.replace(key, @metadata_headers_prefix, ""), String.slice(value, 0, 50)} end)
     # |> Enum.take(@metadata_headers_max)
+    add_trace_metadata(conn.body_params)
     route_create(conn.body_params, [], conn)
   end
 
@@ -70,9 +73,10 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp close_channel(conn) do
-    channel = conn.query_string
+    params = conn.query_string
     |> Query.decode
-    |> Map.get("channel_ref", nil)
+    add_trace_metadata(params)
+    channel = Map.get(params, "channel_ref", nil)
     case channel do
       nil ->
         invalid_body(conn)
@@ -169,6 +173,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   @spec assert_deliver_request(map()) :: {:ok, map()} | {:error, :invalid_message}
   defp assert_deliver_request(message) do
     # Check if minimal fields are present and not nil
+    add_trace_metadata(message)
     result = message
     |> Enum.all?(fn {key, value} ->
       case key do
@@ -314,6 +319,17 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     conn
     |> put_resp_header("content-type", "application/json")
     |> send_resp(conn.status, response)
+  end
+
+  defp add_trace_metadata(params) do
+    metadata = %{
+      "user_ref" => params[:user_ref],
+      "app_ref" => params[:application_ref] || params[:app_ref],
+      "channel_ref" => params[:channel_ref]
+    }
+    Enum.each(metadata, fn {k, v} ->
+      if v, do: Tracer.set_attribute("adf." <> k, v)
+    end)
   end
 
 end

@@ -13,3 +13,10 @@ config :channel_sender_ex,
   topology: [
     strategy: Cluster.Strategy.Gossip
   ]
+
+config :opentelemetry,
+  span_processor: :batch,
+  traces_exporter: {:otel_exporter_stdout, []}
+
+config :opentelemetry_plug,
+  ignored_routes: ["/health", "/metrics"]

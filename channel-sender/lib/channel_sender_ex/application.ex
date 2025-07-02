@@ -15,7 +15,9 @@ defmodule ChannelSenderEx.Application do
   require Logger
 
   def start(_type, _args) do
-    _config = ApplicationConfig.load()
+    config = ApplicationConfig.load()
+
+    open_telemetry_traces(config)
 
     Helper.compile(:channel_sender_ex)
     CustomTelemetry.custom_telemetry_events()
@@ -75,5 +77,31 @@ defmodule ChannelSenderEx.Application do
       id: :pg,
       start: {:pg, :start_link, []}
     }
+  end
+
+  defp open_telemetry_traces(config) do
+    traces_enable = get_in(config, [:channel_sender_ex, "opentelemetry", "traces_enable"])
+
+    if traces_enable do
+      traces_endpoint = get_in(config, [:channel_sender_ex, "opentelemetry", "traces_endpoint"])
+      traces_ignore_routes = get_in(config, [:channel_sender_ex, "opentelemetry", "traces_ignore_routes"])
+
+      Application.put_env(:opentelemetry, :text_map_propagators, [:baggage, :trace_context])
+      Application.put_env(:opentelemetry, :span_processor, :batch)
+      Application.put_env(:opentelemetry, :traces_exporter, :otlp)
+      Application.put_env(:opentelemetry, :resource_detectors, [
+        :otel_resource_app_env,
+        :otel_resource_env_var,
+        OtelResourceDynatrace
+      ])
+
+      Application.put_env(:opentelemetry_exporter, :otlp_protocol, :http_protobuf)
+      Application.put_env(:opentelemetry_exporter, :otlp_endpoint, traces_endpoint)
+
+      Application.put_env(:opentelemetry_plug, :ignored_routes, traces_ignore_routes)
+
+      Logger.warning("Tracing is enabled, setting up OpentelemetryPlug.")
+      OpentelemetryPlug.setup()
+    end
   end
 end

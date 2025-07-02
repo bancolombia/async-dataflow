@@ -115,6 +115,18 @@ defmodule ChannelSenderEx.ApplicationConfig do
 
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
 
+    Application.put_env(:channel_sender_ex, :traces_enable,
+      get_in(config, [:channel_sender_ex, "opentelemetry", "traces_enable"])
+    )
+
+    Application.put_env(:channel_sender_ex, :traces_endpoint,
+      get_in(config, [:channel_sender_ex, "opentelemetry", "traces_endpoint"])
+    )
+
+    Application.put_env(:channel_sender_ex, :traces_ignore_routes,
+      get_in(config, [:channel_sender_ex, "opentelemetry", "traces_ignore_routes"])
+    )
+
     if config == %{} do
       Logger.warning("No valid configuration found!!!, Loading pre-defined default values : #{inspect(Application.get_all_env(:channel_sender_ex))}")
     else

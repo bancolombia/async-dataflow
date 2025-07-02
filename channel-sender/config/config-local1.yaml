@@ -77,7 +77,10 @@ channel_sender_ex:
 
     # see https://github.com/bancolombia/async-dataflow/tree/master/channel-sender/deploy_samples/k8s
     # for more information about the kubernetes configuration with libcluser
-
+  opentelemetry:
+    traces_enable: true
+    traces_endpoint: "http://localhost:4318"
+    traces_ignore_routes: ["/health", "/metrics"]
 logger:
   level: debug
 

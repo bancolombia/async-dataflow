@@ -55,7 +55,6 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       sum("elixir.http_request_duration_milliseconds.duration", tags: [:request_path, :status, :service]),
 
       #Custom Metrics
-      counter("elixir.adf.message.requested.count", tags: [:service]),
       counter("elixir.adf.message.delivered.count", tags: [:service]),
       counter("elixir.adf.message.nodelivered.count", tags: [:service]),
 
@@ -70,8 +69,6 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       counter("elixir.adf.sse.connection.count", tags: [:service]),
       counter("elixir.adf.sse.badrequest.count", tags: [:status, :code, :service]),
 
-      sum("elixir.adf.channel.waiting.count", tags: [:service], reporter_options: [report_as: :counter]),
-      sum("elixir.adf.channel.connected.count", tags: [:service], reporter_options: [report_as: :counter]),
       sum("elixir.adf.channel.created_on_socket.count", tags: [:service], reporter_options: [report_as: :counter]),
       sum("elixir.adf.channel.pending.send.count", tags: [:service], reporter_options: [report_as: :counter]),
       sum("elixir.adf.channel.pending.ack.count", tags: [:service], reporter_options: [report_as: :counter]),
@@ -83,8 +80,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       last_value("elixir.vm.memory.ets", unit: {:byte, :kilobyte}, tags: [:service]),
       last_value("elixir.vm.total_run_queue_lengths.total", tags: [:service]),
       last_value("elixir.vm.total_run_queue_lengths.cpu", tags: [:service]),
-      last_value("elixir.vm.total_run_queue_lengths.io", tags: [:service]),
-      last_value("elixir.vm.system_counts_process.count", tags: [:service])
+      last_value("elixir.vm.total_run_queue_lengths.io", tags: [:service])
     ]
   end
 
