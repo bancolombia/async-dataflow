@@ -19,17 +19,21 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   setup_all do
     IO.puts("Starting Applications for Socket Test")
 
-    Application.put_env(:channel_sender_ex,
+    Application.put_env(
+      :channel_sender_ex,
       :accept_channel_reply_timeout,
-      1000)
+      1000
+    )
 
-    Application.put_env(:channel_sender_ex,
+    Application.put_env(
+      :channel_sender_ex,
       :on_connected_channel_reply_timeout,
-      2000)
+      2000
+    )
 
     Application.put_env(:channel_sender_ex, :secret_base, {
-        "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
-        "socket auth"
+      "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
+      "socket auth"
     })
 
     {:ok, _} = Application.ensure_all_started(:libcluster)
@@ -49,6 +53,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
       ChannelSupervisor,
       %{id: :pg, start: {:pg, :start_link, []}}
     ]
+
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     {:ok, pid_supervisor} = Supervisor.start_link(children, opts)
 
@@ -389,5 +394,4 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   defp decode_message({:binary, data}) do
     BinaryEncoder.decode_message(data)
   end
-
 end

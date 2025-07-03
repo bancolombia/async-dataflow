@@ -13,6 +13,7 @@ defmodule ChannelSenderEx.Transport.CowboyStarter do
         stream_handlers: [:cowboy_metrics_h, :cowboy_stream_h],
         metrics_callback: &CS.metrics_callback/1
       }
+
       :cowboy.start_clear(name, tcp_opts(port), protocol_opts)
     end)
   end
@@ -26,17 +27,26 @@ defmodule ChannelSenderEx.Transport.CowboyStarter do
 
     case req.reason do
       :normal ->
-        CustomTelemetry.execute_custom_event([:adf, :socket, :badrequest],
+        CustomTelemetry.execute_custom_event(
+          [:adf, :socket, :badrequest],
           %{count: 1},
-          %{request_path: "/ext/socket", status: req.resp_status, code: get_error_code_header(req)})
+          %{
+            request_path: "/ext/socket",
+            status: req.resp_status,
+            code: get_error_code_header(req)
+          }
+        )
+
       :switch_protocol ->
-        CustomTelemetry.execute_custom_event([:adf, :socket, :switchprotocol],
+        CustomTelemetry.execute_custom_event(
+          [:adf, :socket, :switchprotocol],
           %{count: 1},
-          %{request_path: "/ext/socket", status: 101, code: "0"})
+          %{request_path: "/ext/socket", status: 101, code: "0"}
+        )
+
       _ ->
         :ok
     end
-
   rescue
     e -> Logger.warning("Error in metrics callback: #{inspect(e)}")
   end
@@ -60,5 +70,4 @@ defmodule ChannelSenderEx.Transport.CowboyStarter do
       xcode -> xcode
     end
   end
-
 end

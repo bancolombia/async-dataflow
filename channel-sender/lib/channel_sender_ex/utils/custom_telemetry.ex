@@ -4,6 +4,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
   import Telemetry.Metrics
   require OpenTelemetry.Tracer, as: Tracer
   alias ChannelSenderEx.Utils.CustomTelemetry, as: CT
+
   @service_name "channel_sender_ex"
 
   def custom_telemetry_events do
@@ -135,24 +136,27 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
   # Traces
 
   def start_span(protocol, req, channel) do
-    # TODO: Add condition to check if tracing is enabled
-    span_name = "#{protocol}-#{channel}"
+    traces_enable = Application.get_env(:channel_sender_ex, :traces_enable, false)
 
-    {peer_ip, peer_port} = req.peer
+    if traces_enable do
+      span_name = "#{protocol}-#{channel}"
 
-    attributes =
-      [
-        "http.target": req.path,
-        "http.host": req.host,
-        "http.scheme": req.scheme,
-        "http.flavor": map_http_version(req.version),
-        "http.method": req.method,
-        "net.peer.ip": to_string(:inet_parse.ntoa(peer_ip)),
-        "net.peer.port": peer_port,
-        "net.host.port": req.port
-      ]
+      {peer_ip, peer_port} = req.peer
 
-    Tracer.start_span(span_name, %{attributes: attributes, kind: :server})
+      attributes =
+        [
+          "http.target": req.path,
+          "http.host": req.host,
+          "http.scheme": req.scheme,
+          "http.flavor": map_http_version(req.version),
+          "http.method": req.method,
+          "net.peer.ip": to_string(:inet_parse.ntoa(peer_ip)),
+          "net.peer.port": peer_port,
+          "net.host.port": req.port
+        ]
+
+      Tracer.start_span(span_name, %{attributes: attributes, kind: :server})
+    end
   end
 
   def end_span(cause) do

@@ -16,19 +16,29 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcessTest do
 
   test "should not connect processes, due to process not registered" do
     with_mock(
-      ChannelSupervisor, [whereis_channel: fn(_) -> :undefined end]
+      ChannelSupervisor,
+      whereis_channel: fn _ -> :undefined end
     ) do
-      assert ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0), :websocket) == :noproc
+      assert ReConnectProcess.connect_socket_to_channel(
+               "channel_ref",
+               :c.pid(0, 250, 0),
+               :websocket
+             ) == :noproc
     end
   end
 
   test "should query and connect processes" do
     with_mocks([
-      {ChannelSupervisor, [], [whereis_channel: fn(_) -> :c.pid(0, 200, 0) end]},
-      {Channel, [], [socket_connected: fn(_, _, _) -> :ok end]},
+      {ChannelSupervisor, [], [whereis_channel: fn _ -> :c.pid(0, 200, 0) end]},
+      {Channel, [], [socket_connected: fn _, _, _ -> :ok end]}
     ]) do
-      assert is_pid(ReConnectProcess.connect_socket_to_channel("channel_ref", :c.pid(0, 250, 0), :websocket))
+      assert is_pid(
+               ReConnectProcess.connect_socket_to_channel(
+                 "channel_ref",
+                 :c.pid(0, 250, 0),
+                 :websocket
+               )
+             )
     end
   end
-
 end

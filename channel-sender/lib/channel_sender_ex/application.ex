@@ -84,11 +84,14 @@ defmodule ChannelSenderEx.Application do
 
     if traces_enable do
       traces_endpoint = get_in(config, [:channel_sender_ex, "opentelemetry", "traces_endpoint"])
-      traces_ignore_routes = get_in(config, [:channel_sender_ex, "opentelemetry", "traces_ignore_routes"])
+
+      traces_ignore_routes =
+        get_in(config, [:channel_sender_ex, "opentelemetry", "traces_ignore_routes"])
 
       Application.put_env(:opentelemetry, :text_map_propagators, [:baggage, :trace_context])
       Application.put_env(:opentelemetry, :span_processor, :batch)
       Application.put_env(:opentelemetry, :traces_exporter, :otlp)
+
       Application.put_env(:opentelemetry, :resource_detectors, [
         :otel_resource_app_env,
         :otel_resource_env_var,

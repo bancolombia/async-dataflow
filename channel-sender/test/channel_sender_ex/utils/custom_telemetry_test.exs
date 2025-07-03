@@ -8,8 +8,13 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
   end
 
   test "Should send metrics" do
-    CustomTelemetry.handle_custom_event([:channel_sender_ex, :plug, :stop],
-      %{:duration => 10}, %{:conn => %{:request_path => "test", status: 200}}, %{})
+    CustomTelemetry.handle_custom_event(
+      [:channel_sender_ex, :plug, :stop],
+      %{:duration => 10},
+      %{:conn => %{:request_path => "test", status: 200}},
+      %{}
+    )
+
     assert true
   end
 
@@ -19,8 +24,13 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
   end
 
   test "Should send custom metrics II" do
-    CustomTelemetry.handle_custom_event([:test], %{:duration => 10},
-      %{:conn => %{:request_path => "test", status: 200}}, %{})
+    CustomTelemetry.handle_custom_event(
+      [:test],
+      %{:duration => 10},
+      %{:conn => %{:request_path => "test", status: 200}},
+      %{}
+    )
+
     assert true
   end
 
@@ -33,5 +43,4 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
     CustomTelemetry.custom_telemetry_events()
     assert true
   end
-
 end

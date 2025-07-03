@@ -79,6 +79,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   @impl :cowboy_websocket
   def websocket_handle({:text, "Ack::" <> message_id}, state) do
     Tracer.add_event("Ack", %{"msg" => message_id})
+
     case remove_pending(state, message_id) do
       {nil, new_state} ->
         {[], new_state}
@@ -228,7 +229,7 @@ defmodule ChannelSenderEx.Transport.Socket do
   defp process_subprotocol_selection({@channel_key, channel}, req) do
     case :cowboy_req.parse_header("sec-websocket-protocol", req) do
       :undefined ->
-        span = CustomTelemetry.start_span(req, channel)
+        span = CustomTelemetry.start_span(:socket, req, channel)
 
         {:cowboy_websocket, req,
          _state =
@@ -251,7 +252,7 @@ defmodule ChannelSenderEx.Transport.Socket do
                :cowboy_req.set_resp_header("sec-websocket-protocol", "json_flow", req)}
           end
 
-        span = CustomTelemetry.start_span(req, channel)
+        span = CustomTelemetry.start_span(:socket, req, channel)
         {:cowboy_websocket, req, _state = {channel, :pre_auth, encoder, span}, ws_opts()}
     end
   end
@@ -414,5 +415,4 @@ defmodule ChannelSenderEx.Transport.Socket do
         {_commands = [{:close, 1001, <<@invalid_channel_code>>}], {channel, :unauthorized}}
     end
   end
-
 end

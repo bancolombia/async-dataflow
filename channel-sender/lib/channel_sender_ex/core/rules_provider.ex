@@ -31,6 +31,7 @@ defmodule ChannelSenderEx.Core.RulesProvider.Compiler do
     # We also use `location: :keep` to show us the file where this is being done when an error is raised
     unique_id = :erlang.unique_integer([:positive])
     module_name = Module.concat([base_module_name, "Dynamic#{unique_id}"])
+
     quote bind_quoted: [config: Macro.escape(config), module_name: module_name],
           location: :keep do
       # define our module
@@ -50,6 +51,7 @@ defmodule ChannelSenderEx.Core.RulesProvider.Compiler do
     # We have the whole quoted module at this point and we just push it into
     # Code.eval_quoted to compile it.
     |> Code.eval_quoted([], __ENV__)
+
     module_name
   end
 end

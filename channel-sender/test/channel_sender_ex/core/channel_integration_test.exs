@@ -10,21 +10,25 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   @moduletag :capture_log
 
   setup_all do
-    Application.put_env(:channel_sender_ex,
+    Application.put_env(
+      :channel_sender_ex,
       :accept_channel_reply_timeout,
-      1000)
+      1000
+    )
 
-    Application.put_env(:channel_sender_ex,
+    Application.put_env(
+      :channel_sender_ex,
       :on_connected_channel_reply_timeout,
-      2000)
+      2000
+    )
 
     Application.put_env(:channel_sender_ex, :channel_shutdown_on_clean_close, 900)
     Application.put_env(:channel_sender_ex, :channel_shutdown_on_disconnection, 900)
 
     Application.put_env(:channel_sender_ex, :secret_base, {
-        "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
-        "socket auth"
-      })
+      "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
+      "socket auth"
+    })
 
     {:ok, pg_pid} = :pg.start_link()
     {:ok, _} = Application.ensure_all_started(:libcluster)
@@ -45,6 +49,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     children = [
       ChannelSupervisor
     ]
+
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     Supervisor.start_link(children, opts)
 
@@ -84,7 +89,6 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     channel: channel,
     secret: secret
   } do
-
     {conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
     :gun.close(conn)
     Process.sleep(100)
@@ -95,7 +99,6 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     channel: channel,
     secret: secret
   } do
-
     # start socket connection and authenticate
     {_conn, _stream} = assert_connect_and_authenticate(port, channel, secret)
 
@@ -109,10 +112,10 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     refute Process.alive?(channel_pid)
   end
 
-  test "Should just connect and allow to call close, even when no socket and channel process waiting", %{
-    channel: channel,
-  } do
-
+  test "Should just connect and allow to call close, even when no socket and channel process waiting",
+       %{
+         channel: channel
+       } do
     # call for stop
     channel_pid = ChannelSupervisor.whereis_channel(channel)
     :ok = Channel.stop(channel_pid)
@@ -128,7 +131,6 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     channel: channel,
     secret: secret
   } do
-
     # send 2 messages
     assert {:ok, _, _} = deliver_message(channel, "99")
     assert {:ok, _, _} = deliver_message(channel, "100")
@@ -137,8 +139,11 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret)
 
     # recv 2 pending messages
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"99\",\"\",\"event.test\",\"MessageData12_3245rs42112aa99\"]"}}
-    assert_receive {:gun_ws, ^conn, ^stream, {:text, "[\"100\",\"\",\"event.test\",\"MessageData12_3245rs42112aa100\"]"}}
+    assert_receive {:gun_ws, ^conn, ^stream,
+                    {:text, "[\"99\",\"\",\"event.test\",\"MessageData12_3245rs42112aa99\"]"}}
+
+    assert_receive {:gun_ws, ^conn, ^stream,
+                    {:text, "[\"100\",\"\",\"event.test\",\"MessageData12_3245rs42112aa100\"]"}}
 
     :gun.close(conn)
     Process.sleep(100)
@@ -194,6 +199,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
     Process.sleep(300)
 
     assert :undefined == ChannelSupervisor.whereis_channel(channel)
+
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :channel_shutdown_on_clean_close)
       Application.delete_env(:channel_sender_ex, :channel_shutdown_on_disconnection)
@@ -250,12 +256,15 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
 
   defp build_message(message_id) do
     data = "MessageData12_3245rs42112aa" <> message_id
-    message = ProtocolMessage.to_protocol_message(%{
-      message_id: message_id,
-      correlation_id: "",
-      message_data: data,
-      event_name: "event.test"
-    })
+
+    message =
+      ProtocolMessage.to_protocol_message(%{
+        message_id: message_id,
+        correlation_id: "",
+        message_data: data,
+        event_name: "event.test"
+      })
+
     {data, message}
   end
 
