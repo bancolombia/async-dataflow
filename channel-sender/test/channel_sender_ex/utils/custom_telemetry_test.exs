@@ -3,7 +3,6 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
   use ExUnit.Case
 
   setup_all do
-    Application.put_env(:channel_sender_ex, :traces_enable, true)
     {:ok, _} = Application.ensure_all_started(:telemetry_metrics_prometheus)
     :ok
   end

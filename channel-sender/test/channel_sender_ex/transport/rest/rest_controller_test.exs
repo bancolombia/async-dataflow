@@ -1,6 +1,7 @@
 defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   use ExUnit.Case
-  use Plug.Test
+  import Plug.Test
+  import Plug.Conn
   import Mock
 
   alias ChannelSenderEx.Core.PubSub.PubSubCore

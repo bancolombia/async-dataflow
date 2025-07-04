@@ -24,7 +24,9 @@ channel_sender_ex:
     #   namespace: "sendernm"
     #   polling_interval: 5000
   opentelemetry:
-    traces_enable: false
+    traces_enable: true
+    traces_endpoint: "http://localhost:4318"
+    traces_ignore_routes: [ "/health", "/metrics" ]
 
 logger:
   level: debug
