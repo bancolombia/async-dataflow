@@ -50,6 +50,7 @@ class AsyncClientConf {
       BehaviorSubject<ConnectivityResult>.seeded(
     ConnectivityResult.none,
   );
+  StreamSubscription<ChannelMessage>? _transportStreamSubscription;
 
   AsyncClientConf(this._config) {
     _transportStrategy = DefaultTransportStrategy(
@@ -241,7 +242,10 @@ class AsyncClientConf {
   /// Listen to transport stream.
   void _listenToTransportStream() {
     try {
-      _transportStrategy.stream.listen(
+      // Cancel existing subscription to prevent duplicate listeners
+      _transportStreamSubscription?.cancel();
+      
+      _transportStreamSubscription = _transportStrategy.stream.listen(
         (message) {
           _eventStreamController.add(message);
         },
@@ -433,6 +437,7 @@ class AsyncClientConf {
     _reconnectTimer?.cancel();
 
     await _connectivitySubscription?.cancel();
+    await _transportStreamSubscription?.cancel();
 
     await _transportStrategy.disconnect();
 
