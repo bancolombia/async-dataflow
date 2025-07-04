@@ -41,7 +41,6 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     # |> Enum.filter(fn {key, _} -> String.starts_with?(key, @metadata_headers_prefix) end)
     # |> Enum.map(fn {key, value} -> {String.replace(key, @metadata_headers_prefix, ""), String.slice(value, 0, 50)} end)
     # |> Enum.take(@metadata_headers_max)
-    add_trace_metadata(conn.body_params)
     route_create(conn.body_params, [], conn)
   end
 
@@ -62,7 +61,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       true ->
         {channel_ref, channel_secret} =
           ChannelAuthenticator.create_channel(application_ref, user_ref, metadata)
-
+        params = %{application_ref: application_ref, user_ref: user_ref, channel_ref: channel_ref}
+        add_trace_metadata(params)
         conn
         |> put_resp_header("content-type", "application/json")
         |> send_resp(
@@ -369,7 +369,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp add_trace_metadata(params) do
     metadata = %{
-      "user_ref" => params[:user_ref],
+      "user_ref" => unwrap_optional(params[:user_ref]),
       "app_ref" => params[:application_ref] || params[:app_ref],
       "channel_ref" => params[:channel_ref],
       "msg" => params[:message_id]
@@ -379,4 +379,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       if v, do: Tracer.set_attribute("adf." <> k, v)
     end)
   end
+
+  defp unwrap_optional("Optional[" <> rest), do: String.trim_trailing(rest, "]")
+  defp unwrap_optional(val), do: val
 end
