@@ -131,6 +131,7 @@ defmodule ChannelSenderEx.Transport.Socket do
         {_commands = [encoded], new_state}
 
       {:error, error} ->
+        # TODO: Add event
         send(pid, {:non_retry_error, error, ref, message_id})
         {_commands = [], state}
     end
@@ -154,6 +155,8 @@ defmodule ChannelSenderEx.Transport.Socket do
           "Socket #{inspect(self())} for channel #{channel_ref}. Related process #{inspect(ref)} down normally."
         end)
 
+         # TODO: Add event channel down normal
+
         {_commands = [{:close, 1000, <<@normal_close_code>>}], state}
 
       _ ->
@@ -161,6 +164,8 @@ defmodule ChannelSenderEx.Transport.Socket do
           Socket #{inspect(self())} for channel #{channel_ref}. Related Process #{inspect(ref)}
           received DOWN message: #{inspect({ref, proc, pid, cause})}. Spawning process for re-conection
         """)
+
+        # TODO: Add event channel down with cause
 
         ReConnectProcess.start(self(), channel_ref, :websocket)
 
@@ -176,6 +181,8 @@ defmodule ChannelSenderEx.Transport.Socket do
     Logger.warning(fn ->
       "Socket #{inspect(self())} for channel #{channel_ref} : spawning process for re-conection"
     end)
+
+     # TODO: Add event channel down no channel
 
     ReConnectProcess.start(self(), channel_ref, :websocket)
 
