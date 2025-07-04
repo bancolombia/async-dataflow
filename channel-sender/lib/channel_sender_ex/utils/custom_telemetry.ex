@@ -134,7 +134,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
     traces_enable = Application.get_env(:channel_sender_ex, :traces_enable, false)
 
     if traces_enable do
-      span_name = "#{protocol}-#{channel}"
+      span_name = "#{req.path}->#{channel}"
 
       {peer_ip, peer_port} = req.peer
 
@@ -148,7 +148,8 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
           "net.peer.ip": to_string(:inet_parse.ntoa(peer_ip)),
           "net.peer.port": peer_port,
           "net.host.port": req.port,
-          "adf.channel_ref": channel
+          "adf.channel_ref": channel,
+          "adf.protocol": protocol
         ]
 
       Tracer.start_span(span_name, %{attributes: attributes, kind: :server})
