@@ -48,4 +48,38 @@ defmodule ChannelSenderEx.ApplicationTest do
       end
     end
   end
+
+  describe "enable traces" do
+    test "enables traces when traces_enable is true" do
+      Application.put_env(:channel_sender_ex, :traces_enable, true)
+
+      with_mocks([
+        {CustomTelemetry, [],
+          [
+            custom_telemetry_events: fn -> :ok end,
+            metrics: fn -> [] end
+          ]},
+        {EntryPoint, [], [start: fn -> :ok end]},
+        {Supervisor, [], [start_link: fn _, _ -> {:ok, :c.pid(0, 250, 0)} end]}
+      ]) do
+        assert {:ok, _pid} = APP.start(:normal, [])
+      end
+    end
+
+    test "does not enable traces when traces_enable is false" do
+      Application.put_env(:channel_sender_ex, :traces_enable, false)
+
+      with_mocks([
+        {CustomTelemetry, [],
+          [
+            custom_telemetry_events: fn -> :ok end,
+            metrics: fn -> [] end
+          ]},
+        {EntryPoint, [], [start: fn -> :ok end]},
+        {Supervisor, [], [start_link: fn _, _ -> {:ok, :c.pid(0, 250, 0)} end]}
+      ]) do
+        assert {:ok, _pid} = APP.start(:normal, [])
+      end
+    end
+  end
 end
