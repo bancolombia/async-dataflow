@@ -132,8 +132,9 @@ defmodule ChannelSenderEx.Transport.Socket do
 
       {:error, error} ->
         Tracer.add_event("Deliver", %{
-          "detail" => "Unable to encode message",
+          "detail" => "Unable to encode message"
         })
+
         send(pid, {:non_retry_error, error, ref, message_id})
         {_commands = [], state}
     end
