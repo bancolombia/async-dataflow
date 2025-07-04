@@ -72,7 +72,7 @@ defmodule ChannelSenderEx.MixProject do
       {:opentelemetry_exporter, "~> 1.8"},
       {:opentelemetry_api, "~> 1.4"},
       {:opentelemetry_plug,
-       git: "https://github.com/bancolombia/opentelemetry_plug.git", tag: "v1.1.0"},
+       git: "https://github.com/bancolombia/opentelemetry_plug.git", tag: "v1.1.1"},
       {:eflambe, "~> 0.3.0"},
       {:meck, "0.9.2"},
       {:observer_cli, "~> 1.8"}
