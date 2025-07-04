@@ -131,7 +131,9 @@ defmodule ChannelSenderEx.Transport.Socket do
         {_commands = [encoded], new_state}
 
       {:error, error} ->
-        # TODO: Add event
+        Tracer.add_event("Deliver", %{
+          "detail" => "Unable to encode message",
+        })
         send(pid, {:non_retry_error, error, ref, message_id})
         {_commands = [], state}
     end
@@ -155,7 +157,9 @@ defmodule ChannelSenderEx.Transport.Socket do
           "Socket #{inspect(self())} for channel #{channel_ref}. Related process #{inspect(ref)} down normally."
         end)
 
-         # TODO: Add event channel down normal
+        Tracer.add_event("Down", %{
+          "detail" => "DOWN message received, process down normally"
+        })
 
         {_commands = [{:close, 1000, <<@normal_close_code>>}], state}
 
@@ -165,7 +169,9 @@ defmodule ChannelSenderEx.Transport.Socket do
           received DOWN message: #{inspect({ref, proc, pid, cause})}. Spawning process for re-conection
         """)
 
-        # TODO: Add event channel down with cause
+        Tracer.add_event("Down", %{
+          "detail" => "DOWN message starting re-connect process with cause: #{inspect(cause)}"
+        })
 
         ReConnectProcess.start(self(), channel_ref, :websocket)
 
@@ -182,7 +188,9 @@ defmodule ChannelSenderEx.Transport.Socket do
       "Socket #{inspect(self())} for channel #{channel_ref} : spawning process for re-conection"
     end)
 
-     # TODO: Add event channel down no channel
+    Tracer.add_event("Down", %{
+      "detail" => "DOWN message starting re-connect process"
+    })
 
     ReConnectProcess.start(self(), channel_ref, :websocket)
 
