@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 class HomeHelper {
   final AsyncClientService asyncClientService;
-  HomeHelper(BuildContext context, this.asyncClientService);
-  void callAsyncBackend(textEditingController) {
+
+  HomeHelper(this.asyncClientService);
+
+  void callAsyncBackend(TextEditingController textEditingController) {
     int start = DateTime.now().millisecondsSinceEpoch;
 
     asyncClientService.asyncClientGateway

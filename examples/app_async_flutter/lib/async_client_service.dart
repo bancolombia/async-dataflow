@@ -48,17 +48,18 @@ class AsyncClientService extends InheritedWidget {
 
   late SharedPreferences prefs;
   ResponsesNotifier responsesNotifier = ResponsesNotifier();
-  CurrentTransportNotifier currentTransportNotifier = CurrentTransportNotifier();
+  CurrentTransportNotifier currentTransportNotifier =
+      CurrentTransportNotifier();
   final AppConfig appConfig;
 
   void _handleEvent(dynamic msg) {
-     // The client app can subscrtibe to bussines events with different names
+    // The client app can subscrtibe to bussines events with different names
     if (msg.event == 'businessEvent') {
       responsesNotifier.addResponse(
           'Message from async dataflow, title: ${msg.payload['title']} detail: ${msg.payload['detail']}');
     }
 
-     // Another bussines event
+    // Another bussines event
     if (msg.event == 'ch-ms-async-callback.svp.reply') {
       responsesNotifier.addResponse(
           'Message from async dataflow, title: ${msg.payload['data']['reply']['messageData']['title']} detail: ${msg.payload['data']['reply']['messageData']['detail']}');
@@ -83,18 +84,31 @@ class AsyncClientService extends InheritedWidget {
     prefs = await SharedPreferences.getInstance();
     await deleteChannelCreated();
     await asyncClient.disconnect();
-    currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
+    currentTransportNotifier
+        .setTransport(asyncClient.getCurrentTransportType());
   }
 
   Future<void> switchProtocols() async {
     await asyncClient.switchProtocols();
-    currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
+    currentTransportNotifier
+        .setTransport(asyncClient.getCurrentTransportType());
   }
 
   Future<void> deleteChannelCreated() async {
     await prefs.remove('channelRef');
     await prefs.remove('channelSecret');
     await prefs.remove('userRef');
+  }
+
+  void dispose() {
+    _log.info("Disposing AsyncClientService");
+    // asyncClient.dispose();
+  }
+
+  Future<void> refreshCredentials() async {
+    _log.info("Refreshing credentials due to authentication failure");
+    await deleteChannelCreated();
+    await initAsyncClient();
   }
 
   bool hasUserRef() {
@@ -131,32 +145,41 @@ class AsyncClientService extends InheritedWidget {
     ChannelCredential? channelCredential =
         await _requestChannelCredentials(userRef);
     if (channelCredential != null) {
+      _log.info(
+          "Channel credentials - Ref: ${channelCredential.channelRef}, Secret: ${channelCredential.channelSecret.substring(0, 10)}...");
       final conf = AsyncConfig(
-          socketUrl: appConfig.socketUrl,
-          sseUrl: appConfig.sseUrl,
-          enableBinaryTransport: false,
-          channelRef: channelCredential.channelRef,
-          channelSecret: channelCredential.channelSecret,
-          heartbeatInterval: appConfig.heartbeatInterval,
-          maxRetries: appConfig.maxRetries,
-          transportsProvider: appConfig.transports.map((e) {
+        socketUrl: appConfig.socketUrl,
+        sseUrl: appConfig.sseUrl,
+        enableBinaryTransport: false,
+        channelRef: channelCredential.channelRef,
+        channelSecret: channelCredential.channelSecret,
+        heartbeatInterval: appConfig.heartbeatInterval,
+        maxRetries: appConfig.maxRetries,
+        transportsProvider: appConfig.transports.map(
+          (e) {
             return transportFromString(e);
-          }).toList());
+          },
+        ).toList(),
+      );
 
       asyncClient = AsyncClient(conf);
+
       bool connected = await asyncClient.connect();
       if (connected) {
-        currentTransportNotifier.setTransport(asyncClient.getCurrentTransportType());
         _log.info("Connected to ADF");
-        asyncClient.subscribeToMany(eventListen, (eventResult) {
-          _handleEvent(eventResult);
-        }, onError: (err) {
-          _handleEvent(err);
-        });
+
+        asyncClient.subscribeToMany(
+          eventListen,
+          (eventResult) {
+            _handleEvent(eventResult);
+          },
+          onError: (err) {
+            _log.severe("Error in message stream: $err");
+          },
+        );
       } else {
         _log.severe("Not connected");
       }
-
     } else {
       throw Exception("AsyncClient could not be initialized");
     }
@@ -164,12 +187,22 @@ class AsyncClientService extends InheritedWidget {
 
   Future<ChannelCredential?> _requestChannelCredentials(String userRef) async {
     ChannelCredential? channelCredential;
+
+    // First try cached credentials
     if (hasChannelCreated()) {
-      return getChannelCreated();
+      channelCredential = getChannelCreated();
+      _log.info(
+          "Using cached credentials for channel: ${channelCredential.channelRef}");
+    } else {
+      // Request new credentials
+      _log.info("Requesting new credentials for user: $userRef");
+      channelCredential = await asyncClientGateway.getCredentials(userRef);
+      if (channelCredential != null) {
+        _log.info(
+            "Received new credentials for channel: ${channelCredential.channelRef}");
+        persistCredentials(channelCredential);
+      }
     }
-    channelCredential = await asyncClientGateway.getCredentials(userRef);
-    print(channelCredential!.channelRef);
-    persistCredentials(channelCredential);
     return channelCredential;
   }
 
@@ -180,8 +213,9 @@ class AsyncClientService extends InheritedWidget {
 
   ChannelCredential getChannelCreated() {
     return ChannelCredential(
-        channelRef: prefs.getString('channelRef')!,
-        channelSecret: prefs.getString('channelSecret')!);
+      channelRef: prefs.getString('channelRef')!,
+      channelSecret: prefs.getString('channelSecret')!,
+    );
   }
 
   void persistCredentials(ChannelCredential? channelCredential) async {

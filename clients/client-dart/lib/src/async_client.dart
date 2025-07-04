@@ -1,180 +1,191 @@
-//ignore_for_file: avoid_ignoring_returns
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/widgets.dart';
 import 'package:logging/logging.dart';
-import 'async_config.dart';
-import 'model/channel_message.dart';
-import 'transport/default_transport_strategy.dart';
-import 'transport/transport.dart';
 
-/// Async Data Flow Low Level Client
+import '../channel_sender_client.dart';
+import 'async_client_conf.dart';
+
+export 'package:connectivity_plus/connectivity_plus.dart'
+    show ConnectivityResult;
+
+/// Re-export types for convenience.
+export 'async_client_conf.dart' show CustomConnectionState, MessageWithState;
+
+/// Flutter-specific wrapper for EnhancedAsyncClient
 ///
-/// This library allows you to connect to Async Dataflow Channel
-/// Sender.
+/// This class provides:
+/// - Automatic Flutter lifecycle integration
+/// - Widget-friendly stream management
+/// - Proper resource cleanup
 ///
-class AsyncClient {
-  bool closeWasClean = false;
-  final _log = Logger('AsyncClient');
-  final AsyncConfig _config;
+/// Usage in a Flutter app:
+/// ```dart
+/// class MyApp extends StatefulWidget {
+///   @override
+///   _MyAppState createState() => _MyAppState();
+/// }
+///
+/// class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+///   late FlutterAsyncClient _client;
+///
+///   @override
+///   void initState() {
+///     super.initState();
+///     WidgetsBinding.instance.addObserver(this);
+///
+///     _client = FlutterAsyncClient(config);
+///     _client.connect();
+///   }
+///
+///   @override
+///   void dispose() {
+///     WidgetsBinding.instance.removeObserver(this);
+///     _client.dispose();
+///     super.dispose();
+///   }
+///
+///   @override
+///   void didChangeAppLifecycleState(AppLifecycleState state) {
+///     _client.handleAppLifecycleChange(state);
+///   }
+/// }
+/// ```
+class AsyncClient with WidgetsBindingObserver {
+  final _log = Logger('FlutterAsyncClient');
+  late AsyncClientConf _client;
+  bool _isObserverAdded = false;
 
-  late DefaultTransportStrategy _transportStrategy;
+  AsyncClient(AsyncConfig config) {
+    _client = AsyncClientConf(config);
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // this stream is used to expose the events to the user
-  // and abstract the stream from the transport layers.
-  late StreamController<ChannelMessage> _eventStreamController;
+    _addLifecycleObserver();
+  }
 
-  AsyncClient(this._config) {
-    _transportStrategy = DefaultTransportStrategy(
-      _config,
-      _onTransportClose,
-      _onTransportError,
+  /// Add lifecycle observer automatically.
+  void _addLifecycleObserver() {
+    if (!_isObserverAdded) {
+      WidgetsBinding.instance.addObserver(this);
+      _isObserverAdded = true;
+      _log.info('[flutter-async-client][LifeCycle] Added lifecycle observer');
+    }
+  }
+
+  /// Remove lifecycle observer.
+  void _removeLifecycleObserver() {
+    if (_isObserverAdded && WidgetsBinding.instance != null) {
+      WidgetsBinding.instance.removeObserver(this);
+      _isObserverAdded = false;
+      _log.info('[flutter-async-client][LifeCycle] Removed lifecycle observer');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _log.info(
+      '[flutter-async-client][LifeCycle] App lifecycle changed to: $state',
     );
-    _eventStreamController = StreamController<ChannelMessage>.broadcast();
+
+    // Convert Flutter's AppLifecycleState to custom enum
+    final customState = _convertLifecycleState(state);
+    _client.handleAppLifecycleStateChanged(customState);
   }
 
-  // Opens up the connection and performs auth flow.
-  Future<bool> connect() async {
-    closeWasClean = false;
-    bool connected = await _transportStrategy.connect();
-    if (connected) {
-      _log.info('[async-client][Main] Connected to the server');
-      _listenToTransportStream();
-
-      return true;
-    } else {
-      _log.severe('[async-client][Main] Could not connect to the server');
-
-      return false;
+  /// Convert Flutter's AppLifecycleState to custom enum.
+  CustomAppLifecycleState _convertLifecycleState(
+    AppLifecycleState state,
+  ) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        return CustomAppLifecycleState.resumed;
+      case AppLifecycleState.inactive:
+        return CustomAppLifecycleState.inactive;
+      case AppLifecycleState.paused:
+        return CustomAppLifecycleState.paused;
+      case AppLifecycleState.detached:
+        return CustomAppLifecycleState.detached;
     }
   }
 
-  // Listens to the transport stream and pipes the messages
-  // to the event stream.
-  void _listenToTransportStream() {
-    try {
-      _transportStrategy.stream.listen(
-        (message) {
-          _eventStreamController.add(message);
-        },
-        onError: (error, stacktrace) {
-          _log.severe('[async-client][Main] Error in transport stream: $error');
-        },
-        onDone: () {
-          _log.info('[async-client][Main] Transport stream closed');
-        },
-      );
-    } catch (e) {
-      _log.severe('[async-client][Main] Error in transport stream: $e');
-    }
-  }
+  /// Connect to the server.
+  Future<bool> connect() => _client.connect();
 
-  Stream<ChannelMessage> get eventStream => _eventStreamController.stream;
+  /// Disconnect from the server.
+  Future<bool> disconnect() => _client.disconnect();
 
-  StreamSubscription<ChannelMessage>? subscribeTo(
-    String eventFilter,
-    Function(ChannelMessage) onData, {
-    Function? onError,
-  }) {
-    return onError != null
-        ? subscribeToMany([eventFilter], onData, onError: onError)
-        : subscribeToMany([eventFilter], onData);
-  }
+  /// Stream of all channel messages.
+  Stream<ChannelMessage> get messageStream => _client.messageStream;
 
-  StreamSubscription<ChannelMessage>? subscribeToMany(
-    List<String>? eventFilters,
+  /// Stream of connection state changes.
+  Stream<CustomConnectionState> get connectionState => _client.connectionState;
+
+  /// Stream of connectivity changes.
+  Stream<ConnectivityResult> get connectivityState => _client.connectivityState;
+
+  /// Stream of messages filtered by event name(s).
+  StreamSubscription<ChannelMessage> subscribeToMany(
+    List<String> eventFilters,
     Function? onData, {
     Function? onError,
-  }) {
-    if (eventFilters == null || eventFilters.isEmpty) {
-      throw ArgumentError('Invalid event filter(s)');
-    } else {
-      for (var element in eventFilters) {
-        if (element.trim().isEmpty) {
-          throw ArgumentError('Invalid event filter');
-        }
-      }
-    }
-    if (onData == null) {
-      throw ArgumentError('Invalid onData function');
-    }
-
-    return eventStream.listen(
-      (message) {
-        if (eventFilters.contains(message.event)) {
-          onData(message);
-        } else {
-          _log.warning(
-            '[async-client][Main] received event name "${message.event}" does not match event filters: "$eventFilters"  ',
-          );
-          _transportStrategy.sendInfo('not-subscribed-to[${message.event}]');
-        }
-      },
-      onError: (error, stacktrace) {
-        _log.warning(
-          '[async-client][Main] Event stream signaled an error',
-        );
-        if (onError != null) {
-          onError(error);
-        }
-      },
-      onDone: () {
-        _log.warning(
-          '[async-client][Main] Subscription for "$eventFilters" terminated.',
-        );
-      },
-    );
-  }
-
-  bool isOpen() {
-    return _transportStrategy.getTransport().isOpen();
-  }
-
-  Future<bool> switchProtocols() async {
-    TransportType currentTransportType =
-        _transportStrategy.getTransport().name();
-
-    // reconnect using (potentially) a different transport. It depends on the strategy.
-    TransportType newTransportType =
-        await _transportStrategy.iterateTransport();
-
-    if (newTransportType == currentTransportType) {
-      _log.severe(
-        '[async-client][Main] Not switching protocols. Transport is the same',
+  }) =>
+      _client.subscribeToMany(
+        eventFilters,
+        onData,
+        onError: onError,
       );
 
-      return false;
-    }
+  /// Stream of messages for a specific event.
+  StreamSubscription<ChannelMessage> subscribeTo(
+    String eventName,
+    Function? onData, {
+    Function? onError,
+  }) =>
+      _client.subscribeTo(
+        eventName,
+        onData,
+        onError: onError,
+      );
 
-    return await connect();
+  /// Stream of messages matching a pattern.
+  Stream<ChannelMessage> messagesMatching(String pattern) =>
+      _client.messagesMatching(pattern);
+
+  /// Combined stream of messages with connection state.
+  Stream<MessageWithState> get messagesWithConnectionState =>
+      _client.messagesWithConnectionState;
+
+  /// Stream that emits when disconnected.
+  Stream<void> get onDisconnected => _client.onDisconnected;
+
+  /// Check if currently connected.
+  bool get isConnected => _client.isConnected;
+
+  /// Check if the connection is open.
+  bool isOpen() => _client.currentTransport.isOpen();
+
+  /// Check if currently connecting.
+  bool get isConnecting => _client.isConnecting;
+
+  /// Get current connection state.
+  CustomConnectionState get currentConnectionState =>
+      _client.currentConnectionState;
+
+  /// Get current transport type.
+  String getCurrentTransportType() => _client.currentTransportType;
+
+  /// Switch to different transport protocol.
+  Future<bool> switchProtocols() => _client.switchProtocols();
+
+  /// Handle app lifecycle change manually (usually not needed).
+  void handleAppLifecycleChange(AppLifecycleState state) {
+    didChangeAppLifecycleState(state);
   }
 
-  String getCurrentTransportType() {
-    return _transportStrategy.getTransport().name().toString();
-  }
-
-  Future<bool> disconnect() async {
-    closeWasClean = true;
-    _log.finer('[async-client][Main] disconnect() called');
-
-    await _transportStrategy.disconnect();
-    _log.finer('[async-client][Main] async-client. disconnect() called end');
-
-    return true;
-  }
-
-  void _onTransportClose(int code, String reason) {
-    _log.severe(
-      '[async-client][Main] Transport signaled close: ${_transportStrategy.getTransport().name()} code: $code reason: $reason',
-    );
-
-    /// if the close was clean, we don't need to switch protocols.
-  }
-
-  void _onTransportError(Object error) async {
-    _log.severe(
-      '[async-client][Main] Transport signaled error: ${_transportStrategy.getTransport().name()} $error',
-    );
-
-    await switchProtocols();
+  /// Dispose resources.
+  Future<void> dispose() async {
+    _removeLifecycleObserver();
+    await _client.dispose();
   }
 }
