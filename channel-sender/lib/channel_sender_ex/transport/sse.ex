@@ -31,40 +31,33 @@ defmodule ChannelSenderEx.Transport.Sse do
           |> authorize()
 
         case result do
-          {:error, @invalid_request_code, span} ->
+          {:error, @invalid_request_code} ->
             req = invalid_request(req, 400, @invalid_request_code)
-            Tracer.set_current_span(span)
             Tracer.add_event("Auth", %{"status" => "bad request", "reason" => "invalid_request"})
-            CustomTelemetry.end_span("bad_request")
             {:ok, req, nil}
 
-          {:error, @invalid_channel_code, span} ->
+          {:error, @invalid_channel_code} ->
             req = invalid_request(req, 428, @invalid_channel_code)
-            Tracer.set_current_span(span)
 
             Tracer.add_event("Auth", %{
               "status" => "precondition required",
               "reason" => "invalid_channel"
             })
 
-            CustomTelemetry.end_span("invalid_channel")
             {:ok, req, nil}
 
-          {:error, @invalid_secret_code, span} ->
+          {:error, @invalid_secret_code} ->
             invalid_request(req, 401, @invalid_secret_code)
-            Tracer.set_current_span(span)
             Tracer.add_event("Auth", %{"status" => "unauthorized", "reason" => "invalid_token"})
-            CustomTelemetry.end_span("unauthorized")
             {:ok, req, nil}
 
-          {:error, nil, span} ->
+          {:error, nil} ->
             invalid_request(req, 500, "unknown error")
-            Tracer.set_current_span(span)
+            Tracer.set_status(OpenTelemetry.status(:error, "channel nil"))
             Tracer.add_event("Auth", %{"status" => "internal error", "reason" => "unknown_error"})
-            CustomTelemetry.end_span("unknown_error")
             {:ok, req, nil}
 
-          {:ok, span} ->
+          :ok ->
             headers = %{
               "content-type" => "text/event-stream",
               "cache-control" => "no-cache",
@@ -74,19 +67,15 @@ defmodule ChannelSenderEx.Transport.Sse do
               "access-control-allow-headers" => "content-type, authorization"
             }
 
-            Tracer.set_current_span(span)
             Tracer.add_event("Auth", %{"status" => "success"})
             req = :cowboy_req.stream_reply(200, headers, req)
-            {:cowboy_loop, req, Map.put(ensure_map(state), :span, span)}
+            {:cowboy_loop, req, state}
         end
 
       _other ->
         {:ok, :cowboy_req.reply(405, req), state}
     end
   end
-
-  defp ensure_map(state) when is_list(state), do: %{}
-  defp ensure_map(state) when is_map(state), do: state
 
   defp handle_options(req, state) do
     req = send_cors_headers(req)
@@ -193,11 +182,11 @@ defmodule ChannelSenderEx.Transport.Sse do
       {:error, code} = e ->
         span = CustomTelemetry.start_span(:sse, req, nil)
         Logger.error("e: #{inspect(e)}")
-        {:error, code, span}
+        {:error, code}
     end
   end
 
-  defp authorize({:error, code, span}), do: {:error, code, span}
+  defp authorize({:error, code}), do: {:error, code}
 
   defp authorize({channel, secret, span}) do
     Tracer.set_current_span(span)
@@ -205,35 +194,28 @@ defmodule ChannelSenderEx.Transport.Sse do
     with {:ok, application, user_ref} <- ChannelAuthenticator.authorize_channel(channel, secret),
          :ok <- ensure_channel_exists_and_notify_socket(channel, application, user_ref) do
       CustomTelemetry.execute_custom_event([:adf, :sse, :connection], %{count: 1})
-      {:ok, span}
+      :ok
     else
       :unauthorized ->
         Logger.error(
           "Sse unable to authorize connection. Error: #{@invalid_secret_code}-invalid token for channel #{channel}"
         )
 
-        CustomTelemetry.end_span("unauthorized")
-        {:error, @invalid_secret_code, span}
+        {:error, @invalid_secret_code}
 
       {:error, _} = e ->
         Logger.error("Sse unable to authorize connection. Error: #{inspect(e)}")
-        Tracer.set_status(OpenTelemetry.status(:error, "#{inspect(e)}"))
-        CustomTelemetry.end_span("other")
-        {:error, elem(e, 1), span}
+        e
     end
   end
 
-  def terminate(reason, _req, state) do
-    state = ensure_map(state)
+  def terminate(reason, req, state) do
+    Logger.debug(fn ->
+      "SSE terminate with pid: #{inspect(self())}. REASON: #{inspect(reason)}."
+    end)
 
-    case Map.get(state, :span) do
-      nil ->
-        :ok
-
-      _span ->
-        CustomTelemetry.end_span("sse_terminate")
-        :ok
-    end
+    CustomTelemetry.end_span("sse_terminate")
+    :ok
   end
 
   defp ensure_channel_exists_and_notify_socket(channel, application, user_ref) do
