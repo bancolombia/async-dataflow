@@ -180,7 +180,7 @@ defmodule ChannelSenderEx.Transport.Sse do
       {channel, secret, span}
     else
       {:error, code} = e ->
-        span = CustomTelemetry.start_span(:sse, req, nil)
+        CustomTelemetry.start_span(:sse, req, nil)
         Logger.error("e: #{inspect(e)}")
         {:error, code}
     end
@@ -209,7 +209,7 @@ defmodule ChannelSenderEx.Transport.Sse do
     end
   end
 
-  def terminate(reason, req, state) do
+  def terminate(reason, _req, _state) do
     Logger.debug(fn ->
       "SSE terminate with pid: #{inspect(self())}. REASON: #{inspect(reason)}."
     end)

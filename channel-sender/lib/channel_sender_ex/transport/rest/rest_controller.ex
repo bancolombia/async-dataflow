@@ -5,8 +5,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias Plug.Conn.Query
   alias OpenTelemetry.Tracer
+  alias Plug.Conn.Query
 
   use Plug.Router
   use Plug.ErrorHandler
@@ -61,8 +61,10 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       true ->
         {channel_ref, channel_secret} =
           ChannelAuthenticator.create_channel(application_ref, user_ref, metadata)
+
         params = %{application_ref: application_ref, user_ref: user_ref, channel_ref: channel_ref}
         add_trace_metadata(params)
+
         conn
         |> put_resp_header("content-type", "application/json")
         |> send_resp(
