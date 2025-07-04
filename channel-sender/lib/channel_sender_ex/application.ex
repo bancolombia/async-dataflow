@@ -79,7 +79,7 @@ defmodule ChannelSenderEx.Application do
     }
   end
 
-  defp open_telemetry_traces() do
+  defp open_telemetry_traces do
     traces_enable = Application.get_env(:channel_sender_ex, :traces_enable, false)
 
     if traces_enable do

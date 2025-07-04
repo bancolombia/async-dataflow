@@ -232,9 +232,11 @@ defmodule ChannelSenderEx.Transport.Sse do
         end)
 
         Tracer.set_status(OpenTelemetry.status(:error, "#{inspect(reason)}"))
+
         Tracer.add_event("error", %{
-          "detail" => "channel not exists and unable to start",
+          "detail" => "channel not exists and unable to start"
         })
+
         CustomTelemetry.end_span("other")
         e
     end

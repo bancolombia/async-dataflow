@@ -55,10 +55,10 @@ defmodule ChannelSenderEx.ApplicationTest do
 
       with_mocks([
         {CustomTelemetry, [],
-          [
-            custom_telemetry_events: fn -> :ok end,
-            metrics: fn -> [] end
-          ]},
+         [
+           custom_telemetry_events: fn -> :ok end,
+           metrics: fn -> [] end
+         ]},
         {EntryPoint, [], [start: fn -> :ok end]},
         {Supervisor, [], [start_link: fn _, _ -> {:ok, :c.pid(0, 250, 0)} end]}
       ]) do
@@ -71,10 +71,10 @@ defmodule ChannelSenderEx.ApplicationTest do
 
       with_mocks([
         {CustomTelemetry, [],
-          [
-            custom_telemetry_events: fn -> :ok end,
-            metrics: fn -> [] end
-          ]},
+         [
+           custom_telemetry_events: fn -> :ok end,
+           metrics: fn -> [] end
+         ]},
         {EntryPoint, [], [start: fn -> :ok end]},
         {Supervisor, [], [start_link: fn _, _ -> {:ok, :c.pid(0, 250, 0)} end]}
       ]) do

@@ -148,7 +148,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
           "net.peer.ip": to_string(:inet_parse.ntoa(peer_ip)),
           "net.peer.port": peer_port,
           "net.host.port": req.port,
-          "adf.channel_ref": channel,
+          "adf.channel_ref": channel
         ]
 
       Tracer.start_span(span_name, %{attributes: attributes, kind: :server})

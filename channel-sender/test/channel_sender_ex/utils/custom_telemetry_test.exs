@@ -69,8 +69,8 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
           :scheme => "http",
           :version => input_version,
           :method => "GET",
-          :peer => {{127, 0, 0, 1}, 12345},
-          :port => 4000
+          :peer => {{127, 0, 0, 1}, 4000},
+          :port => 8080
         }
 
         case CustomTelemetry.start_span(:test, req, "ch_123") do
@@ -88,18 +88,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
 
     test "start span with various HTTP versions disable" do
       Application.put_env(:channel_sender_ex, :traces_enable, false)
-
-      req = %{
-        :path => "/test",
-        :host => "localhost",
-        :scheme => "http",
-        :version => "HTTP/1.1",
-        :method => "GET",
-        :peer => {{127, 0, 0, 1}, 12345},
-        :port => 4000
-      }
-
-      CustomTelemetry.start_span(:test, req, "ch_123")
+      CustomTelemetry.start_span(:test, %{}, "ch_123")
       assert true
     end
 
