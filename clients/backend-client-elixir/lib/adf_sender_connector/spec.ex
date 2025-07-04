@@ -5,10 +5,12 @@ defmodule AdfSenderConnector.Spec do
 
   @doc false
   defmacro __using__(opts) do
-    option = case Keyword.fetch(opts, :option) do
-      {:ok, op} -> op
-      _ -> :ok
-    end
+    option =
+      case Keyword.fetch(opts, :option) do
+        {:ok, op} -> op
+        _ -> :ok
+      end
+
     # quote  do
     quote location: :keep do
       @__option__ unquote(option)
@@ -32,12 +34,14 @@ defmodule AdfSenderConnector.Spec do
       def send_post_request(body, sender_url) do
         base_url = Application.get_env(:adf_sender_connector, :base_path, @default_local)
 
-        response = Finch.build(:post, base_url <> sender_url, headers(), body)
-                   |> Finch.request(SenderHttpClient)
+        response =
+          Finch.build(:post, base_url <> sender_url, inject_trace(headers()), body)
+          |> Finch.request(SenderHttpClient)
 
         case response do
           {:ok, %Finch.Response{status: status, body: response_body}} ->
             {status, response_body}
+
           {:error, %Mint.TransportError{reason: reason} = detail} ->
             Logger.error("Error sending request: #{inspect(detail)}")
             {:error, reason}
@@ -47,12 +51,14 @@ defmodule AdfSenderConnector.Spec do
       def send_delete_request(sender_url) do
         base_url = Application.get_env(:adf_sender_connector, :base_path, @default_local)
 
-        response = Finch.build(:delete, base_url <> sender_url, [{"accept", "application/json"}], nil)
-                   |> Finch.request(SenderHttpClient)
+        response =
+          Finch.build(:delete, base_url <> sender_url, inject_trace([{"accept", "application/json"}]), nil)
+          |> Finch.request(SenderHttpClient)
 
         case response do
           {:ok, %Finch.Response{status: status, body: response_body}} ->
             {status, response_body}
+
           {:error, %Mint.TransportError{reason: reason} = detail} ->
             Logger.error("Error sending request: #{inspect(detail)}")
             {:error, reason}
@@ -60,7 +66,14 @@ defmodule AdfSenderConnector.Spec do
       end
 
       defp headers do
-        [{"content-type", "application/json"}, {"accept", "application/json"}]
+        [
+          {"content-type", "application/json"},
+          {"accept", "application/json"}
+        ]
+      end
+
+      defp inject_trace(headers) do
+        :otel_propagator_text_map.inject(headers)
       end
 
       @doc false
@@ -68,8 +81,8 @@ defmodule AdfSenderConnector.Spec do
         case status_code do
           x when x in [200, 202] ->
             {:ok,
-              body
-              |> Jason.decode!()}
+             body
+             |> Jason.decode!()}
 
           400 ->
             Logger.error("status 400: #{inspect(body)}")
@@ -82,10 +95,7 @@ defmodule AdfSenderConnector.Spec do
       end
 
       # config overrides
-      defoverridable [
-        decode_response: 1,
-      ]
-
+      defoverridable decode_response: 1
     end
   end
 
