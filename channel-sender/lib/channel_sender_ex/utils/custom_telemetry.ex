@@ -129,12 +129,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
     ]
   end
 
-  def monotonic_time_to_milliseconds(monotonic_time) do
-    monotonic_time |> System.convert_time_unit(:native, :millisecond)
-  end
-
   # Traces
-
   def start_span(protocol, req, channel) do
     traces_enable = Application.get_env(:channel_sender_ex, :traces_enable, false)
 
@@ -163,6 +158,10 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
   def end_span(cause) do
     Tracer.set_attribute("adf.socket.close_reason", cause)
     Tracer.end_span()
+  end
+
+  defp monotonic_time_to_milliseconds(monotonic_time) do
+    monotonic_time |> System.convert_time_unit(:native, :millisecond)
   end
 
   defp map_http_version(:"HTTP/1.0"), do: :"1.0"

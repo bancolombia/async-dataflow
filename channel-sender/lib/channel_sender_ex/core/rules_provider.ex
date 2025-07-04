@@ -22,15 +22,13 @@ defmodule ChannelSenderEx.Core.RulesProvider.Compiler do
       iex> ChannelSenderEx.Core.RulesProvider.get(:non_existent_key)
       ** (RuntimeError) CONFIG_NOT_FOUND: :non_existent_key
   """
-  def compile(base_module_name, config) do
+  def compile(module_name, config) do
     # the compile module creates a new module using quote in conjunction with
     # Code.eval_quoted
 
     # we first create a quote containing the module definition
     # We need `Macro.escape` to escape complex elixir types like maps when used inside quote
     # We also use `location: :keep` to show us the file where this is being done when an error is raised
-    unique_id = :erlang.unique_integer([:positive])
-    module_name = Module.concat([base_module_name, "Dynamic#{unique_id}"])
 
     quote bind_quoted: [config: Macro.escape(config), module_name: module_name],
           location: :keep do
@@ -51,8 +49,6 @@ defmodule ChannelSenderEx.Core.RulesProvider.Compiler do
     # We have the whole quoted module at this point and we just push it into
     # Code.eval_quoted to compile it.
     |> Code.eval_quoted([], __ENV__)
-
-    module_name
   end
 end
 

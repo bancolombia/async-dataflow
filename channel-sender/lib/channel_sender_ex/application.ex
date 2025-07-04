@@ -15,9 +15,9 @@ defmodule ChannelSenderEx.Application do
   require Logger
 
   def start(_type, _args) do
-    config = ApplicationConfig.load()
+    _config = ApplicationConfig.load()
 
-    open_telemetry_traces(config)
+    open_telemetry_traces()
 
     Helper.compile(:channel_sender_ex)
     CustomTelemetry.custom_telemetry_events()
@@ -79,14 +79,12 @@ defmodule ChannelSenderEx.Application do
     }
   end
 
-  defp open_telemetry_traces(config) do
-    traces_enable = get_in(config, [:channel_sender_ex, "opentelemetry", "traces_enable"])
+  defp open_telemetry_traces() do
+    traces_enable = Application.get_env(:channel_sender_ex, :traces_enable, false)
 
     if traces_enable do
-      traces_endpoint = get_in(config, [:channel_sender_ex, "opentelemetry", "traces_endpoint"])
-
-      traces_ignore_routes =
-        get_in(config, [:channel_sender_ex, "opentelemetry", "traces_ignore_routes"])
+      traces_endpoint = Application.get_env(:channel_sender_ex, :traces_endpoint)
+      traces_ignore_routes = Application.get_env(:channel_sender_ex, :traces_ignore_routes)
 
       Application.put_env(:opentelemetry, :text_map_propagators, [:baggage, :trace_context])
       Application.put_env(:opentelemetry, :span_processor, :batch)

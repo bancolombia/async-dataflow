@@ -715,8 +715,10 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   defp safe_alive?(pid, _self_pid) do
-    GenServer.call(pid, :alive?)
-    rescue
-      _ -> false
+    try do
+      GenServer.call(pid, :alive?)
+    catch
+      :exit, _ -> false
+    end
   end
 end
