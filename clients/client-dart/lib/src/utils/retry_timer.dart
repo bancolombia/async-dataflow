@@ -14,12 +14,12 @@ class RetryTimer {
   int _defaultJitterFn(int num) {
     var randomFactor = 0.25;
 
-    return Utils.jitter(num, randomFactor);
+    return jitter(num, randomFactor);
   }
 
   int _tries = 0;
-  late Future Function() _callback;
-  late Future Function() _limitReachedCallback;
+  late Future<void> Function() _callback;
+  late Future<void> Function() _limitReachedCallback;
 
   Timer? _timer;
 
@@ -53,25 +53,32 @@ class RetryTimer {
   void schedule() {
     var delay = _delay();
     _log.info('[async-client][RetyTimer] scheduling retry in $delay ms');
-    _timer = Timer(Duration(milliseconds: delay), () async {
-      try {
-        if (_tries <= _maxRetries) {
-          _log.info('[async-client][RetyTimer] retrying $_tries of $_maxRetries');
-          await _callback();
-        } else {
-          _log.info('[async-client][RetyTimer] notifying limit reached.');
-          reset();
-          await _limitReachedCallback();
-          _log.severe('[async-client][RetyTimer] max retries reached.');
+    _timer = Timer(
+      Duration(milliseconds: delay),
+      () async {
+        try {
+          if (_tries <= _maxRetries) {
+            _log.info(
+              '[async-client][RetyTimer] retrying $_tries of $_maxRetries',
+            );
+            await _callback();
+          } else {
+            _log.info('[async-client][RetyTimer] notifying limit reached.');
+            reset();
+            await _limitReachedCallback();
+            _log.severe('[async-client][RetyTimer] max retries reached.');
+          }
+        } catch (e) {
+          _log.severe(
+            '[async-client][RetyTimer] captured error calling delayed function: $e',
+          );
         }
-      } catch (e) {
-        _log.severe('[async-client][RetyTimer] captured error calling delayed function: $e');
-      }
-    });
+      },
+    );
     _tries = _tries + 1;
   }
 
   int _delay() {
-    return Utils.expBackoff(_initialWait, _maxWait, _tries, _jitterFn);
+    return expBackoff(_initialWait, _maxWait, _tries, _jitterFn);
   }
 }

@@ -1,8 +1,7 @@
-import '../model/channel_message.dart';
-import 'transport.dart';
+import '../../model/channel_message.dart';
+import '../transport.dart';
 
 class NoopTransport implements Transport {
-
   @override
   Future<bool> connect() {
     return Future.value(false);
@@ -15,7 +14,7 @@ class NoopTransport implements Transport {
 
   @override
   void send(String message) {
-    // No operation  
+    // No operation
   }
 
   @override
@@ -30,5 +29,4 @@ class NoopTransport implements Transport {
 
   @override
   Stream<ChannelMessage> get stream => Stream.empty();
-
 }

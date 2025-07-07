@@ -1,10 +1,11 @@
 /// Reconnect configuration for the client.
 /// Reconnect config takes three parameters:
-/// - mode: ReconnectMode, which can be linear or exponential.
-/// - interval: Duration, the time interval between reconnection attempts. If mode is linear, the interval is fixed.
-/// If mode is exponential, the interval is multiplied by 2 after each attempt.
-/// - maxAttempts: int, the maximum number of reconnection attempts.
-/// - onReconnect: Function, a callback function that is called when the client reconnects.
+/// - [mode]: ReconnectMode, which can be linear or exponential.
+/// - [interval]: Duration, the time interval between reconnection attempts. If mode is linear, the interval is fixed.
+///   If mode is exponential, the interval is multiplied by 2 after each attempt.
+/// - [maxAttempts]: int, the maximum number of reconnection attempts.
+/// - [onReconnect]: Function, a callback function that is called when the client reconnects.
+/// - [reconnectHeader]: Future<Map<String, String>> Function(), a function that returns the headers to be sent with the reconnection request.
 class ReconnectConfig {
   final ReconnectMode mode;
   final Duration interval;

@@ -1,14 +1,15 @@
+// ignore_for_file: avoid-ignoring-return-values
 import 'dart:async';
+
 import 'package:logging/logging.dart';
 
-import '../../channel_sender_client.dart';
-import '../decoder/json_decoder.dart';
-import '../decoder/message_decoder.dart';
-import '../sse/eventflux.dart';
-import '../utils/retry_timer.dart';
-import 'capped_list.dart';
-import 'max_retries_exception.dart';
-import 'transport.dart';
+import '../../../channel_sender_client.dart';
+import '../../decoder/decoder.dart';
+import '../../exceptions/exceptions.dart';
+import '../../sse/eventflux.dart';
+import '../../utils/capped_list.dart';
+import '../../utils/retry_timer.dart';
+import '../transport.dart';
 
 class SSETransport implements Transport {
   MessageDecoder msgDecoder = JsonDecoder();
@@ -22,12 +23,13 @@ class SSETransport implements Transport {
 
   static const int SSE_OK_CLOSE_CODE = 200;
 
+  late String currentToken;
+
   final _log = Logger('SSETransport');
 
-  final Function(int, String) _signalSSEClose;
-  final Function(Object) _signalSSEError;
+  final void Function(int, String) _signalSSEClose;
+  final void Function(Object) _signalSSEError;
   final AsyncConfig _config;
-  late String currentToken;
   late RetryTimer _connectRetryTimer;
 
   late StreamController<ChannelMessage> _broadCastStream;
@@ -46,8 +48,11 @@ class SSETransport implements Transport {
         return await connect();
       },
       () async {
-        _signalSSEError(MaxRetriesException(
-            '[async-client][SSETransport] Max retries reached'));
+        _signalSSEError(
+          MaxRetriesException(
+            '[async-client][SSETransport] Max retries reached',
+          ),
+        );
       },
       initialWait: RETRY_DEFAULT_MIN_TIME,
       maxWait: RETRY_DEFAULT_MAX_TIME,
@@ -73,9 +78,11 @@ class SSETransport implements Transport {
       },
       multipartRequest: false,
       onSuccessCallback: (EventFluxResponse? response) {
-        response?.stream?.listen((data) {
-          _onData(data.data);
-        });
+        response?.stream?.listen(
+          (data) {
+            _onData(data.data);
+          },
+        );
       },
       onError: (error) {
         _onResponseError(error, StackTrace.current);
@@ -87,7 +94,7 @@ class SSETransport implements Transport {
       autoReconnect: true, // Keep the party going, automatically!
       reconnectConfig: ReconnectConfig(
         mode: ReconnectMode.linear, // or exponential,
-        interval: Duration(seconds: 2),
+        interval: const Duration(seconds: 2),
         maxAttempts: _config.maxRetries ??
             RETRY_DEFAULT_MAX_RETRIES, // or -1 for infinite,
         onReconnect: () {
@@ -105,6 +112,7 @@ class SSETransport implements Transport {
     return true;
   }
 
+  @override
   void send(String message) {
     _log.warning('[async-client][SSETransport] method Send not supported');
   }
@@ -116,24 +124,42 @@ class SSETransport implements Transport {
   }
 
   void _onResponseError(error, stackTrace) {
-    var parsedException = error as EventFluxException;
+    EventFluxException parsedException;
+
+    parsedException = error is EventFluxException
+        ? error
+        : EventFluxException(
+            message: error?.toString() ?? 'Unknown SSE error',
+            statusCode: null,
+            reasonPhrase: null,
+          );
+
+    // Provide default values for null status codes and reason phrases
+    int? statusCode = parsedException.statusCode;
+    String? reasonPhrase = parsedException.reasonPhrase ?? 'Unknown error';
 
     // close code 200 is ok to ignore
-    if (parsedException.statusCode != SSE_OK_CLOSE_CODE) {
+    if (statusCode != SSE_OK_CLOSE_CODE) {
       _log.severe(
-          '[async-client][SSETransport] Error in SSE connection: ${parsedException.statusCode}, ${parsedException.reasonPhrase}');
-      EventFlux.instance.disconnect().then((_) {
-        if (!_connectRetryTimer.isActive()) {
-          _connectRetryTimer.schedule();
-        } else {
-          _log.warning(
-              '[async-client][SSETransport] Retry timer is already active. Waiting for it to finish.');
-        }
-      }, onError: (e) {
-        _log.severe(
-            '[async-client][SSETransport] Error calling EventFlux.disconnect(): $e');
-      });
-
+        '[async-client][SSETransport] Error in SSE connection: $statusCode, $reasonPhrase, stackTrace: $stackTrace',
+      );
+      // ignore: prefer-async-await
+      EventFlux.instance.disconnect().then(
+        (_) {
+          if (!_connectRetryTimer.isActive()) {
+            _connectRetryTimer.schedule();
+          } else {
+            _log.warning(
+              '[async-client][SSETransport] Retry timer is already active. Waiting for it to finish.',
+            );
+          }
+        },
+        onError: (e) {
+          _log.severe(
+            '[async-client][SSETransport] Error calling EventFlux.disconnect(): $e, stackTrace: $stackTrace',
+          );
+        },
+      );
     }
   }
 
@@ -151,7 +177,8 @@ class SSETransport implements Transport {
 
     if (_messageDedup.contains(message.messageId ?? '')) {
       _log.warning(
-          '[async-client][SSETransport] message deduped: ${message.messageId}');
+        '[async-client][SSETransport] message deduped: ${message.messageId}',
+      );
 
       return;
     } else {
@@ -193,6 +220,7 @@ class SSETransport implements Transport {
     await EventFlux.instance.disconnect();
     _connectRetryTimer.reset();
     _log.info('[async-client][SSETransport] disconnect() finished');
+
     return;
   }
 }
