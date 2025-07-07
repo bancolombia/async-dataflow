@@ -10,9 +10,9 @@ class JsonDecoder extends MessageDecoder<String> {
     var eventAsList = jsonDecode('{"received": $event }')['received'];
 
     return ChannelMessage(
-      checkString(eventAsList[0]),
-      checkString(eventAsList[1]),
-      checkString(eventAsList[2]),
+      Utils.checkString(eventAsList[0]),
+      Utils.checkString(eventAsList[1]),
+      Utils.checkString(eventAsList[2]),
       eventAsList[3],
     );
   }

@@ -5,15 +5,15 @@ void main() {
   group('Utils tests.', () {
     test('Should generate random jitter', () {
       for (var i = 0; i < 100; i++) {
-        var result = jitter(1000, 0.25);
-        expect(result > 749, equals(true));
-        expect(result < 1000, equals(true));
+        var result = Utils.jitter(1000, 0.25);
+        assert(result > 749);
+        assert(result < 1000);
       }
     });
 
     test('Should generate exp backoff when current value is big', () {
-      var result = expBackoff(50, 10000, 100);
-      expect(result == 10000, equals(true));
+      var result = Utils.expBackoff(50, 10000, 100);
+      assert(result == 10000);
     });
 
     test('Should generate Exp Backoff no Jitter', () {
@@ -33,8 +33,8 @@ void main() {
       ];
 
       for (final e in expected) {
-        var result = expBackoff(10, 6000, e.first);
-        expect(result == e[1], equals(true));
+        var result = Utils.expBackoff(10, 6000, e[0]);
+        assert(result == e[1]);
       }
     });
 
@@ -55,12 +55,12 @@ void main() {
       ];
 
       var jitterFactor = 0.25;
-      int jitterFn(int num) => jitter(num, jitterFactor);
+      int jitterFn(int num) => Utils.jitter(num, jitterFactor);
 
       for (final e in expected) {
-        var result = expBackoff(10, 6000, e.first, jitterFn);
-        expect(result > (e[1] * (1 - jitterFactor)) - 1, equals(true));
-        expect(result < e[1], equals(true));
+        var result = Utils.expBackoff(10, 6000, e[0], jitterFn);
+        assert(result > (e[1] * (1 - jitterFactor)) - 1);
+        assert(result < e[1]);
       }
     });
   });

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:channel_sender_client/channel_sender_client.dart';
-import 'package:channel_sender_client/src/transport/types/ws_transport.dart';
+import 'package:channel_sender_client/src/transport/ws_transport.dart';
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 
@@ -37,11 +37,10 @@ void main() {
       };
 
       AsyncConfig config = AsyncConfig(
-        socketUrl: 'ws://localhost:${server.port}',
-        channelRef: 'channelRef',
-        channelSecret: 'SFMy',
-        heartbeatInterval: 1000,
-      );
+          socketUrl: 'ws://localhost:${server.port}',
+          channelRef: 'channelRef',
+          channelSecret: 'SFMy',
+          heartbeatInterval: 1000,);
 
       var transport =
           WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
@@ -49,6 +48,7 @@ void main() {
       expect(await transport.connect(), true);
 
       await transport.disconnect();
+
     });
 
     test('Should send/receive auth and heartbeat', () async {
@@ -84,11 +84,10 @@ void main() {
       };
 
       AsyncConfig config = AsyncConfig(
-        socketUrl: 'ws://localhost:${server.port}',
-        channelRef: 'channelRef',
-        channelSecret: 'SFMy',
-        heartbeatInterval: 1000,
-      );
+          socketUrl: 'ws://localhost:${server.port}',
+          channelRef: 'channelRef',
+          channelSecret: 'SFMy',
+          heartbeatInterval: 1000,);
 
       var transport =
           WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
@@ -114,7 +113,7 @@ void main() {
       }, onDone: () {
         log.warning('Subscription for "xxxx" terminated.');
       });
-
+      
       // transport.send('Auth::SFMy');
 
       await Future.delayed(const Duration(seconds: 3));
@@ -130,6 +129,7 @@ void main() {
       );
       addTearDown(server.close);
       server.transform(WebSocketTransformer()).listen((WebSocket channel) {
+        
         channel.listen((request) {
           log.finest('--> server received: $request');
           if (request == 'newToken') {
@@ -155,11 +155,10 @@ void main() {
         log.severe('socket error');
       };
       AsyncConfig config = AsyncConfig(
-        socketUrl: 'ws://localhost:8686',
-        channelRef: 'channelRef',
-        channelSecret: 'channelSecret',
-        heartbeatInterval: 1000,
-      );
+          socketUrl: 'ws://localhost:8686',
+          channelRef: 'channelRef',
+          channelSecret: 'channelSecret',
+          heartbeatInterval: 1000,);
 
       var transport =
           WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
@@ -210,12 +209,11 @@ void main() {
       };
 
       AsyncConfig config = AsyncConfig(
-        socketUrl: 'ws://localhost:8686',
-        channelRef: 'channelRef',
-        channelSecret: 'channelSecret',
-        maxRetries: 2,
-        heartbeatInterval: 1000,
-      );
+          socketUrl: 'ws://localhost:8686',
+          channelRef: 'channelRef',
+          channelSecret: 'channelSecret',
+          maxRetries: 2,
+          heartbeatInterval: 1000,);
 
       var transport =
           WSTransport(signalSocketCloseFn, signalSocketErrorFn, config);
@@ -226,5 +224,6 @@ void main() {
 
       expect(onErrorCalled, true);
     });
+
   });
 }

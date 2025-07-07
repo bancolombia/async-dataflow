@@ -3,12 +3,11 @@ import 'dart:io';
 import 'package:channel_sender_client/src/async_client.dart';
 import 'package:channel_sender_client/src/async_config.dart';
 import 'package:channel_sender_client/src/transport/transport.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
+import 'package:test/test.dart';
 import 'package:web_socket_channel/io.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
   group('Async Client Tests', () {
     HttpServer server;
 
@@ -36,21 +35,24 @@ void main() {
             await Future.delayed(const Duration(seconds: 1), () {
               channel.sink.add('["1", "2", "event.productCreated", "hello"]');
             });
+
           } else if (request.startsWith('hb')) {
             var parts = request.split('::');
             channel.sink.add('["", "${parts[1]}", ":hb", ""]');
-          }
+          } 
+          // else {
+          //   channel.sink.close(5678, 'raisin');
+          // }
         });
       });
 
       var conf = AsyncConfig(
-        socketUrl: 'ws://localhost:${server.port}',
-        channelRef: 'xxx-channel-ref-xxxx',
-        channelSecret: 'xxx-channel-secret-xxx',
-        enableBinaryTransport: false,
-        transportsProvider: [TransportType.ws],
-        heartbeatInterval: 500,
-      );
+          socketUrl: 'ws://localhost:${server.port}',
+          channelRef: 'xxx-channel-ref-xxxx',
+          channelSecret: 'xxx-channel-secret-xxx',
+          enableBinaryTransport: false,
+          transportsProvider: [TransportType.ws],
+          heartbeatInterval: 500,);
 
       AsyncClient client = AsyncClient(conf);
       expect(await client.connect(), true);
@@ -87,18 +89,20 @@ void main() {
           } else if (request.startsWith('hb')) {
             var parts = request.split('::');
             channel.sink.add('["", "${parts[1]}", ":hb", ""]');
-          }
+          } 
+          // else {
+          //   channel.sink.close(5678, 'raisin');
+          // }
         });
       });
 
       var conf = AsyncConfig(
-        socketUrl: 'ws://localhost:${server.port}',
-        channelRef: 'xxx-channel-ref-xxxx',
-        channelSecret: 'xxx-channel-secret-xxx',
-        enableBinaryTransport: false,
-        transportsProvider: [TransportType.ws],
-        heartbeatInterval: 500,
-      );
+          socketUrl: 'ws://localhost:${server.port}',
+          channelRef: 'xxx-channel-ref-xxxx',
+          channelSecret: 'xxx-channel-secret-xxx',
+          enableBinaryTransport: false,
+          transportsProvider: [TransportType.ws],
+          heartbeatInterval: 500,);
 
       AsyncClient client = AsyncClient(conf);
       expect(await client.connect(), true);
@@ -121,5 +125,8 @@ void main() {
       // await subscriber?.cancel();
       await client.disconnect();
     });
+
+
   });
+
 }
