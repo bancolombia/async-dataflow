@@ -1,4 +1,4 @@
-import 'package:channel_sender_client/src/transport/max_retries_exception.dart';
+import 'package:channel_sender_client/src/exceptions/max_retries_exception.dart';
 import 'package:test/test.dart';
 
 void main() {

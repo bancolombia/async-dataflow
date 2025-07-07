@@ -7,6 +7,8 @@ import '../model/channel_message.dart';
 import 'message_decoder.dart';
 
 class BinaryDecoder extends MessageDecoder<Uint8List> {
+  final int controlByte = 255;
+
   final Utf8Decoder _decoder = const Utf8Decoder(allowMalformed: false);
   final int _offset = 4;
 
@@ -16,7 +18,7 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
       throw ArgumentError('Invalid binary data; empty list');
     }
 
-    if (event.first != 255) {
+    if (event.firstOrNull != controlByte) {
       throw ArgumentError('Invalid binary data; no control byte match');
     }
 
@@ -29,8 +31,12 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
     var eventData = _extract(event, msgIdSize + corrIdSize, evtNameSize);
     var payload = _extract(event, msgIdSize + corrIdSize + evtNameSize, null);
 
-    return ChannelMessage(_checkString(messageId), _checkString(correlationId),
-        _checkString(eventData), _formatPayload(payload));
+    return ChannelMessage(
+      _checkString(messageId),
+      _checkString(correlationId),
+      _checkString(eventData),
+      _formatPayload(payload),
+    );
   }
 
   String _extract(Uint8List data, int start, int? size) {
@@ -53,14 +59,12 @@ class BinaryDecoder extends MessageDecoder<Uint8List> {
     return trim.isEmpty ? null : data.trim();
   }
 
-  dynamic _formatPayload(String payload) {
+  Object? _formatPayload(String payload) {
     // check if payload is json
     if (payload.isNotEmpty) {
-      if (isJSON(payload)) {
-        return jsonDecode(payload);
-      } else {
-        return payload;
-      }
+      return isJSON(payload) ? jsonDecode(payload) : payload;
     }
+
+    return null;
   }
 }
