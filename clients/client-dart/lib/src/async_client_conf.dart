@@ -19,7 +19,7 @@ import 'transport/transport.dart';
 /// - Background/foreground handling
 /// - Advanced error recovery.
 class AsyncClientConf {
-  final _log = Logger('AsyncClientConf');
+  final _log = Logger('AsyncClient');
   final AsyncConfig _config;
 
   // Core components
@@ -73,7 +73,9 @@ class AsyncClientConf {
         _handleConnectivityChange(results);
       },
       onError: (error) {
-        _log.warning('Connectivity monitoring error: $error');
+        _log.warning(
+          '[async-client][Main] Connectivity monitoring error: $error',
+        );
       },
     );
   }
@@ -82,16 +84,22 @@ class AsyncClientConf {
   void _handleConnectivityChange(ConnectivityResult results) {
     final hasConnection = results != ConnectivityResult.none;
 
-    _log.info('Connectivity changed: $results');
+    _log.info(
+      '[async-client][Main] Connectivity changed: $results (hasConnection: $hasConnection)',
+    );
 
     if (hasConnection &&
         _connectionState == CustomConnectionState.disconnected &&
         !_isManualDisconnect) {
-      _log.info('Network available, attempting to reconnect');
+      _log.info(
+        '[async-client][Main] Network available, attempting to reconnect (channelRef: ${_config.channelRef})',
+      );
       _attemptReconnect();
     } else if (!hasConnection &&
         _connectionState == CustomConnectionState.connected) {
-      _log.info('Network unavailable, connection lost');
+      _log.info(
+        '[async-client][Main] Network unavailable, connection lost (channelRef: ${_config.channelRef})',
+      );
       _updateConnectionState(CustomConnectionState.disconnected);
     }
   }
@@ -105,18 +113,20 @@ class AsyncClientConf {
         if (_connectionState == CustomConnectionState.disconnected &&
             !_isManualDisconnect) {
           _log.info(
-            '[flutter-async-client][LifeCycle] App resumed, checking connection',
+            '[async-client][LifeCycle] App resumed, checking connection, (channelRef: ${_config.channelRef})',
           );
           _attemptReconnect();
         }
         break;
       case CustomAppLifecycleState.paused:
         _log.info(
-          '[flutter-async-client][LifeCycle] App paused, maintaining connection',
+          '[async-client][LifeCycle] App paused, maintaining connection, (channelRef: ${_config.channelRef})',
         );
         break;
       case CustomAppLifecycleState.detached:
-        _log.info('App detached, disconnecting');
+        _log.info(
+          '[async-client][LifeCycle] App detached, disconnecting, (channelRef: ${_config.channelRef})',
+        );
         _gracefulDisconnect();
         break;
       case CustomAppLifecycleState.inactive:
@@ -134,7 +144,9 @@ class AsyncClientConf {
     try {
       final hasConnection = await _checkConnectivity();
       if (!hasConnection) {
-        _log.warning('No network connectivity, cannot connect');
+        _log.warning(
+          '[async-client][Main] No network connectivity, cannot connect (channelRef: ${_config.channelRef})',
+        );
         _updateConnectionState(CustomConnectionState.disconnected);
 
         return false;
@@ -142,20 +154,26 @@ class AsyncClientConf {
 
       final connected = await _transportStrategy.connect();
       if (connected) {
-        _log.info('Connected to server');
+        _log.info(
+          '[async-client][Main] Connected to server (channelRef: ${_config.channelRef})',
+        );
         _updateConnectionState(CustomConnectionState.connected);
         _reconnectAttempts = 0;
         _listenToTransportStream();
 
         return true;
       } else {
-        _log.severe('Failed to connect to server');
+        _log.severe(
+          '[async-client][Main] Failed to connect to server (channelRef: ${_config.channelRef})',
+        );
         _updateConnectionState(CustomConnectionState.disconnected);
 
         return false;
       }
     } catch (error) {
-      _log.severe('Connection error: $error');
+      _log.severe(
+        '[async-client][Main] Connection error: $error (channelRef: ${_config.channelRef})',
+      );
       _updateConnectionState(CustomConnectionState.disconnected);
 
       return false;
@@ -174,7 +192,9 @@ class AsyncClientConf {
 
       return true;
     } catch (error) {
-      _log.severe('Disconnect error: $error');
+      _log.severe(
+        '[async-client][Main] Disconnect error: $error (channelRef: ${_config.channelRef})',
+      );
 
       return false;
     }
@@ -187,7 +207,7 @@ class AsyncClientConf {
 
       return results != ConnectivityResult.none;
     } catch (error) {
-      _log.warning('Failed to check connectivity: $error');
+      _log.warning('[async-client][Main] Failed to check connectivity: $error');
 
       return true; // Assume connected if check fails
     }
@@ -204,7 +224,9 @@ class AsyncClientConf {
 
     final maxRetries = _config.maxRetries ?? 5;
     if (_reconnectAttempts >= maxRetries) {
-      _log.warning('Max reconnection attempts reached');
+      _log.warning(
+        '[async-client][Main] Max reconnection attempts reached (channelRef: ${_config.channelRef})',
+      );
 
       return;
     }
@@ -213,7 +235,7 @@ class AsyncClientConf {
     _reconnectAttempts++;
 
     _log.info(
-      'Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$maxRetries)',
+      '[async-client][Main] Reconnecting in ${delay.inSeconds}s (attempt $_reconnectAttempts/$maxRetries) (channelRef: ${_config.channelRef})',
     );
 
     _reconnectTimer = Timer(delay, () {
@@ -244,7 +266,7 @@ class AsyncClientConf {
     try {
       // Cancel existing subscription to prevent duplicate listeners
       _transportStreamSubscription?.cancel();
-      
+
       _transportStreamSubscription = _transportStrategy.stream.listen(
         (message) {
           _eventStreamController.add(message);
@@ -261,13 +283,15 @@ class AsyncClientConf {
         },
       );
     } catch (error) {
-      _log.severe('Failed to listen to transport stream: $error');
+      _log.severe(
+        '[async-client][Main] Failed to listen to transport stream: $error',
+      );
     }
   }
 
   /// Transport close handler.
   void _onTransportClose(int code, String reason) {
-    _log.info('Transport closed: $code - $reason');
+    _log.info('[async-client][Main] Transport closed: $code - $reason');
     if (!_isManualDisconnect) {
       _updateConnectionState(CustomConnectionState.disconnected);
       _attemptReconnect();
@@ -276,7 +300,7 @@ class AsyncClientConf {
 
   /// Transport error handler.
   void _onTransportError(Object error) {
-    _log.severe('Transport error: $error');
+    _log.severe('[async-client][Main] Transport error: $error');
     if (!_isManualDisconnect) {
       _updateConnectionState(CustomConnectionState.disconnected);
       _attemptReconnect();
@@ -316,7 +340,7 @@ class AsyncClientConf {
           onData?.call(message);
         } else {
           _log.warning(
-            '[EnhancedAsyncClient] received event name "${message.event}" does not match event filters: "$eventFilters"',
+            '[async-client][Main] received event name "${message.event}" does not match event filters: "$eventFilters"',
           );
           _transportStrategy.sendInfo('not-subscribed-to[${message.event}]');
         }
@@ -353,7 +377,7 @@ class AsyncClientConf {
           onData?.call(message);
         } else {
           _log.warning(
-            '[EnhancedAsyncClient] received event name "${message.event}" does not match requested event: "$eventName"',
+            '[async-client][Main] received event name "${message.event}" does not match requested event: "$eventName"',
           );
           _transportStrategy.sendInfo('not-subscribed-to[$eventName]');
         }
@@ -423,7 +447,9 @@ class AsyncClientConf {
     final newType = await _transportStrategy.iterateTransport();
 
     if (newType == currentType) {
-      _log.warning('No alternative transport available');
+      _log.warning(
+        '[async-client][Main] No alternative transport available (channelRef: ${_config.channelRef})',
+      );
 
       return false;
     }

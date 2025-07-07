@@ -17,7 +17,6 @@ export 'async_client_conf.dart' show CustomConnectionState, MessageWithState;
 ///
 /// This class provides:
 /// - Automatic Flutter lifecycle integration
-/// - Widget-friendly stream management
 /// - Proper resource cleanup
 ///
 /// Usage in a Flutter app:
@@ -53,7 +52,7 @@ export 'async_client_conf.dart' show CustomConnectionState, MessageWithState;
 /// }
 /// ```
 class AsyncClient with WidgetsBindingObserver {
-  final _log = Logger('FlutterAsyncClient');
+  final _log = Logger('AsyncClient');
   late AsyncClientConf _client;
   bool _isObserverAdded = false;
 
@@ -69,7 +68,7 @@ class AsyncClient with WidgetsBindingObserver {
     if (!_isObserverAdded) {
       WidgetsBinding.instance.addObserver(this);
       _isObserverAdded = true;
-      _log.info('[flutter-async-client][LifeCycle] Added lifecycle observer');
+      _log.info('[async-client][LifeCycle] Added lifecycle observer');
     }
   }
 
@@ -78,14 +77,14 @@ class AsyncClient with WidgetsBindingObserver {
     if (_isObserverAdded && WidgetsBinding.instance != null) {
       WidgetsBinding.instance.removeObserver(this);
       _isObserverAdded = false;
-      _log.info('[flutter-async-client][LifeCycle] Removed lifecycle observer');
+      _log.info('[async-client][LifeCycle] Removed lifecycle observer');
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _log.info(
-      '[flutter-async-client][LifeCycle] App lifecycle changed to: $state',
+      '[async-client][LifeCycle] App lifecycle changed to: $state',
     );
 
     // Convert Flutter's AppLifecycleState to custom enum
@@ -177,11 +176,6 @@ class AsyncClient with WidgetsBindingObserver {
 
   /// Switch to different transport protocol.
   Future<bool> switchProtocols() => _client.switchProtocols();
-
-  /// Handle app lifecycle change manually (usually not needed).
-  void handleAppLifecycleChange(AppLifecycleState state) {
-    didChangeAppLifecycleState(state);
-  }
 
   /// Dispose resources.
   Future<void> dispose() async {
