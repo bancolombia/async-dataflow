@@ -5,22 +5,18 @@ homepage: https://github.com/bancolombia/async-dataflow
 repository: https://github.com/bancolombia/async-dataflow.git
 
 environment:
-  sdk: '>=3.0.5 <4.0.0'
+  sdk: '>=3.0.6 <4.0.0'
 
 dependencies:
   web_socket_channel: ^2.3.0
   logging: ^1.1.0
   validators: ^3.0.0
   http: ^1.1.0
-  connectivity_plus: ^3.0.2
-  rxdart: ^0.27.7
 
-dependency_overrides:
-  source_span: 1.9.1
+# dependency_overrides:
+#   http: ^1.1.0 
   
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   test: ^1.21.4
   mocktail: ^1.0.0
   flutter_lints: ^2.0.3

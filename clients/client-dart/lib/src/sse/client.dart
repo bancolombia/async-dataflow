@@ -16,10 +16,11 @@ import './utils.dart';
 /// `EventFlux` facilitates the connection, disconnection, and management of SSE streams.
 /// It implements the Singleton pattern to ensure a single instance handles SSE streams throughout the application.
 class EventFlux extends EventFluxBase {
-  static EventFlux get instance => _instance;
+  EventFlux._();
 
   static final EventFlux _instance = EventFlux._();
 
+  static EventFlux get instance => _instance;
   Client? _client;
   StreamController<EventFluxData>? _streamController;
   bool _isExplicitDisconnect = false;
@@ -28,8 +29,6 @@ class EventFlux extends EventFluxBase {
   int _maxAttempts = 0;
   int _interval = 0;
   String? _tag;
-
-  EventFlux._();
 
   /// Factory method for spawning new instances of `EventFlux`.
   ///
@@ -177,7 +176,7 @@ class EventFlux extends EventFluxBase {
   }
 
   /// An internal method to handle the connection process.
-  /// This is abstracted out to set the `_isExplicitDisconnect` variable to `false` before connecting.
+  /// this is abstracted out to set the `_isExplicitDisconnect` variable to `false` before connecting.
   void _start(
     EventFluxConnectionType type,
     String url, {
@@ -460,29 +459,24 @@ class EventFlux extends EventFluxBase {
   @override
   Future<EventFluxStatus> disconnect() async {
     _isExplicitDisconnect = true;
-
     return await _stop();
   }
 
   /// Internal method to handle disconnection.
-  /// This is abstracted out to set the `_isExplicitDisconnect` variable to `true` while disconnecting.
+  /// this is abstracted out to set the `_isExplicitDisconnect` variable to `true` while disconnecting.
   /// This is to prevent reconnection if the user has explicitly disconnected.
   /// This returns the disconnection status enum.
   Future<EventFluxStatus> _stop() async {
     eventFluxLog('Disconnecting', LogEvent.info, _tag);
     try {
-      unawaited(_streamSubscription?.cancel());
-      unawaited(_streamController?.close());
+      _streamSubscription?.cancel();
+      _streamController?.close();
       _client?.close();
-      Future.delayed(
-        const Duration(seconds: 1),
-      );
+      Future.delayed(const Duration(seconds: 1), () {});
       eventFluxLog('Disconnected', LogEvent.info, _tag);
-
       return EventFluxStatus.disconnected;
     } catch (error) {
       eventFluxLog('Disconnected $error', LogEvent.info, _tag);
-
       return EventFluxStatus.error;
     }
   }
@@ -532,11 +526,8 @@ class EventFlux extends EventFluxBase {
 
       switch (_reconnectConfig!.mode) {
         case ReconnectMode.linear:
-          eventFluxLog(
-            'Trying again in ${_interval.toString()} seconds',
-            LogEvent.reconnect,
-            _tag,
-          );
+          eventFluxLog('Trying again in ${_interval.toString()} seconds',
+              LogEvent.reconnect, _tag);
 
           /// It waits for the specified constant interval before attempting to reconnect.
           await Future.delayed(_reconnectConfig!.interval, () {
@@ -556,11 +547,8 @@ class EventFlux extends EventFluxBase {
           });
         case ReconnectMode.exponential:
           _interval = _interval * 2;
-          eventFluxLog(
-            'Trying again in ${_interval.toString()} seconds',
-            LogEvent.reconnect,
-            _tag,
-          );
+          eventFluxLog('Trying again in ${_interval.toString()} seconds',
+              LogEvent.reconnect, _tag);
 
           /// It waits for the specified interval before attempting to reconnect.
           await Future.delayed(Duration(seconds: _interval), () {

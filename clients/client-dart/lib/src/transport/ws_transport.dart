@@ -1,5 +1,3 @@
-// ignore_for_file: avoid-ignoring-return-values
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -7,12 +5,14 @@ import 'dart:math';
 
 import 'package:logging/logging.dart';
 
-import '../../../channel_sender_client.dart';
-import '../../decoder/decoder.dart';
-import '../../exceptions/exceptions.dart';
-import '../../utils/retry_timer.dart';
-import '../../utils/utils.dart';
-import '../transport.dart';
+import '../../channel_sender_client.dart';
+import '../decoder/binary_decoder.dart';
+import '../decoder/json_decoder.dart';
+import '../decoder/message_decoder.dart';
+import '../utils/retry_timer.dart';
+import '../utils/utils.dart';
+import 'max_retries_exception.dart';
+import 'transport.dart';
 
 class WSTransport implements Transport {
   MessageDecoder msgDecoder = JsonDecoder();
@@ -30,6 +30,7 @@ class WSTransport implements Transport {
   static const int SOCKET_NORMAL_CLOSE = 1000;
   static const int SOCKET_GOING_AWAY = 1001;
   static const int SENDER_INVALID_REF = 3050;
+
   static const int RETRY_DEFAULT_MAX_RETRIES = 5;
 
   static final Random _random = Random.secure();
@@ -37,22 +38,20 @@ class WSTransport implements Transport {
   final _log = Logger('WSTransport');
   late WebSocket _webSocketCh;
   final AsyncConfig _config;
-  final void Function(int, String) _signalSocketClose;
-  final void Function(Object) _signalSocketError;
+  final Function(int, String) _signalSocketClose;
+  final Function(Object) _signalSocketError;
 
   late List<String> _subProtocols;
   late StreamController<ChannelMessage> _broadCastStream;
+  StreamSubscription? _socketStreamSub;
   late bool _streamDone = false;
   late RetryTimer _connectRetryTimer;
-
-  StreamSubscription? _socketStreamSub;
 
   int _ref = 0;
   bool _closeWasClean = false;
   Timer? _heartbeatTimer;
   int _reconnectionAttempts = 0;
 
-  // ignore: avoid_setters_without_getters
   set webSocketCh(WebSocket value) {
     _webSocketCh = value;
   }
@@ -62,8 +61,11 @@ class WSTransport implements Transport {
 
     currentToken = _config.channelSecret;
     _subProtocols = configSubProtocol();
-    _broadCastStream = StreamController<
-        ChannelMessage>.broadcast(); // subscribers stream of data
+    // _localStream = StreamController(onListen: _onListen);
+    _broadCastStream =
+        StreamController<
+          ChannelMessage
+        >.broadcast(); // subscribers stream of data
 
     _connectRetryTimer = RetryTimer(
       () async {
@@ -100,6 +102,7 @@ class WSTransport implements Transport {
     int attempts = 1;
     while (attempts <= (_config.maxRetries ?? RETRY_DEFAULT_MAX_RETRIES)) {
       try {
+        // _webSocketCh = _openChannel();
         await _openChannel();
         msgDecoder = _selectMessageDecoder();
         _log.info(
@@ -114,12 +117,9 @@ class WSTransport implements Transport {
         _log.warning(
           '[async-client][WSTransport] Error connecting to server: $e | try: $attempts',
         );
-        int wait = expBackoff(500, 2000, attempts);
+        int wait = Utils.expBackoff(500, 2000, attempts);
         attempts++;
-
-        await Future.delayed(
-          Duration(milliseconds: wait),
-        );
+        await Future.delayed(Duration(milliseconds: wait));
       }
     }
 
@@ -141,7 +141,6 @@ class WSTransport implements Transport {
       _connectRetryTimer.reset();
       await _socketStreamSub?.cancel();
       _socketStreamSub = null;
-
       await _webSocketCh.close(SOCKET_NORMAL_CLOSE, 'Client disconnect');
     } catch (e) {
       _log.warning('[async-client][WSTransport] Error disconnecting: $e');
@@ -238,7 +237,7 @@ class WSTransport implements Transport {
     _webSocketCh.add(message);
   }
 
-  void _onData(Object data) {
+  void _onData(dynamic data) {
     _log.finest('[async-client][WSTransport] Received raw from Server: $data');
     if (!_checkValidInputFrame(data)) {
       _log.warning('[async-client][WSTransport] Invalid frame received: $data');
@@ -271,7 +270,7 @@ class WSTransport implements Transport {
     }
   }
 
-  bool _checkValidInputFrame(Object data) {
+  bool _checkValidInputFrame(dynamic data) {
     String dataStr = data.toString();
     const pattern = r'^\[".*?",\s?".*?",\s?".*?",\s?.*\]$';
 
@@ -280,7 +279,7 @@ class WSTransport implements Transport {
 
   void _onSocketError(Exception error, StackTrace stackTrace) {
     _log.severe(
-      '[async-client][WSTransport] onSocketError: ${error.toString()}, $stackTrace',
+      '[async-client][WSTransport] onSocketError: ${error.toString()}',
     );
 
     if (error is MaxRetriesException) {
@@ -315,14 +314,9 @@ class WSTransport implements Transport {
       _heartbeatTimer?.cancel();
     }
     int reasonCode = extractCode(reason);
-    bool shouldRetry = code > SOCKET_GOING_AWAY ||
+    bool shouldRetry =
+        code > SOCKET_GOING_AWAY ||
         (code == SOCKET_GOING_AWAY && reasonCode >= SENDER_INVALID_REF);
-    
-    // Don't retry on invalid secret (3008) or invalid token
-    if (reasonCode == 3008 || reason == 'Invalid token for channel') {
-      shouldRetry = false;
-    }
-    
     _log.info('[async-client][WSTransport] shouldRetry: $shouldRetry');
 
     if (!_closeWasClean &&
@@ -388,9 +382,10 @@ class WSTransport implements Transport {
   }
 
   MessageDecoder _selectMessageDecoder() {
-    MessageDecoder decoder = getProtocol() == 'binary_flow'
-        ? BinaryDecoder()
-        : JsonDecoder() as MessageDecoder;
+    MessageDecoder decoder =
+        getProtocol() == 'binary_flow'
+            ? BinaryDecoder()
+            : JsonDecoder() as MessageDecoder;
     _log.finest('[async-client][WSTransport] Decoder selected : $decoder');
 
     return decoder;

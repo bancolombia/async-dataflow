@@ -15,15 +15,15 @@ class AsyncConfig {
     required this.channelRef,
     required String channelSecret,
     this.enableBinaryTransport = false,
-    this.maxRetries,
-    this.sseUrl,
     int? heartbeatInterval,
+    this.maxRetries,
     List<TransportType>? transportsProvider,
+    this.sseUrl,
   }) : _channelSecret = channelSecret {
     hbInterval = heartbeatInterval ?? hbInterval;
     transports = transportsProvider ?? transports;
   }
-
+  
   String get channelSecret => _channelSecret;
 
   set channelSecret(String value) {
