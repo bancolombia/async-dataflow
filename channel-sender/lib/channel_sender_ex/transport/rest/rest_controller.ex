@@ -5,7 +5,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  alias OpenTelemetry.Tracer
+  require OpenTelemetry.Tracer
+  alias OpenTelemetry.{Tracer, Ctx}
   alias Plug.Conn.Query
 
   use Plug.Router
@@ -211,36 +212,106 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp perform_delivery(messages) when is_list(messages) do
     Enum.map(messages, fn message ->
+      parent_ctx = Tracer.current_span_ctx()
+      span_ctx = Tracer.start_span("deliver_to_channel", %{kind: :internal})
+      Tracer.set_current_span(span_ctx, parent_ctx)
+
       Task.start(fn ->
+        Tracer.set_current_span(span_ctx)
         {channel_ref, new_msg} = Map.pop(message, :channel_ref)
-        PubSubCore.deliver_to_channel(channel_ref, ProtocolMessage.to_protocol_message(new_msg))
+
+        res =
+          PubSubCore.deliver_to_channel(
+            channel_ref,
+            ProtocolMessage.to_protocol_message(new_msg),
+            span_ctx
+          )
+
+        case res do
+          :error ->
+            Logger.warning("Channel #{channel_ref} not found, message delivery failed")
+            Tracer.set_status(OpenTelemetry.status(:error, "Channel not found"))
+
+          _ ->
+            :ok
+        end
+
+        Tracer.end_span(span_ctx)
       end)
     end)
   end
 
   defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
-    Task.start(fn ->
-      new_msg = ProtocolMessage.to_protocol_message(message)
+    parent_ctx = Tracer.current_span_ctx()
+    span_ctx = Tracer.start_span("deliver_to_channel", %{kind: :internal})
+    Tracer.set_current_span(span_ctx, parent_ctx)
 
-      PubSubCore.deliver_to_channel(channel_ref, new_msg)
+    Task.start(fn ->
+      Tracer.set_current_span(span_ctx)
+      new_msg = ProtocolMessage.to_protocol_message(message)
+      res = PubSubCore.deliver_to_channel(channel_ref, new_msg)
+      Logger.debug("Delivering message to channel #{inspect(res)}")
+
+      case res do
+        :error ->
+          Logger.warning("Channel #{channel_ref} not found, message delivery failed")
+          Tracer.set_status(OpenTelemetry.status(:error, "Channel not found"))
+
+        _ ->
+          :ok
+      end
+
+      Tracer.end_span(span_ctx)
     end)
 
     {202, %{result: "Ok"}}
   end
 
   defp perform_delivery({:ok, message}, %{"app_ref" => app_ref}) do
+    parent_ctx = Tracer.current_span_ctx()
+    span_ctx = Tracer.start_span("deliver_to_app_channels", %{kind: :internal})
+    Tracer.set_current_span(span_ctx, parent_ctx)
+
     Task.start(fn ->
+      Tracer.set_current_span(span_ctx)
       new_msg = ProtocolMessage.to_protocol_message(message)
-      PubSubCore.deliver_to_app_channels(app_ref, new_msg)
+      res = PubSubCore.deliver_to_app_channels(app_ref, new_msg)
+
+      case res do
+        :error ->
+          Logger.warning("AppRef #{app_ref} not found, message delivery failed")
+          Tracer.set_status(OpenTelemetry.status(:error, "AppRef not found"))
+
+        _ ->
+          :ok
+      end
+
+      Tracer.end_span(span_ctx)
     end)
 
     {202, %{result: "Ok"}}
   end
 
   defp perform_delivery({:ok, message}, %{"user_ref" => user_ref}) do
+    parent_ctx = Tracer.current_span_ctx()
+    span_ctx = Tracer.start_span("deliver_to_user_channels", %{kind: :internal})
+    Tracer.set_current_span(span_ctx, parent_ctx)
+
     Task.start(fn ->
+      Tracer.set_current_span(span_ctx)
       new_msg = ProtocolMessage.to_protocol_message(message)
-      PubSubCore.deliver_to_user_channels(user_ref, new_msg)
+      res = PubSubCore.deliver_to_user_channels(user_ref, new_msg)
+
+      case res do
+        :error ->
+          Logger.warning("UserRef #{user_ref} not found, message delivery failed")
+          Tracer.set_status(OpenTelemetry.status(:error, "UserRef not found"))
+
+        _ ->
+          :ok
+      end
+
+      Tracer.end_span(span_ctx)
     end)
 
     {202, %{result: "Ok"}}
