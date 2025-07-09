@@ -6,6 +6,7 @@ repository: https://github.com/bancolombia/async-dataflow.git
 
 environment:
   sdk: '>=3.0.5 <4.0.0'
+  flutter: ">=3.10.0"
 
 dependencies:
   flutter:
