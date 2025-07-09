@@ -8,6 +8,8 @@ environment:
   sdk: '>=3.0.5 <4.0.0'
 
 dependencies:
+  flutter:
+    sdk: flutter
   web_socket_channel: ^2.3.0
   logging: ^1.1.0
   validators: ^3.0.0
