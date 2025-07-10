@@ -81,8 +81,12 @@ class DefaultTransportStrategy {
       retries++;
       // ignore: avoid-ignoring-return-values
       await Future.delayed(Duration(milliseconds: wait));
-      // ignore: avoid-ignoring-return-values
-      await iterateTransport();
+
+      // Only iterate transport if we have multiple transport types
+      if (_transportTypes.length > 1) {
+        await iterateTransport();
+      }
+
       connected = await _currentTransport.connect();
     }
 

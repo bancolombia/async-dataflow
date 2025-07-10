@@ -1,13 +1,13 @@
 import 'package:app_async_flutter/application/app_config.dart';
 import 'package:app_async_flutter/infrastructure/notifier/log_notifier.dart';
 import 'package:app_async_flutter/my_app.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Setup {
   static AppConfig getApp(SharedPreferences prefs) {
-    var env = dotenv.env;
     LogNotifier logNotifier = configureLogger();
     prefs.getString('apiBusiness');
     return AppConfig(
@@ -31,7 +31,7 @@ class Setup {
       value = dotenv.env[key]!;
       prefs.setString(key, value);
     }
-    print(value);
+    debugPrint(value);
 
     return value;
   }
@@ -45,7 +45,7 @@ class Setup {
       value = dotenv.env[key]!.split(',');
       prefs.setStringList(key, value);
     }
-    print(value.join(','));
+    debugPrint(value.join(','));
 
     return value;
   }
@@ -60,7 +60,7 @@ class Setup {
     Logger.root.onRecord.listen((record) {
       var log = '${record.level.name}: ${record.time}: ${record.message}';
       logNotifier.setLog(log);
-      print(log);
+      debugPrint(log);
     });
     return logNotifier;
   }
