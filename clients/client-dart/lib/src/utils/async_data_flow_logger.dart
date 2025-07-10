@@ -24,7 +24,6 @@ class AsyncDataFlowLogger {
   static void _convertAndLog(dft_logging.LogRecord record) {
     final message = '${record.loggerName}: ${record.message}';
 
-    // Convertir niveles del logging estándar a logger
     switch (record.level.name) {
       case 'SEVERE':
         _logger.e(
