@@ -9,7 +9,7 @@ class AsyncDataFlowLogger {
       lineLength: 120,
       colors: true,
       printEmojis: true,
-      dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
+      printTime: true,
     ),
   );
 
@@ -29,8 +29,8 @@ class AsyncDataFlowLogger {
       case 'SEVERE':
         _logger.e(
           message,
-          error: record.error,
-          stackTrace: record.stackTrace,
+          record.error,
+          record.stackTrace,
         );
         break;
       case 'WARNING':
@@ -41,11 +41,9 @@ class AsyncDataFlowLogger {
         break;
       case 'CONFIG':
       case 'FINE':
-        _logger.d(message);
-        break;
       case 'FINER':
       case 'FINEST':
-        _logger.t(message);
+        _logger.d(message);
         break;
       default:
         _logger.i(message);
