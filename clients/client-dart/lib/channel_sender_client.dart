@@ -6,3 +6,4 @@ export 'src/async_client_conf.dart'
 export 'src/async_config.dart' show AsyncConfig;
 export 'src/model/channel_message.dart';
 export 'src/transport/transport.dart' show TransportType, transportFromString;
+export 'src/utils/async_data_flow_logger.dart' show AsyncDataFlowLogger;
