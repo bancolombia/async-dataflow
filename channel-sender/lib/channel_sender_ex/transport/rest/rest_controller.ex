@@ -241,6 +241,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     end
 
     Tracer.end_span(span_ctx)
+    res
   end
 
   defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
@@ -264,6 +265,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       end
 
       Tracer.end_span(span_ctx)
+      res
     end)
 
     {202, %{result: "Ok"}}
@@ -289,6 +291,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       end
 
       Tracer.end_span(span_ctx)
+      res
     end)
 
     {202, %{result: "Ok"}}
@@ -314,6 +317,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       end
 
       Tracer.end_span(span_ctx)
+      res
     end)
 
     {202, %{result: "Ok"}}
