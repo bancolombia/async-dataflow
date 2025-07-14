@@ -31,10 +31,6 @@ class AsyncClientConf {
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
 
-  // Background handling
-  CustomAppLifecycleState _currentLifecycleState =
-      CustomAppLifecycleState.resumed;
-
   // State management
   CustomConnectionState _connectionState = CustomConnectionState.disconnected;
   bool _isManualDisconnect = false;
@@ -106,8 +102,6 @@ class AsyncClientConf {
 
   /// Handle app lifecycle changes.
   void handleAppLifecycleStateChanged(CustomAppLifecycleState state) {
-    _currentLifecycleState = state;
-
     switch (state) {
       case CustomAppLifecycleState.resumed:
         if (_connectionState == CustomConnectionState.disconnected &&

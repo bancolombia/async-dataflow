@@ -74,7 +74,7 @@ class AsyncClient with WidgetsBindingObserver {
 
   /// Remove lifecycle observer.
   void _removeLifecycleObserver() {
-    if (_isObserverAdded && WidgetsBinding.instance != null) {
+    if (_isObserverAdded) {
       WidgetsBinding.instance.removeObserver(this);
       _isObserverAdded = false;
       _log.info('[async-client][LifeCycle] Removed lifecycle observer');

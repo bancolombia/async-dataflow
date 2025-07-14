@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.2
   channel_sender_client: 
-    path: '../../clients/client-dart'
+    path: '../'
   shared_preferences: ^2.0.13
   http: ^0.13.4
   flutter_dotenv: ^5.0.2
