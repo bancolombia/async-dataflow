@@ -5,8 +5,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  require OpenTelemetry.Tracer
-  alias OpenTelemetry.{Tracer, Ctx}
+  require OpenTelemetry.Tracer, as: Tracer
   alias Plug.Conn.Query
 
   use Plug.Router
@@ -216,29 +215,32 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
       span_ctx = Tracer.start_span("deliver_to_channel", %{kind: :internal})
       Tracer.set_current_span(span_ctx, parent_ctx)
 
-      Task.start(fn ->
-        Tracer.set_current_span(span_ctx)
-        {channel_ref, new_msg} = Map.pop(message, :channel_ref)
-
-        res =
-          PubSubCore.deliver_to_channel(
-            channel_ref,
-            ProtocolMessage.to_protocol_message(new_msg),
-            span_ctx
-          )
-
-        case res do
-          :error ->
-            Logger.warning("Channel #{channel_ref} not found, message delivery failed")
-            Tracer.set_status(OpenTelemetry.status(:error, "Channel not found"))
-
-          _ ->
-            :ok
-        end
-
-        Tracer.end_span(span_ctx)
-      end)
+      Task.start(fn -> perform_delivery_deliver_message(message, span_ctx) end)
     end)
+  end
+
+  defp perform_delivery_deliver_message(message, span_ctx) do
+    Tracer.set_current_span(span_ctx)
+
+    {channel_ref, new_msg} = Map.pop(message, :channel_ref)
+
+    res =
+      PubSubCore.deliver_to_channel(
+        channel_ref,
+        ProtocolMessage.to_protocol_message(new_msg),
+        span_ctx
+      )
+
+    case res do
+      :error ->
+        Logger.warning("Channel #{inspect(channel_ref)} not found, message delivery failed")
+        Tracer.set_status(OpenTelemetry.status(:error, "Channel not found"))
+
+      _ ->
+        :ok
+    end
+
+    Tracer.end_span(span_ctx)
   end
 
   defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
