@@ -5,6 +5,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
+  alias ChannelSenderEx.Utils.ChannelMetrics
   require OpenTelemetry.Ctx, as: Ctx
   require OpenTelemetry.Tracer, as: Tracer
   alias Plug.Conn.Query
@@ -30,6 +31,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   plug(:dispatch)
 
   get("/health", do: send_resp(conn, 200, "UP"))
+  get("/ext/channel/count", do: get_channel_count(conn))
   post("/ext/channel/create", do: create_channel(conn))
   post("/ext/channel/deliver_message", do: deliver_message(conn))
   post("/ext/channel/deliver_batch", do: deliver_message(conn))
@@ -442,6 +444,14 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
     conn
     |> put_resp_header("content-type", "application/json")
     |> send_resp(conn.status, response)
+  end
+
+  defp get_channel_count(conn) do
+    count = ChannelMetrics.get_count()
+
+    conn
+    |> put_resp_header("content-type", "application/json")
+    |> send_resp(200, Jason.encode!(%{total_channels: count}))
   end
 
   defp add_trace_metadata(params) do

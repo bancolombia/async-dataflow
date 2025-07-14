@@ -54,7 +54,8 @@ defmodule ChannelSenderEx.Application do
            [
              metrics: CustomTelemetry.metrics(),
              port: prometheus_port
-           ]}
+           ]},
+          ChannelSenderEx.Utils.ChannelMetrics
           # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()}
         ]
 

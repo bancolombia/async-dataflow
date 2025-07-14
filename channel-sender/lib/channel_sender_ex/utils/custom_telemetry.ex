@@ -125,7 +125,8 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
       last_value("elixir.vm.memory.ets", unit: {:byte, :kilobyte}, tags: [:service]),
       last_value("elixir.vm.total_run_queue_lengths.total", tags: [:service]),
       last_value("elixir.vm.total_run_queue_lengths.cpu", tags: [:service]),
-      last_value("elixir.vm.total_run_queue_lengths.io", tags: [:service])
+      last_value("elixir.vm.total_run_queue_lengths.io", tags: [:service]),
+      last_value("elixir.adf.channel.active.count", tags: [:service])
     ]
   end
 
