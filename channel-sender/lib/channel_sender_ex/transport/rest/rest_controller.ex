@@ -5,8 +5,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  require OpenTelemetry.Tracer
-  alias OpenTelemetry.{Tracer, Ctx}
+  require OpenTelemetry.Ctx, as: Ctx
+  require OpenTelemetry.Tracer, as: Tracer
   alias Plug.Conn.Query
 
   use Plug.Router
