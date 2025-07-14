@@ -5,7 +5,8 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   alias ChannelSenderEx.Core.ProtocolMessage
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
-  require OpenTelemetry.Tracer, as: Tracer
+  require OpenTelemetry.Tracer
+  alias OpenTelemetry.{Tracer, Ctx}
   alias Plug.Conn.Query
 
   use Plug.Router
@@ -210,25 +211,23 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp perform_delivery(messages) when is_list(messages) do
-    Enum.map(messages, fn message ->
-      parent_ctx = Tracer.current_span_ctx()
-      span_ctx = Tracer.start_span("deliver_to_channel", %{kind: :internal})
-      Tracer.set_current_span(span_ctx, parent_ctx)
+    parent_ctx = Ctx.get_current()
 
-      Task.start(fn -> perform_delivery_deliver_message(message, span_ctx) end)
+    Enum.map(messages, fn message ->
+      Task.start(fn -> perform_delivery_deliver_message(message, parent_ctx) end)
     end)
   end
 
-  defp perform_delivery_deliver_message(message, span_ctx) do
+  defp perform_delivery_deliver_message(message, parent_ctx) do
+    Ctx.attach(parent_ctx)
+    span_ctx = Tracer.start_span("deliver_to_channel", %{parent: parent_ctx})
     Tracer.set_current_span(span_ctx)
-
     {channel_ref, new_msg} = Map.pop(message, :channel_ref)
 
     res =
       PubSubCore.deliver_to_channel(
         channel_ref,
-        ProtocolMessage.to_protocol_message(new_msg),
-        span_ctx
+        ProtocolMessage.to_protocol_message(new_msg)
       )
 
     case res do
@@ -240,16 +239,16 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
         :ok
     end
 
-    Tracer.end_span(span_ctx)
+    Tracer.end_span()
     res
   end
 
   defp perform_delivery({:ok, message}, %{"channel_ref" => channel_ref}) do
-    parent_ctx = Tracer.current_span_ctx()
-    span_ctx = Tracer.start_span("deliver_to_channel", %{kind: :internal})
-    Tracer.set_current_span(span_ctx, parent_ctx)
+    parent_ctx = Ctx.get_current()
 
     Task.start(fn ->
+      Ctx.attach(parent_ctx)
+      span_ctx = Tracer.start_span("deliver_to_channel", %{parent: parent_ctx})
       Tracer.set_current_span(span_ctx)
       new_msg = ProtocolMessage.to_protocol_message(message)
       res = PubSubCore.deliver_to_channel(channel_ref, new_msg)
@@ -257,14 +256,14 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
       case res do
         :error ->
-          Logger.warning("Channel #{channel_ref} not found, message delivery failed")
+          Logger.warning("Channel #{inspect(channel_ref)} not found, message delivery failed")
           Tracer.set_status(OpenTelemetry.status(:error, "Channel not found"))
 
         _ ->
           :ok
       end
 
-      Tracer.end_span(span_ctx)
+      Tracer.end_span()
       res
     end)
 
@@ -272,25 +271,34 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp perform_delivery({:ok, message}, %{"app_ref" => app_ref}) do
-    parent_ctx = Tracer.current_span_ctx()
-    span_ctx = Tracer.start_span("deliver_to_app_channels", %{kind: :internal})
-    Tracer.set_current_span(span_ctx, parent_ctx)
+    parent_ctx = Ctx.get_current()
 
     Task.start(fn ->
+      Ctx.attach(parent_ctx)
+      span_ctx = Tracer.start_span("deliver_to_app_channels", %{parent: parent_ctx})
       Tracer.set_current_span(span_ctx)
       new_msg = ProtocolMessage.to_protocol_message(message)
       res = PubSubCore.deliver_to_app_channels(app_ref, new_msg)
 
-      case res do
-        :error ->
-          Logger.warning("AppRef #{app_ref} not found, message delivery failed")
-          Tracer.set_status(OpenTelemetry.status(:error, "AppRef not found"))
+      cond do
+        res.accepted_connected > 0 ->
+          Tracer.add_event("deliver_message", %{
+            state: :connected,
+            detail: "Message delivered to connected socket"
+          })
 
-        _ ->
-          :ok
+        res.accepted_waiting > 0 ->
+          Tracer.add_event("deliver_message", %{
+            state: :waiting,
+            detail: "Message queued for socket connection"
+          })
+
+        res.accepted_connected == 0 and res.accepted_waiting == 0 ->
+          Logger.warning("AppRef #{inspect(app_ref)} not found, message delivery failed")
+          Tracer.set_status(OpenTelemetry.status(:error, "AppRef not found"))
       end
 
-      Tracer.end_span(span_ctx)
+      Tracer.end_span()
       res
     end)
 
@@ -298,25 +306,15 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   end
 
   defp perform_delivery({:ok, message}, %{"user_ref" => user_ref}) do
-    parent_ctx = Tracer.current_span_ctx()
-    span_ctx = Tracer.start_span("deliver_to_user_channels", %{kind: :internal})
-    Tracer.set_current_span(span_ctx, parent_ctx)
+    parent_ctx = Ctx.get_current()
 
     Task.start(fn ->
+      Ctx.attach(parent_ctx)
+      span_ctx = Tracer.start_span("deliver_to_user_channels", %{parent: parent_ctx})
       Tracer.set_current_span(span_ctx)
       new_msg = ProtocolMessage.to_protocol_message(message)
       res = PubSubCore.deliver_to_user_channels(user_ref, new_msg)
-
-      case res do
-        :error ->
-          Logger.warning("UserRef #{user_ref} not found, message delivery failed")
-          Tracer.set_status(OpenTelemetry.status(:error, "UserRef not found"))
-
-        _ ->
-          :ok
-      end
-
-      Tracer.end_span(span_ctx)
+      Tracer.end_span()
       res
     end)
 
