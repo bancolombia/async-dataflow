@@ -5,7 +5,7 @@ defmodule ChannelSenderEx.Core.Channel do
   Main abstraction for modeling and active or temporarily idle async communication channel with an user.
   """
   use GenStateMachine, callback_mode: [:state_functions, :state_enter], restart: :transient
-  require OpenTelemetry.Tracer, as :Tracer
+  require OpenTelemetry.Tracer, as: Tracer
   require Logger
   alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.ChannelIDGenerator
