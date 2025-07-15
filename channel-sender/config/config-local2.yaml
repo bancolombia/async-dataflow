@@ -81,6 +81,8 @@ channel_sender_ex:
     traces_enable: true
     traces_endpoint: "http://localhost:4318"
     traces_ignore_routes: ["/health", "/metrics"]
+  metrics:
+    active_interval_minutes_count: 2
 logger:
   level: debug
 

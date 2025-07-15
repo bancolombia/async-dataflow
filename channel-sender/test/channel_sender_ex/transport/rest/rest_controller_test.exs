@@ -7,6 +7,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
   alias ChannelSenderEx.Core.PubSub.PubSubCore
   alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.Rest.RestController
+  alias ChannelSenderEx.Utils.ChannelMetrics
 
   @moduletag :capture_log
   @options RestController.init([])
@@ -429,6 +430,21 @@ defmodule ChannelSenderEx.Transport.Rest.RestControllerTest do
 
       assert %{"error" => "Invalid request", "request" => %{}} =
                Jason.decode!(conn2.resp_body)
+    end
+  end
+
+  test "Should get active channel count" do
+    with_mocks([
+      {ChannelMetrics, [], [get_count: fn -> 10 end]}
+    ]) do
+      conn =
+        conn(:get, "/ext/channel/count")
+        |> put_req_header("content-type", "application/json")
+
+      conn = RestController.call(conn, @options)
+
+      assert conn.status == 200
+      assert Jason.decode!(conn.resp_body) == %{"total_channels" => 10}
     end
   end
 end

@@ -172,6 +172,12 @@ defmodule ChannelSenderEx.ApplicationConfig do
       get_in(config, [:channel_sender_ex, "opentelemetry", "traces_ignore_routes"])
     )
 
+    Application.put_env(
+      :channel_sender_ex,
+      :interval_minutes_count_active_channel,
+      get_in(config, [:channel_sender_ex, "metrics", "active_interval_minutes_count"])
+    )
+
     if config == %{} do
       Logger.warning(
         "No valid configuration found!!!, Loading pre-defined default values : #{inspect(Application.get_all_env(:channel_sender_ex))}"

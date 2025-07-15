@@ -6,8 +6,6 @@ defmodule ChannelSenderEx.Utils.ChannelMetrics do
   alias ChannelSenderEx.Utils.CustomTelemetry
   require Logger
 
-  @update_interval :timer.minutes(2)
-
   def start_link(_args), do: GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
 
   def get_count, do: GenServer.call(__MODULE__, :get)
@@ -26,16 +24,20 @@ defmodule ChannelSenderEx.Utils.ChannelMetrics do
   def handle_info(:update, state) do
     count =
       :pg.which_groups()
-      |> Enum.count(fn group ->
-        match?([_ | _], :pg.get_members(group))
-      end)
+      |> Enum.count()
 
     send_metric(count)
     schedule_update()
     {:noreply, %{state | count: count}}
   end
 
-  defp schedule_update, do: Process.send_after(self(), :update, @update_interval)
+  defp schedule_update do
+    interval_minutes =
+      Application.get_env(:channel_sender_ex, :interval_minutes_count_active_channel, 2)
+
+    interval_ms = :timer.minutes(interval_minutes)
+    Process.send_after(self(), :update, interval_ms)
+  end
 
   defp send_metric(count) do
     CustomTelemetry.execute_custom_event(
