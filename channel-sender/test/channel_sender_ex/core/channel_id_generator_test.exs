@@ -81,8 +81,9 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
   end
 
   test "Should handle no secret", %{app_id: app_id, user_id: user_id} do
-    with_mock Application, [get_env: fn(_, _) -> nil end] do
+    with_mock Application, get_env: fn _, _ -> nil end do
       channel_id = ChannelIDGenerator.generate_channel_id(app_id, user_id)
+
       assert_raise RuntimeError, "Secret base no properly configured for application: ", fn ->
         ChannelIDGenerator.generate_token(channel_id, app_id, user_id)
       end
@@ -90,12 +91,11 @@ defmodule ChannelSenderEx.Core.ChannelIdGeneratorTest do
   end
 
   test "Should handle RulesProvider error", %{app_id: app_id, user_id: user_id} do
-    with_mock RulesProvider, [get: fn(_) -> raise("dummy") end] do
+    with_mock RulesProvider, get: fn _ -> raise("dummy") end do
       channel_id = ChannelIDGenerator.generate_channel_id(app_id, user_id)
       token = ChannelIDGenerator.generate_token(channel_id, app_id, user_id)
 
       assert {:ok, app_id, user_id} == ChannelIDGenerator.verify_token(channel_id, token)
     end
   end
-
 end

@@ -5,6 +5,7 @@ defmodule ChannelSenderEx.Core.Channel do
   Main abstraction for modeling and active or temporarily idle async communication channel with an user.
   """
   use GenStateMachine, callback_mode: [:state_functions, :state_enter], restart: :transient
+  require OpenTelemetry.Tracer, as: Tracer
   require Logger
   alias ChannelSenderEx.Core.BoundedMap
   alias ChannelSenderEx.Core.ChannelIDGenerator
@@ -111,13 +112,39 @@ defmodule ChannelSenderEx.Core.Channel do
   @doc """
   operation to request a message delivery
   """
-  @spec deliver_message(:gen_statem.server_ref(), ProtocolMessage.t()) :: deliver_response()
+  @spec deliver_message(:gen_statem.server_ref(), ProtocolMessage.t()) ::
+          deliver_response()
   def deliver_message(server, message) do
-    GenStateMachine.call(
-      server,
-      {:deliver_message, message},
-      get_param(:accept_channel_reply_timeout, 1_000)
-    )
+    res =
+      GenStateMachine.call(
+        server,
+        {:deliver_message, message},
+        get_param(:accept_channel_reply_timeout, 1_000)
+      )
+
+    case res do
+      :accepted_waiting ->
+        Tracer.add_event(
+          "deliver_message",
+          %{state: :waiting, detail: "Channel waiting for socket connection/authentication"}
+        )
+
+      :accepted_connected ->
+        Tracer.add_event(
+          "deliver_message",
+          %{state: :connected, detail: "Channel connected and message delivered"}
+        )
+
+      _ ->
+        Logger.warning("Channel could not deliver message #{inspect(res)}")
+
+        Tracer.add_event(
+          "deliver_message",
+          %{state: :error, detail: inspect(res)}
+        )
+    end
+
+    res
   end
 
   def stop(server) do
@@ -715,10 +742,8 @@ defmodule ChannelSenderEx.Core.Channel do
   end
 
   defp safe_alive?(pid, _self_pid) do
-    try do
-      GenServer.call(pid, :alive?)
-    catch
-      :exit, _ -> false
-    end
+    GenServer.call(pid, :alive?)
+  rescue
+    _ -> false
   end
 end

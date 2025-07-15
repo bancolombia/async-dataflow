@@ -15,7 +15,7 @@ defmodule ChannelSenderEx.Core.BoundedMap do
   The oldest key-value pair is evicted when the size limit is exceeded.
   The limit is set by the `max_size` parameter, defaulting to 100.
   """
-  @spec put(t, String.t, any, integer()) :: t
+  @spec put(t, String.t(), any, integer()) :: t
   def put({map, keys}, key, value, max_size \\ 100) do
     if Map.has_key?(map, key) do
       # If the key already exists, update the map without changing keys
@@ -72,5 +72,4 @@ defmodule ChannelSenderEx.Core.BoundedMap do
     new_keys = keys ++ keys2
     {new_map, new_keys}
   end
-
 end

@@ -129,5 +129,55 @@
     <orderEntry type="library" name="gen_state_machine" level="project" />
     <orderEntry type="library" name="gun" level="project" />
     <orderEntry type="library" name="cowlib" level="project" />
+    <orderEntry type="library" name="benchee" level="project" />
+    <orderEntry type="library" name="cowboy" level="project" />
+    <orderEntry type="library" name="cowlib" level="project" />
+    <orderEntry type="library" name="plug_cowboy" level="project" />
+    <orderEntry type="library" name="elixir_uuid" level="project" />
+    <orderEntry type="library" name="gen_state_machine" level="project" />
+    <orderEntry type="library" name="jason" level="project" />
+    <orderEntry type="library" name="cors_plug" level="project" />
+    <orderEntry type="library" name="hackney" level="project" />
+    <orderEntry type="library" name="plug_crypto" level="project" />
+    <orderEntry type="library" name="stream_data" level="project" />
+    <orderEntry type="library" name="gun" level="project" />
+    <orderEntry type="library" name="libcluster" level="project" />
+    <orderEntry type="library" name="vapor" level="project" />
+    <orderEntry type="library" name="mock" level="project" />
+    <orderEntry type="library" name="credo" level="project" />
+    <orderEntry type="library" name="dialyxir" level="project" />
+    <orderEntry type="library" name="telemetry_metrics_prometheus" level="project" />
+    <orderEntry type="library" name="telemetry_poller" level="project" />
+    <orderEntry type="library" name="cowboy_telemetry" level="project" />
+    <orderEntry type="library" name="telemetry" level="project" />
+    <orderEntry type="library" name="opentelemetry_plug" level="project" />
+    <orderEntry type="library" name="opentelemetry_api" level="project" />
+    <orderEntry type="library" name="opentelemetry_exporter" level="project" />
+    <orderEntry type="library" name="eflambe" level="project" />
+    <orderEntry type="library" name="meck" level="project" />
+    <orderEntry type="library" name="observer_cli" level="project" />
+    <orderEntry type="library" name="deep_merge" level="project" />
+    <orderEntry type="library" name="ex_guard" level="project" />
+    <orderEntry type="library" name="ex_doc" level="project" />
+    <orderEntry type="library" name="earmark" level="project" />
+    <orderEntry type="library" name="excoveralls" level="project" />
+    <orderEntry type="library" name="inch_ex" level="project" />
+    <orderEntry type="library" name="plug" level="project" />
+    <orderEntry type="library" name="x509" level="project" />
+    <orderEntry type="library" name="benchfella" level="project" />
+    <orderEntry type="library" name="mix_test_watch" level="project" />
+    <orderEntry type="library" name="ssl_verify_fun" level="project" />
+    <orderEntry type="library" name="exvcr" level="project" />
+    <orderEntry type="library" name="toml" level="project" />
+    <orderEntry type="library" name="yaml_elixir" level="project" />
+    <orderEntry type="library" name="norm" level="project" />
+    <orderEntry type="library" name="markdown" level="project" />
+    <orderEntry type="library" name="erlex" level="project" />
+    <orderEntry type="library" name="telemetry_metrics_prometheus_core" level="project" />
+    <orderEntry type="library" name="opentelemetry" level="project" />
+    <orderEntry type="library" name="mime" level="project" />
+    <orderEntry type="library" name="benchee_html" level="project" />
+    <orderEntry type="library" name="yamerl" level="project" />
+    <orderEntry type="library" name="telemetry_metrics" level="project" />
   </component>
 </module>

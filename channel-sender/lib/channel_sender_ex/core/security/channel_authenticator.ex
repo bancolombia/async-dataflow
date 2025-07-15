@@ -18,7 +18,8 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticator do
     credentials
   end
 
-  @spec authorize_channel(channel_ref(), channel_secret()) :: :unauthorized | {:ok, application(), user_ref()}
+  @spec authorize_channel(channel_ref(), channel_secret()) ::
+          :unauthorized | {:ok, application(), user_ref()}
   def authorize_channel(channel_ref, channel_secret) do
     case ChannelIDGenerator.verify_token(channel_ref, channel_secret) do
       {:ok, application, user_ref} ->
