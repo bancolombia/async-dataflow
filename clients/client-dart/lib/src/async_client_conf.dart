@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
+import 'async_client_event_handler.dart';
 import 'async_config.dart';
 import 'model/channel_message.dart';
 import 'transport/default_transport_strategy.dart';
@@ -78,48 +79,72 @@ class AsyncClientConf {
 
   /// Handle connectivity changes.
   void _handleConnectivityChange(ConnectivityResult results) {
+    String message = '';
+
     final hasConnection = results != ConnectivityResult.none;
 
+    message =
+        '[async-client][Main] Connectivity changed: $results (hasConnection: $hasConnection)';
+
     _log.info(
-      '[async-client][Main] Connectivity changed: $results (hasConnection: $hasConnection)',
+      message,
     );
 
     if (hasConnection &&
         _connectionState == CustomConnectionState.disconnected &&
         !_isManualDisconnect) {
+      message =
+          '[async-client][Main] Network available, attempting to reconnect (channelRef: ${_config.channelRef})';
       _log.info(
-        '[async-client][Main] Network available, attempting to reconnect (channelRef: ${_config.channelRef})',
+        message,
       );
       _attemptReconnect();
     } else if (!hasConnection &&
         _connectionState == CustomConnectionState.connected) {
+      message =
+          '[async-client][Main] Network unavailable, connection lost (channelRef: ${_config.channelRef})';
       _log.info(
-        '[async-client][Main] Network unavailable, connection lost (channelRef: ${_config.channelRef})',
+        message,
       );
       _updateConnectionState(CustomConnectionState.disconnected);
     }
+
+    _config.eventHandler?.onEvent(
+      AsyncClientEvent(
+        message: message,
+        channelRef: _config.channelRef,
+      ),
+    );
   }
 
   /// Handle app lifecycle changes.
   void handleAppLifecycleStateChanged(CustomAppLifecycleState state) {
+    String message = '';
+
     switch (state) {
       case CustomAppLifecycleState.resumed:
         if (_connectionState == CustomConnectionState.disconnected &&
             !_isManualDisconnect) {
+          message =
+              '[async-client][LifeCycle] App resumed, checking connection, (channelRef: ${_config.channelRef})';
           _log.info(
-            '[async-client][LifeCycle] App resumed, checking connection, (channelRef: ${_config.channelRef})',
+            message,
           );
           _attemptReconnect();
         }
         break;
       case CustomAppLifecycleState.paused:
+        message =
+            '[async-client][LifeCycle] App paused, maintaining connection, (channelRef: ${_config.channelRef})';
         _log.info(
-          '[async-client][LifeCycle] App paused, maintaining connection, (channelRef: ${_config.channelRef})',
+          message,
         );
         break;
       case CustomAppLifecycleState.detached:
+        message =
+            '[async-client][LifeCycle] App detached, disconnecting, (channelRef: ${_config.channelRef})';
         _log.info(
-          '[async-client][LifeCycle] App detached, disconnecting, (channelRef: ${_config.channelRef})',
+          message,
         );
         _gracefulDisconnect();
         break;
@@ -128,6 +153,13 @@ class AsyncClientConf {
       case CustomAppLifecycleState.hidden:
         break;
     }
+
+    _config.eventHandler?.onEvent(
+      AsyncClientEvent(
+        message: message,
+        channelRef: _config.channelRef,
+      ),
+    );
   }
 
   /// Connect to the server.
@@ -141,6 +173,14 @@ class AsyncClientConf {
         _log.warning(
           '[async-client][Main] No network connectivity, cannot connect (channelRef: ${_config.channelRef})',
         );
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message: '[async-client][Main] No network connectivity',
+            channelRef: _config.channelRef,
+          ),
+        );
+
         _updateConnectionState(CustomConnectionState.disconnected);
 
         return false;
@@ -151,6 +191,14 @@ class AsyncClientConf {
         _log.info(
           '[async-client][Main] Connected to server (channelRef: ${_config.channelRef})',
         );
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message: '[async-client][Main] Connected to server',
+            channelRef: _config.channelRef,
+          ),
+        );
+
         _updateConnectionState(CustomConnectionState.connected);
         _reconnectAttempts = 0;
         _listenToTransportStream();
@@ -160,6 +208,14 @@ class AsyncClientConf {
         _log.severe(
           '[async-client][Main] Failed to connect to server (channelRef: ${_config.channelRef})',
         );
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message: '[async-client][Main] Failed to connect to server',
+            channelRef: _config.channelRef,
+          ),
+        );
+
         _updateConnectionState(CustomConnectionState.disconnected);
 
         return false;
@@ -168,6 +224,14 @@ class AsyncClientConf {
       _log.severe(
         '[async-client][Main] Connection error: $error (channelRef: ${_config.channelRef})',
       );
+
+      _config.eventHandler?.onEvent(
+        AsyncClientEvent(
+          message: '[async-client][Main] Connection error: $error',
+          channelRef: _config.channelRef,
+        ),
+      );
+
       _updateConnectionState(CustomConnectionState.disconnected);
 
       return false;
@@ -188,6 +252,13 @@ class AsyncClientConf {
     } catch (error) {
       _log.severe(
         '[async-client][Main] Disconnect error: $error (channelRef: ${_config.channelRef})',
+      );
+
+      _config.eventHandler?.onEvent(
+        AsyncClientEvent(
+          message: '[async-client][Main] Disconnect error: $error',
+          channelRef: _config.channelRef,
+        ),
       );
 
       return false;
@@ -220,6 +291,14 @@ class AsyncClientConf {
     if (_reconnectAttempts >= maxRetries) {
       _log.warning(
         '[async-client][Main] Max reconnection attempts reached (channelRef: ${_config.channelRef})',
+      );
+
+      _config.eventHandler?.onEvent(
+        AsyncClientEvent(
+          message:
+              '[async-client][Main] Max reconnection attemps reached: $maxRetries',
+          channelRef: _config.channelRef,
+        ),
       );
 
       return;

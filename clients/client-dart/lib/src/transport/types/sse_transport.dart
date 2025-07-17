@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 
 import '../../../channel_sender_client.dart';
+import '../../async_client_event_handler.dart';
 import '../../decoder/decoder.dart';
 import '../../exceptions/exceptions.dart';
 import '../../sse/eventflux.dart';
@@ -69,6 +70,14 @@ class SSETransport implements Transport {
   Future<bool> connect() async {
     _log.finer('[async-client][SSETransport] connect() started.');
 
+    _config.eventHandler?.onEvent(
+      AsyncClientEvent(
+        message: '[async-client][SSETransport] Connecting to SSE transport',
+        channelRef: _config.channelRef,
+        transportType: TransportType.sse,
+      ),
+    );
+
     EventFlux.instance.connect(
       EventFluxConnectionType.get,
       sseUrl(),
@@ -89,6 +98,16 @@ class SSETransport implements Transport {
       },
       onConnectionClose: () {
         _log.warning('[async-client][SSETransport] onConnectionClose called');
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message:
+                '[async-client][SSETransport] Connection closed for SSE transport',
+            channelRef: _config.channelRef,
+            transportType: TransportType.sse,
+          ),
+        );
+
         _signalSSEClose(0, '');
       },
       autoReconnect: true, // Keep the party going, automatically!
@@ -99,6 +118,15 @@ class SSETransport implements Transport {
             RETRY_DEFAULT_MAX_RETRIES, // or -1 for infinite,
         onReconnect: () {
           _log.info('[async-client][SSETransport] onReconnect Called');
+
+          _config.eventHandler?.onEvent(
+            AsyncClientEvent(
+              message:
+                  '[async-client][SSETransport] Reconnecting to SSE transport',
+              channelRef: _config.channelRef,
+              transportType: TransportType.sse,
+            ),
+          );
         },
         reconnectHeader: () => Future.value({
           'Authorization': 'Bearer $currentToken',
@@ -143,6 +171,16 @@ class SSETransport implements Transport {
       _log.severe(
         '[async-client][SSETransport] Error in SSE connection: $statusCode, $reasonPhrase, stackTrace: $stackTrace',
       );
+
+      _config.eventHandler?.onEvent(
+        AsyncClientEvent(
+          message:
+              '[async-client][SSETransport] Error in SSE connection: $statusCode, $reasonPhrase',
+          channelRef: _config.channelRef,
+          transportType: TransportType.sse,
+        ),
+      );
+
       // ignore: prefer-async-await
       EventFlux.instance.disconnect().then(
         (_) {
@@ -157,6 +195,15 @@ class SSETransport implements Transport {
         onError: (e) {
           _log.severe(
             '[async-client][SSETransport] Error calling EventFlux.disconnect(): $e, stackTrace: $stackTrace',
+          );
+
+          _config.eventHandler?.onEvent(
+            AsyncClientEvent(
+              message:
+                  '[async-client][SSETransport] Error calling EventFlux.disconnect(): $e',
+              channelRef: _config.channelRef,
+              transportType: TransportType.sse,
+            ),
           );
         },
       );
@@ -220,6 +267,14 @@ class SSETransport implements Transport {
     await EventFlux.instance.disconnect();
     _connectRetryTimer.reset();
     _log.info('[async-client][SSETransport] disconnect() finished');
+
+    _config.eventHandler?.onEvent(
+      AsyncClientEvent(
+        message: '[async-client][SSETransport] Disconnected from SSE transport',
+        channelRef: _config.channelRef,
+        transportType: TransportType.sse,
+      ),
+    );
 
     return;
   }

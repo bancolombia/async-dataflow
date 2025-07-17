@@ -1,6 +1,7 @@
 import 'package:app_async_flutter/application/app_config.dart';
 import 'package:app_async_flutter/domain/model/channel_credentials.dart';
 import 'package:app_async_flutter/domain/model/gateway/async_client_gateway.dart';
+import 'package:app_async_flutter/infrastructure/async_dataflow/event_handler.dart';
 import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -160,6 +161,7 @@ class AsyncClientService extends InheritedWidget {
             return transportFromString(e);
           },
         ).toList(),
+        eventHandler: EventHandler(),
       );
 
       asyncClient = AsyncClient(conf);
