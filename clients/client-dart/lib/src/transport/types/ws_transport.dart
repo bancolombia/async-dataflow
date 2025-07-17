@@ -8,6 +8,7 @@ import 'dart:math';
 import 'package:logging/logging.dart';
 
 import '../../../channel_sender_client.dart';
+import '../../async_client_event_handler.dart';
 import '../../decoder/decoder.dart';
 import '../../exceptions/exceptions.dart';
 import '../../utils/retry_timer.dart';
@@ -93,6 +94,13 @@ class WSTransport implements Transport {
     if (isOpen()) {
       _log.info('[async-client][WSTransport] socket already created');
 
+      _config.eventHandler?.onEvent(
+        AsyncClientEvent(
+          message: '[async-client][WSTransport] WebSocket already connected',
+          channelRef: _config.channelRef,
+        ),
+      );
+
       return false;
     }
 
@@ -105,6 +113,14 @@ class WSTransport implements Transport {
         _log.info(
           '[async-client][WSTransport] New websocket connection ${_config.channelRef}',
         );
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message: '[async-client][WSTransport] WebSocket connected',
+            channelRef: _config.channelRef,
+          ),
+        );
+
         _onListen();
         connected = true;
         _streamDone = false;
@@ -114,6 +130,15 @@ class WSTransport implements Transport {
         _log.warning(
           '[async-client][WSTransport] Error connecting to server: $e | try: $attempts',
         );
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message:
+                '[async-client][WSTransport] WebSocket connection failed: $e, reconnecting try number: $attempts',
+            channelRef: _config.channelRef,
+          ),
+        );
+
         int wait = expBackoff(500, 2000, attempts);
         attempts++;
 
@@ -129,6 +154,13 @@ class WSTransport implements Transport {
     }
 
     _log.finer('[async-client][WSTransport] connect() finished.');
+
+    _config.eventHandler?.onEvent(
+      AsyncClientEvent(
+        message: '[async-client][WSTransport] connect() finished.',
+        channelRef: _config.channelRef,
+      ),
+    );
 
     return connected;
   }
@@ -235,6 +267,14 @@ class WSTransport implements Transport {
 
   void send(String message) {
     _log.finest('[async-client][WSTransport] Sending > $message');
+
+    _config.eventHandler?.onEvent(
+      AsyncClientEvent(
+        message: '[async-client][WSTransport] Sending message: $message',
+        channelRef: _config.channelRef,
+      ),
+    );
+
     _webSocketCh.add(message);
   }
 
@@ -317,12 +357,12 @@ class WSTransport implements Transport {
     int reasonCode = extractCode(reason);
     bool shouldRetry = code > SOCKET_GOING_AWAY ||
         (code == SOCKET_GOING_AWAY && reasonCode >= SENDER_INVALID_REF);
-    
+
     // Don't retry on invalid secret (3008) or invalid token
     if (reasonCode == 3008 || reason == 'Invalid token for channel') {
       shouldRetry = false;
     }
-    
+
     _log.info('[async-client][WSTransport] shouldRetry: $shouldRetry');
 
     if (!_closeWasClean &&
@@ -336,6 +376,15 @@ class WSTransport implements Transport {
       _log.info(
         '[async-client][WSTransport] Not scheduling reconnect, clean: $_closeWasClean',
       );
+
+      _config.eventHandler?.onEvent(
+        AsyncClientEvent(
+          message:
+              '[async-client][WSTransport] Not scheduling reconnect, clean: $_closeWasClean.',
+          channelRef: _config.channelRef,
+        ),
+      );
+
       disconnect();
 
       _signalSocketClose(code, reason);
