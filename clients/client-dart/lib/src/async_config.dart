@@ -1,9 +1,11 @@
+import 'async_client_event_handler.dart';
 import 'transport/transport.dart';
 
 class AsyncConfig {
   final String socketUrl;
   final String channelRef;
   final bool enableBinaryTransport;
+  final AsyncClientEventHandler? eventHandler;
   List<TransportType> transports = [TransportType.ws, TransportType.sse];
   int hbInterval = 5000;
   int? maxRetries;
@@ -17,6 +19,7 @@ class AsyncConfig {
     this.enableBinaryTransport = false,
     this.maxRetries,
     this.sseUrl,
+    this.eventHandler,
     int? heartbeatInterval,
     List<TransportType>? transportsProvider,
   }) : _channelSecret = channelSecret {

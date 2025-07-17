@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
 import 'package:rxdart/rxdart.dart';
 
+import 'async_client_event_handler.dart';
 import 'async_config.dart';
 import 'model/channel_message.dart';
 import 'transport/default_transport_strategy.dart';
@@ -141,6 +142,14 @@ class AsyncClientConf {
         _log.warning(
           '[async-client][Main] No network connectivity, cannot connect (channelRef: ${_config.channelRef})',
         );
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message: 'No network connectivity',
+            channelRef: _config.channelRef,
+          ),
+        );
+
         _updateConnectionState(CustomConnectionState.disconnected);
 
         return false;
@@ -151,6 +160,14 @@ class AsyncClientConf {
         _log.info(
           '[async-client][Main] Connected to server (channelRef: ${_config.channelRef})',
         );
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message: 'Connected to server',
+            channelRef: _config.channelRef,
+          ),
+        );
+
         _updateConnectionState(CustomConnectionState.connected);
         _reconnectAttempts = 0;
         _listenToTransportStream();
@@ -160,6 +177,14 @@ class AsyncClientConf {
         _log.severe(
           '[async-client][Main] Failed to connect to server (channelRef: ${_config.channelRef})',
         );
+
+        _config.eventHandler?.onEvent(
+          AsyncClientEvent(
+            message: 'Failed to connect to server',
+            channelRef: _config.channelRef,
+          ),
+        );
+
         _updateConnectionState(CustomConnectionState.disconnected);
 
         return false;
@@ -168,6 +193,14 @@ class AsyncClientConf {
       _log.severe(
         '[async-client][Main] Connection error: $error (channelRef: ${_config.channelRef})',
       );
+
+      _config.eventHandler?.onEvent(
+        AsyncClientEvent(
+          message: 'Connection error: $error',
+          channelRef: _config.channelRef,
+        ),
+      );
+
       _updateConnectionState(CustomConnectionState.disconnected);
 
       return false;
@@ -188,6 +221,13 @@ class AsyncClientConf {
     } catch (error) {
       _log.severe(
         '[async-client][Main] Disconnect error: $error (channelRef: ${_config.channelRef})',
+      );
+
+      _config.eventHandler?.onEvent(
+        AsyncClientEvent(
+          message: 'Disconnect error: $error',
+          channelRef: _config.channelRef,
+        ),
       );
 
       return false;
