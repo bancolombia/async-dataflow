@@ -8,18 +8,30 @@ defmodule ChannelSenderEx.ApplicationConfigTest do
   # end
 
   test "Should load existent file" do
-    Application.put_env(:channel_sender_ex, :config_file, "./test/channel_sender_ex/test_config_files/config1.yaml")
+    Application.put_env(
+      :channel_sender_ex,
+      :config_file,
+      "./test/channel_sender_ex/test_config_files/config1.yaml"
+    )
+
     map = ApplicationConfig.load()
     assert is_map(map)
+
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :config_file)
     end)
   end
 
   test "Should load cluster config" do
-    Application.put_env(:channel_sender_ex, :config_file, "./test/channel_sender_ex/test_config_files/config2.yaml")
+    Application.put_env(
+      :channel_sender_ex,
+      :config_file,
+      "./test/channel_sender_ex/test_config_files/config2.yaml"
+    )
+
     map = ApplicationConfig.load()
     assert is_map(map)
+
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :config_file)
     end)
@@ -29,9 +41,9 @@ defmodule ChannelSenderEx.ApplicationConfigTest do
     Application.put_env(:channel_sender_ex, :config_file, "./some.yaml")
     map = ApplicationConfig.load()
     assert is_map(map)
+
     on_exit(fn ->
       Application.delete_env(:channel_sender_ex, :config_file)
     end)
   end
-
 end

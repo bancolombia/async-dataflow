@@ -17,9 +17,9 @@ defmodule ChannelSenderEx.Transport.EntryPoint do
        [
          {"/ext/socket", Socket, []},
          {"/ext/longpoll/:ran/xhr", LongPoll, []},
-         {"/ext/sse", Sse, []},
-         #Enable below line for load testing purposes
-        #  {:_, Plug.Cowboy.Handler, {ChannelSenderEx.Transport.Rest.RestController, []}}
+         {"/ext/sse", Sse, []}
+         # Enable below line for load testing purposes
+         #  {:_, Plug.Cowboy.Handler, {ChannelSenderEx.Transport.Rest.RestController, []}}
        ]}
     ]
   end

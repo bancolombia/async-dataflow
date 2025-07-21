@@ -46,9 +46,7 @@ defmodule ChannelSenderEx.Transport.SocketTest do
 
     assert [
              {:text,
-              "[\"#{ext_message.message_id}\",\"#{ext_message.correlation_id}\",\"#{
-                ext_message.event_name
-              }\",\"#{ext_message.message_data}\"]"}
+              "[\"#{ext_message.message_id}\",\"#{ext_message.correlation_id}\",\"#{ext_message.event_name}\",\"#{ext_message.message_data}\"]"}
            ] ==
              commands
 

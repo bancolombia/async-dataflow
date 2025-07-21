@@ -77,7 +77,9 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
         pid
 
       other ->
-        Logger.error(fn -> "Re-connection process for channel #{channel_ref} failed: #{inspect(other)}" end)
+        Logger.error(fn ->
+          "Re-connection process for channel #{channel_ref} failed: #{inspect(other)}"
+        end)
 
         other
     end
@@ -89,6 +91,7 @@ defmodule ChannelSenderEx.Core.PubSub.ReConnectProcess do
     end)
 
     timeout = Application.get_env(:channel_sender_ex, :on_connected_channel_reply_timeout)
+
     case kind do
       :websocket ->
         Channel.socket_connected(pid, socket_pid, timeout)
