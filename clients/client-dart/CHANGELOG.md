@@ -1,4 +1,7 @@
 # CHANGELOG
+## [3.1.0]
+- Add connectivity awareness.
+- Add EventHandler interface.
 ## [3.0.0-beta.3] 
 - Downgrade SDK requirement
 ## [3.0.0-beta] 
