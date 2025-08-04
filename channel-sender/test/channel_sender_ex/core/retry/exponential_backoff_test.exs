@@ -11,7 +11,14 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoffTest do
     action_fn = fn _delay -> :retry end
 
     # Exercise
-    assert ExponentialBackoff.execute(initial, max_delay, max_retries, action_fn, fn -> :void end, "dummy key") == :void
+    assert ExponentialBackoff.execute(
+             initial,
+             max_delay,
+             max_retries,
+             action_fn,
+             fn -> :void end,
+             "dummy key"
+           ) == :void
   end
 
   test "execute/5 retries the action function with exponential backoff, that raises err" do
@@ -22,7 +29,13 @@ defmodule ChannelSenderEx.Core.Retry.ExponentialBackoffTest do
     action_fn = fn _delay -> raise("dummy") end
 
     # Exercise
-    assert ExponentialBackoff.execute(initial, max_delay, max_retries, action_fn, fn -> :void end, "dummy key") == :void
+    assert ExponentialBackoff.execute(
+             initial,
+             max_delay,
+             max_retries,
+             action_fn,
+             fn -> :void end,
+             "dummy key"
+           ) == :void
   end
-
 end

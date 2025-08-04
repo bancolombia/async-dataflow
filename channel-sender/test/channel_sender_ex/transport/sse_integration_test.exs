@@ -13,17 +13,21 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
   @moduletag :capture_log
 
   setup_all do
-    Application.put_env(:channel_sender_ex,
+    Application.put_env(
+      :channel_sender_ex,
       :accept_channel_reply_timeout,
-      1000)
+      1000
+    )
 
-    Application.put_env(:channel_sender_ex,
+    Application.put_env(
+      :channel_sender_ex,
       :on_connected_channel_reply_timeout,
-      2000)
+      2000
+    )
 
     Application.put_env(:channel_sender_ex, :secret_base, {
-        "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
-        "socket auth"
+      "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
+      "socket auth"
     })
 
     {:ok, _} = Application.ensure_all_started(:libcluster)
@@ -43,6 +47,7 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
       ChannelSupervisor,
       %{id: :pg, start: {:pg, :start_link, []}}
     ]
+
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     {:ok, pid_supervisor} = Supervisor.start_link(children, opts)
 
@@ -77,24 +82,38 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
 
   test "Should handle empty authorization header sent", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.get(conn, "/ext/sse?channel=#{channel}", [
-      {"accept", "text/event-stream"}, {"authorization", ""}])
+
+    _stream_ref =
+      :gun.get(conn, "/ext/sse?channel=#{channel}", [
+        {"accept", "text/event-stream"},
+        {"authorization", ""}
+      ])
+
     assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3008\"}"}, 300
     :gun.close(conn)
   end
 
   test "Should handle no authorization header sent", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.get(conn, "/ext/sse?channel=#{channel}", [
-      {"accept", "text/event-stream"}])
+
+    _stream_ref =
+      :gun.get(conn, "/ext/sse?channel=#{channel}", [
+        {"accept", "text/event-stream"}
+      ])
+
     assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3008\"}"}, 300
     :gun.close(conn)
   end
 
   test "Should handle invalid authorization header sent", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.get(conn, "/ext/sse?channel=#{channel}", [
-      {"accept", "text/event-stream"}, {"authorization", "Bearer"}])
+
+    _stream_ref =
+      :gun.get(conn, "/ext/sse?channel=#{channel}", [
+        {"accept", "text/event-stream"},
+        {"authorization", "Bearer"}
+      ])
+
     assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3008\"}"}, 300
     :gun.close(conn)
   end
@@ -102,10 +121,12 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
   test "Should handle invalid channel", %{port: port, secret: secret} do
     {conn, _ref} = connect(port, "x", secret)
     assert_receive {:gun_response, _pid, _ref, :nofin, 400, response_headers}, 1500
+
     assert Enum.any?(response_headers, fn
-      {"x-error-code", "3006"} -> true
-      _ -> false
-    end)
+             {"x-error-code", "3006"} -> true
+             _ -> false
+           end)
+
     assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3006\"}"}
     :gun.close(conn)
   end
@@ -125,18 +146,26 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
     {:ok, conn} = connect(port)
     _stream_ref = :gun.get(conn, "/ext/sse", [{"accept", "text/event-stream"}])
     assert_receive {:gun_response, _pid, _ref, :nofin, 400, response_headers}, 300
+
     assert Enum.any?(response_headers, fn
-      {"x-error-code", "3006"} -> true
-      _ -> false
-    end)
+             {"x-error-code", "3006"} -> true
+             _ -> false
+           end)
+
     :gun.close(conn)
   end
 
   test "Should handle options method", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.options(conn, "/ext/sse?channel=#{channel}", [{"accept", "text/event-stream"}])
+
+    _stream_ref =
+      :gun.options(conn, "/ext/sse?channel=#{channel}", [{"accept", "text/event-stream"}])
+
     assert_receive {:gun_response, _pid, _ref, :fin, 204, response_headers}, 300
-    assert response_headers |> Enum.any?(fn {k, v} -> String.starts_with?(k, "access-control-allow") end)
+
+    assert response_headers
+           |> Enum.any?(fn {k, v} -> String.starts_with?(k, "access-control-allow") end)
+
     :gun.close(conn)
   end
 
@@ -149,20 +178,22 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
 
   test "Should connect to sse endpoint", %{port: port, channel: channel, secret: secret} do
     conn = connect(port, channel, secret)
+
     assert_receive {
-      :gun_response,
-      _pid,
-      _ref,
-      :nofin,
-      200,
-      response_headers
-    }, 300
+                     :gun_response,
+                     _pid,
+                     _ref,
+                     :nofin,
+                     200,
+                     response_headers
+                   },
+                   300
 
     # assert response_headers list contains "Content-Type: text/event-stream"
     assert Enum.any?(response_headers, fn
-      {"content-type", "text/event-stream"} -> true
-      _ -> false
-    end)
+             {"content-type", "text/event-stream"} -> true
+             _ -> false
+           end)
 
     :gun.close(conn)
   end
@@ -201,10 +232,13 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
 
   defp connect(port, channel, secret) do
     {:ok, conn} = connect(port)
-    stream_ref = :gun.get(conn, "/ext/sse?channel=#{channel}", [
-      {"accept", "text/event-stream"},
-      {"authorization", "Bearer #{secret}"}
+
+    stream_ref =
+      :gun.get(conn, "/ext/sse?channel=#{channel}", [
+        {"accept", "text/event-stream"},
+        {"authorization", "Bearer #{secret}"}
       ])
+
     {conn, stream_ref}
   end
 
@@ -218,5 +252,4 @@ defmodule ChannelSenderEx.Transport.SseIntegrationTest do
   defp decode_message(data) do
     JsonEncoder.decode_message(String.slice(data, 6, String.length(data) - 6))
   end
-
 end
