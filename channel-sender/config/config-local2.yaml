@@ -61,6 +61,16 @@ channel_sender_ex:
     on_clean_close: 300
     on_disconnection: 900
 
+  # Defines when the channel process will be created. If 'true', the channel process will be 
+  # created after calling the /create rest endpoint. When 'false', the channel process
+  # will be created only when the websocket or sse connection is established and credentials
+  # are exchanged. 
+  # If your use case needs to route messages inmediatelly after exchanging credentials (/create
+  # endpoint), then it is recommended to set this parameter to 'true'. Otherwise, it is memory
+  # inneficient to create the channel process too early or even if the channel potentially
+  # is never going to be used.
+  create_channel_early: true
+  
   no_start: false
   topology:
     strategy: Elixir.Cluster.Strategy.Gossip # for local development
