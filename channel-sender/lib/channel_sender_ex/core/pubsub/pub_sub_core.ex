@@ -26,10 +26,17 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   def deliver_to_channel(channel_ref, message) do
     action_fn = fn _ -> do_deliver_to_channel(channel_ref, message) end
 
-    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
-      CustomTelemetry.execute_custom_event([:adf, :message, :nodelivered], %{count: 1})
-      raise("No channel found")
-    end, "deliver_channel_#{channel_ref}")
+    execute(
+      @min_backoff,
+      @max_backoff,
+      @max_retries,
+      action_fn,
+      fn ->
+        CustomTelemetry.execute_custom_event([:adf, :message, :nodelivered], %{count: 1})
+        raise("No channel found")
+      end,
+      "deliver_channel_#{channel_ref}"
+    )
   rescue
     e ->
       Logger.warning(
@@ -74,10 +81,17 @@ defmodule ChannelSenderEx.Core.PubSub.PubSubCore do
   def delete_channel(channel_ref) do
     action_fn = fn _ -> do_delete_channel(channel_ref) end
 
-    execute(@min_backoff, @max_backoff, @max_retries, action_fn, fn ->
-      Logger.warning("Could not delete channel #{channel_ref} after #{@max_retries} retries")
-      :ok
-    end, "delete_channel_#{channel_ref}")
+    execute(
+      @min_backoff,
+      @max_backoff,
+      @max_retries,
+      action_fn,
+      fn ->
+        Logger.warning("Could not delete channel #{channel_ref} after #{@max_retries} retries")
+        :ok
+      end,
+      "delete_channel_#{channel_ref}"
+    )
   end
 
   def do_delete_channel(channel_ref) do

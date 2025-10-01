@@ -17,6 +17,8 @@ defmodule ChannelSenderEx.Application do
   def start(_type, _args) do
     _config = ApplicationConfig.load()
 
+    open_telemetry_traces()
+
     Helper.compile(:channel_sender_ex)
     CustomTelemetry.custom_telemetry_events()
 
@@ -52,7 +54,8 @@ defmodule ChannelSenderEx.Application do
            [
              metrics: CustomTelemetry.metrics(),
              port: prometheus_port
-           ]}
+           ]},
+          ChannelSenderEx.Utils.ChannelMetrics
           # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()}
         ]
 
@@ -75,5 +78,32 @@ defmodule ChannelSenderEx.Application do
       id: :pg,
       start: {:pg, :start_link, []}
     }
+  end
+
+  defp open_telemetry_traces do
+    traces_enable = Application.get_env(:channel_sender_ex, :traces_enable, false)
+
+    if traces_enable do
+      traces_endpoint = Application.get_env(:channel_sender_ex, :traces_endpoint)
+      traces_ignore_routes = Application.get_env(:channel_sender_ex, :traces_ignore_routes)
+
+      Application.put_env(:opentelemetry, :text_map_propagators, [:baggage, :trace_context])
+      Application.put_env(:opentelemetry, :span_processor, :batch)
+      Application.put_env(:opentelemetry, :traces_exporter, :otlp)
+
+      Application.put_env(:opentelemetry, :resource_detectors, [
+        :otel_resource_app_env,
+        :otel_resource_env_var,
+        OtelResourceDynatrace
+      ])
+
+      Application.put_env(:opentelemetry_exporter, :otlp_protocol, :http_protobuf)
+      Application.put_env(:opentelemetry_exporter, :otlp_endpoint, traces_endpoint)
+
+      Application.put_env(:opentelemetry_plug, :ignored_routes, traces_ignore_routes)
+
+      Logger.warning("Tracing is enabled, setting up OpentelemetryPlug.")
+      OpentelemetryPlug.setup()
+    end
   end
 end

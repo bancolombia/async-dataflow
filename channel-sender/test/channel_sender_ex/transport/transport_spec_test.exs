@@ -20,5 +20,4 @@ defmodule ChannelSenderEx.Transport.TransportSpecTest do
     assert function_exported?(TestTransport, :lookup_channel_addr, 1)
     assert TestTransport.lookup_channel_addr({:error, "foo"}) == {:error, "foo"}
   end
-
 end

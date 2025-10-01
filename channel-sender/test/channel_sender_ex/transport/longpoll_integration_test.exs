@@ -13,17 +13,21 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
   @moduletag :capture_log
 
   setup_all do
-    Application.put_env(:channel_sender_ex,
+    Application.put_env(
+      :channel_sender_ex,
       :accept_channel_reply_timeout,
-      1000)
+      1000
+    )
 
-    Application.put_env(:channel_sender_ex,
+    Application.put_env(
+      :channel_sender_ex,
       :on_connected_channel_reply_timeout,
-      2000)
+      2000
+    )
 
     Application.put_env(:channel_sender_ex, :secret_base, {
-        "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
-        "socket auth"
+      "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
+      "socket auth"
     })
 
     {:ok, _} = Application.ensure_all_started(:libcluster)
@@ -43,6 +47,7 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
       ChannelSupervisor,
       %{id: :pg, start: {:pg, :start_link, []}}
     ]
+
     opts = [strategy: :one_for_one, name: ChannelSenderEx.Supervisor]
     {:ok, pid_supervisor} = Supervisor.start_link(children, opts)
 
@@ -77,23 +82,38 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
 
   test "Should handle empty authorization header sent", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.post(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [{"accept", "application/json"}, {"authorization", ""}])
+
+    _stream_ref =
+      :gun.post(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
+        {"accept", "application/json"},
+        {"authorization", ""}
+      ])
+
     assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3008\"}"}, 300
     :gun.close(conn)
   end
 
   test "Should handle no authorization header sent", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.post(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
-      {"accept", "application/json"}])
+
+    _stream_ref =
+      :gun.post(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
+        {"accept", "application/json"}
+      ])
+
     assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3008\"}"}, 300
     :gun.close(conn)
   end
 
   test "Should handle invalid authorization header sent", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.post(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
-      {"accept", "application/json"}, {"authorization", "Bearer"}])
+
+    _stream_ref =
+      :gun.post(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
+        {"accept", "application/json"},
+        {"authorization", "Bearer"}
+      ])
+
     assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3008\"}"}, 300
     :gun.close(conn)
   end
@@ -101,10 +121,12 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
   test "Should handle invalid channel", %{port: port, secret: secret} do
     {conn, _ref} = connect(port, "x", secret)
     assert_receive {:gun_response, _pid, _ref, :nofin, 400, response_headers}, 1500
+
     assert Enum.any?(response_headers, fn
-      {"x-error-code", "3006"} -> true
-      _ -> false
-    end)
+             {"x-error-code", "3006"} -> true
+             _ -> false
+           end)
+
     assert_receive {:gun_data, _, _, :fin, "{\"error\":\"3006\"}"}
     :gun.close(conn)
   end
@@ -130,15 +152,28 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
 
   test "Should handle options method", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.options(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [{"accept", "application/json"}])
+
+    _stream_ref =
+      :gun.options(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
+        {"accept", "application/json"}
+      ])
+
     assert_receive {:gun_response, _pid, _ref, :fin, 204, response_headers}, 300
-    assert response_headers |> Enum.any?(fn {k, v} -> String.starts_with?(k, "access-control-allow") end)
+
+    assert response_headers
+           |> Enum.any?(fn {k, v} -> String.starts_with?(k, "access-control-allow") end)
+
     :gun.close(conn)
   end
 
   test "Should handle fail on other methods", %{port: port, channel: channel} do
     {:ok, conn} = connect(port)
-    _stream_ref = :gun.put(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [{"accept", "application/json"}])
+
+    _stream_ref =
+      :gun.put(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
+        {"accept", "application/json"}
+      ])
+
     assert_receive {:gun_response, _pid, _ref, :fin, 405, _response_headers}, 300
     :gun.close(conn)
   end
@@ -175,10 +210,13 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
 
   defp connect(port, channel, secret) do
     {:ok, conn} = connect(port)
-    stream_ref = :gun.post(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
-      {"accept", "application/json"},
-      {"authorization", "Bearer #{secret}"}
+
+    stream_ref =
+      :gun.post(conn, "/ext/longpoll/asdfr/xhr?channel=#{channel}", [
+        {"accept", "application/json"},
+        {"authorization", "Bearer #{secret}"}
       ])
+
     {conn, stream_ref}
   end
 
@@ -192,5 +230,4 @@ defmodule ChannelSenderEx.Transport.LongPollIntegrationTest do
   defp decode_message(data) do
     JsonEncoder.decode_message(data)
   end
-
 end

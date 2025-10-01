@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.2.5",
+      version: "0.3.0",
       elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -21,11 +21,21 @@ defmodule ChannelSenderEx.MixProject do
 
   # Run "mix help compile.app" to learn about applications.
   def application do
-    extra_apps = if Mix.env() == :dev do
-      [:logger, :telemetry, :observer, :wx, :runtime_tools]
-    else
-      [:logger, :telemetry]
-    end
+    extra_apps =
+      if Mix.env() == :dev do
+        [
+          :logger,
+          :telemetry,
+          :observer,
+          :wx,
+          :runtime_tools,
+          :opentelemetry_exporter,
+          :opentelemetry
+        ]
+      else
+        [:logger, :telemetry, :opentelemetry_exporter, :opentelemetry]
+      end
+
     [
       extra_applications: extra_apps,
       mod: {ChannelSenderEx.Application, []}
@@ -58,6 +68,11 @@ defmodule ChannelSenderEx.MixProject do
       {:telemetry_poller, "~> 1.1"},
       {:cowboy_telemetry, "~> 0.4.0"},
       {:telemetry, "~> 1.3"},
+      {:opentelemetry, "~> 1.5"},
+      {:opentelemetry_exporter, "~> 1.8"},
+      {:opentelemetry_api, "~> 1.4"},
+      {:opentelemetry_plug,
+       git: "https://github.com/bancolombia/opentelemetry_plug.git", tag: "v1.1.1"},
       {:eflambe, "~> 0.3.0"},
       {:meck, "0.9.2"},
       {:observer_cli, "~> 1.8"}

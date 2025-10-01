@@ -29,6 +29,7 @@ defmodule ChannelSenderEx.Core.RulesProvider.Compiler do
     # we first create a quote containing the module definition
     # We need `Macro.escape` to escape complex elixir types like maps when used inside quote
     # We also use `location: :keep` to show us the file where this is being done when an error is raised
+
     quote bind_quoted: [config: Macro.escape(config), module_name: module_name],
           location: :keep do
       # define our module
