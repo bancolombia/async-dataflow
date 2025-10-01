@@ -8,6 +8,7 @@ ARG BUILD_ENV=prod
 WORKDIR /build
 ENV MIX_ENV=${BUILD_ENV}
 
+RUN apk add git
 RUN mix local.hex --force
 RUN mix local.rebar --force 
 COPY mix.exs mix.lock ./
