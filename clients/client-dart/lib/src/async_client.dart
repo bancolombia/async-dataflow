@@ -83,9 +83,7 @@ class AsyncClient with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _log.info(
-      '[async-client][LifeCycle] App lifecycle changed to: $state',
-    );
+    _log.info('[async-client][LifeCycle] App lifecycle changed to: $state');
 
     // Convert Flutter's AppLifecycleState to custom enum
     final customState = _convertLifecycleState(state);
@@ -93,9 +91,7 @@ class AsyncClient with WidgetsBindingObserver {
   }
 
   /// Convert Flutter's AppLifecycleState to custom enum.
-  CustomAppLifecycleState _convertLifecycleState(
-    AppLifecycleState state,
-  ) {
+  CustomAppLifecycleState _convertLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
         return CustomAppLifecycleState.resumed;
@@ -105,6 +101,8 @@ class AsyncClient with WidgetsBindingObserver {
         return CustomAppLifecycleState.paused;
       case AppLifecycleState.detached:
         return CustomAppLifecycleState.detached;
+      case AppLifecycleState.hidden:
+        return CustomAppLifecycleState.hidden;
     }
   }
 
@@ -121,31 +119,22 @@ class AsyncClient with WidgetsBindingObserver {
   Stream<CustomConnectionState> get connectionState => _client.connectionState;
 
   /// Stream of connectivity changes.
-  Stream<ConnectivityResult> get connectivityState => _client.connectivityState;
+  Stream<List<ConnectivityResult>> get connectivityState =>
+      _client.connectivityState;
 
   /// Stream of messages filtered by event name(s).
   StreamSubscription<ChannelMessage> subscribeToMany(
     List<String> eventFilters,
     Function? onData, {
     Function? onError,
-  }) =>
-      _client.subscribeToMany(
-        eventFilters,
-        onData,
-        onError: onError,
-      );
+  }) => _client.subscribeToMany(eventFilters, onData, onError: onError);
 
   /// Stream of messages for a specific event.
   StreamSubscription<ChannelMessage> subscribeTo(
     String eventName,
     Function? onData, {
     Function? onError,
-  }) =>
-      _client.subscribeTo(
-        eventName,
-        onData,
-        onError: onError,
-      );
+  }) => _client.subscribeTo(eventName, onData, onError: onError);
 
   /// Stream of messages matching a pattern.
   Stream<ChannelMessage> messagesMatching(String pattern) =>

@@ -1,4 +1,6 @@
 # CHANGELOG
+## [3.1.1]
+- Update dart sdk to `>= 3.8.0`
 ## [3.1.0]
 - Add connectivity awareness.
 - Add EventHandler interface.

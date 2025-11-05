@@ -30,7 +30,7 @@ class AsyncClientConf {
 
   // Connectivity monitoring
   final Connectivity _connectivity = Connectivity();
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   // State management
   CustomConnectionState _connectionState = CustomConnectionState.disconnected;
@@ -41,12 +41,12 @@ class AsyncClientConf {
   // Stream management
   final BehaviorSubject<CustomConnectionState> _connectionStateSubject =
       BehaviorSubject<CustomConnectionState>.seeded(
-    CustomConnectionState.disconnected,
-  );
-  final BehaviorSubject<ConnectivityResult> _connectivitySubject =
-      BehaviorSubject<ConnectivityResult>.seeded(
-    ConnectivityResult.none,
-  );
+        CustomConnectionState.disconnected,
+      );
+  final BehaviorSubject<List<ConnectivityResult>> _connectivitySubject =
+      BehaviorSubject<List<ConnectivityResult>>.seeded([
+        ConnectivityResult.none,
+      ]);
   StreamSubscription<ChannelMessage>? _transportStreamSubscription;
 
   AsyncClientConf(this._config) {
@@ -65,7 +65,7 @@ class AsyncClientConf {
   /// Initialize connectivity monitoring.
   void _initializeConnectivityMonitoring() {
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
-      (ConnectivityResult results) {
+      (List<ConnectivityResult> results) {
         _connectivitySubject.add(results);
         _handleConnectivityChange(results);
       },
@@ -78,42 +78,34 @@ class AsyncClientConf {
   }
 
   /// Handle connectivity changes.
-  void _handleConnectivityChange(ConnectivityResult results) {
+  void _handleConnectivityChange(List<ConnectivityResult> results) {
     String message = '';
 
-    final hasConnection = results != ConnectivityResult.none;
+    final hasConnection =
+        results.isNotEmpty && results.firstOrNull != ConnectivityResult.none;
 
     message =
         '[async-client][Main] Connectivity changed: $results (hasConnection: $hasConnection)';
 
-    _log.info(
-      message,
-    );
+    _log.info(message);
 
     if (hasConnection &&
         _connectionState == CustomConnectionState.disconnected &&
         !_isManualDisconnect) {
       message =
           '[async-client][Main] Network available, attempting to reconnect (channelRef: ${_config.channelRef})';
-      _log.info(
-        message,
-      );
+      _log.info(message);
       _attemptReconnect();
     } else if (!hasConnection &&
         _connectionState == CustomConnectionState.connected) {
       message =
           '[async-client][Main] Network unavailable, connection lost (channelRef: ${_config.channelRef})';
-      _log.info(
-        message,
-      );
+      _log.info(message);
       _updateConnectionState(CustomConnectionState.disconnected);
     }
 
     _config.eventHandler?.onEvent(
-      AsyncClientEvent(
-        message: message,
-        channelRef: _config.channelRef,
-      ),
+      AsyncClientEvent(message: message, channelRef: _config.channelRef),
     );
   }
 
@@ -127,25 +119,19 @@ class AsyncClientConf {
             !_isManualDisconnect) {
           message =
               '[async-client][LifeCycle] App resumed, checking connection, (channelRef: ${_config.channelRef})';
-          _log.info(
-            message,
-          );
+          _log.info(message);
           _attemptReconnect();
         }
         break;
       case CustomAppLifecycleState.paused:
         message =
             '[async-client][LifeCycle] App paused, maintaining connection, (channelRef: ${_config.channelRef})';
-        _log.info(
-          message,
-        );
+        _log.info(message);
         break;
       case CustomAppLifecycleState.detached:
         message =
             '[async-client][LifeCycle] App detached, disconnecting, (channelRef: ${_config.channelRef})';
-        _log.info(
-          message,
-        );
+        _log.info(message);
         _gracefulDisconnect();
         break;
       case CustomAppLifecycleState.inactive:
@@ -155,10 +141,7 @@ class AsyncClientConf {
     }
 
     _config.eventHandler?.onEvent(
-      AsyncClientEvent(
-        message: message,
-        channelRef: _config.channelRef,
-      ),
+      AsyncClientEvent(message: message, channelRef: _config.channelRef),
     );
   }
 
@@ -388,7 +371,7 @@ class AsyncClientConf {
       _connectionStateSubject.stream;
 
   /// Stream of connectivity changes.
-  Stream<ConnectivityResult> get connectivityState =>
+  Stream<List<ConnectivityResult>> get connectivityState =>
       _connectivitySubject.stream;
 
   /// Stream of messages filtered by event name(s).
@@ -419,9 +402,7 @@ class AsyncClientConf {
         }
       },
       onError: (error, stackTrace) {
-        _log.warning(
-          '[async-client][Main] Event stream signaled an error',
-        );
+        _log.warning('[async-client][Main] Event stream signaled an error');
         if (onError != null) {
           onError(error);
         }
@@ -456,9 +437,7 @@ class AsyncClientConf {
         }
       },
       onError: (error, stackTrace) {
-        _log.warning(
-          '[async-client][Main] Event stream signaled an error',
-        );
+        _log.warning('[async-client][Main] Event stream signaled an error');
         if (onError != null) {
           onError(error);
         }
@@ -473,11 +452,13 @@ class AsyncClientConf {
 
   /// Stream of messages matching a pattern.
   Stream<ChannelMessage> messagesMatching(String pattern) {
-    final regex =
-        RegExp(pattern.replaceAll('*', r'[^.]+').replaceAll('#', r'[^.]+\.?'));
+    final regex = RegExp(
+      pattern.replaceAll('*', r'[^.]+').replaceAll('#', r'[^.]+\.?'),
+    );
 
-    return messageStream
-        .where((message) => regex.hasMatch(message.event.toString()));
+    return messageStream.where(
+      (message) => regex.hasMatch(message.event.toString()),
+    );
   }
 
   /// Combined stream of messages with connection state.
@@ -556,13 +537,7 @@ enum CustomConnectionState {
 }
 
 /// App lifecycle state (simplified for non-Flutter usage).
-enum CustomAppLifecycleState {
-  resumed,
-  inactive,
-  paused,
-  detached,
-  hidden,
-}
+enum CustomAppLifecycleState { resumed, inactive, paused, detached, hidden }
 
 /// Combined message and connection state.
 class MessageWithState {

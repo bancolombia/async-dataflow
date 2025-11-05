@@ -18,12 +18,44 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dart-lang/setup-dart@d6a63dab3335f427404425de0fbfed4686d93c4f
-      - name: Setup Flutter SDK
-        uses: flutter-actions/setup-flutter@v2
+      - name: Setup Flutter
+        uses: bancolombia/flutter-setup-action@v1.1
         with:
-          channel: stable
-          version: 3.10.6
+          channel: 'stable'
+          flutter-version: '3.35.0'
       - name: Install dependencies
         run: flutter pub get
       - name: Run test
         run: flutter test
+  
+  pana:
+    needs: [build]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/client-dart
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: bancolombia/flutter-setup-action@v1.1
+        with:
+          channel: 'stable'
+          flutter-version: '3.35.0'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y webp
+          dart pub get
+          dart pub global activate pana
+
+      - name: Verify Pub Score
+        run: |
+          dart --version
+          flutter --version
+          PANA=$(pana . --no-warning); PANA_SCORE=$(echo $PANA | sed -n "s/.*Points: \([0-9]*\)\/\([0-9]*\)./\1\/\2/p")
+          echo "score: $PANA_SCORE"
+          IFS='/'; read -a SCORE_ARR <<< "$PANA_SCORE"; SCORE=${SCORE_ARR[0]}; TOTAL=${SCORE_ARR[1]}
+          if (( $SCORE < $TOTAL - 30 )); then echo $PANA; echo "minimum score not met!"; exit 1; fi
