@@ -36,6 +36,7 @@ doc/api/
 # Flutter/Dart/Pub related
 **/doc/api/
 .fvm/flutter_sdk
+.fvmrc
 .pub-cache/
 .pub/
 coverage/
@@ -100,7 +101,6 @@ lib/generated_plugin_registrant.dart
 # Icon must end with two \r
 Icon
 
-
 # Thumbnails
 ._*
 
@@ -151,3 +151,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/flutter,dart,macos,windows
+
+# FVM Version Cache
+.fvm/

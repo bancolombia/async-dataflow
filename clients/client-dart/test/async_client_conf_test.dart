@@ -56,9 +56,7 @@ void main() {
       final subscription = client.connectionState.listen(states.add);
 
       // Wait for initial state
-      await Future.delayed(
-        const Duration(milliseconds: 100),
-      );
+      await Future.delayed(const Duration(milliseconds: 100));
 
       // Initial state should be disconnected
       expect(states.isNotEmpty, true);
@@ -83,40 +81,22 @@ void main() {
       client = AsyncClientConf(config);
 
       // Test with null/empty filters
-      expect(
-        () => client.subscribeToMany(null, null),
-        throwsArgumentError,
-      );
+      expect(() => client.subscribeToMany(null, null), throwsArgumentError);
 
-      expect(
-        () => client.subscribeToMany([], null),
-        throwsArgumentError,
-      );
+      expect(() => client.subscribeToMany([], null), throwsArgumentError);
 
-      expect(
-        () => client.subscribeToMany([''], null),
-        throwsArgumentError,
-      );
+      expect(() => client.subscribeToMany([''], null), throwsArgumentError);
 
-      expect(
-        () => client.subscribeToMany(['  '], null),
-        throwsArgumentError,
-      );
+      expect(() => client.subscribeToMany(['  '], null), throwsArgumentError);
     });
 
     test('should validate event name in subscribeTo', () {
       client = AsyncClientConf(config);
 
       // Test with empty event name
-      expect(
-        () => client.subscribeTo('', null),
-        throwsArgumentError,
-      );
+      expect(() => client.subscribeTo('', null), throwsArgumentError);
 
-      expect(
-        () => client.subscribeTo('  ', null),
-        throwsArgumentError,
-      );
+      expect(() => client.subscribeTo('  ', null), throwsArgumentError);
     });
 
     test('should create valid regex patterns for messagesMatching', () {
@@ -139,14 +119,13 @@ void main() {
     test('should handle connectivity state stream', () async {
       client = AsyncClientConf(config);
 
-      final connectivityStates = <ConnectivityResult>[];
-      final subscription =
-          client.connectivityState.listen(connectivityStates.add);
+      final connectivityStates = <List<ConnectivityResult>>[];
+      final subscription = client.connectivityState.listen(
+        connectivityStates.add,
+      );
 
       // Wait for initial state
-      await Future.delayed(
-        const Duration(milliseconds: 100),
-      );
+      await Future.delayed(const Duration(milliseconds: 100));
 
       // Should have initial state
       expect(connectivityStates.isNotEmpty, true);
@@ -161,9 +140,7 @@ void main() {
       final subscription = client.onDisconnected.listen(disconnectEvents.add);
 
       // Initially should be disconnected
-      await Future.delayed(
-        const Duration(milliseconds: 100),
-      );
+      await Future.delayed(const Duration(milliseconds: 100));
       expect(disconnectEvents.isNotEmpty, true);
 
       await subscription.cancel();
@@ -173,14 +150,18 @@ void main() {
       client = AsyncClientConf(config);
 
       final messagesWithState = <MessageWithState>[];
-      final subscription = client.messagesWithConnectionState.take(1).listen(
+      final subscription = client.messagesWithConnectionState
+          .take(1)
+          .listen(
             messagesWithState.add,
             onError: (e) {}, // Ignore errors for this test
           );
 
       // Stream should be available
       expect(
-          client.messagesWithConnectionState, isA<Stream<MessageWithState>>());
+        client.messagesWithConnectionState,
+        isA<Stream<MessageWithState>>(),
+      );
 
       await subscription.cancel();
     });
@@ -203,12 +184,7 @@ void main() {
     });
 
     test('MessageWithState should store message and state', () {
-      final message = ChannelMessage(
-        '1',
-        '2',
-        'test.event',
-        'test data',
-      );
+      final message = ChannelMessage('1', '2', 'test.event', 'test data');
 
       final messageWithState = MessageWithState(
         message,
@@ -221,28 +197,46 @@ void main() {
 
     test('should handle connection state enum values', () {
       expect(CustomConnectionState.values.length, 4);
-      expect(CustomConnectionState.values,
-          contains(CustomConnectionState.disconnected));
-      expect(CustomConnectionState.values,
-          contains(CustomConnectionState.connecting));
-      expect(CustomConnectionState.values,
-          contains(CustomConnectionState.connected));
-      expect(CustomConnectionState.values,
-          contains(CustomConnectionState.disconnecting));
+      expect(
+        CustomConnectionState.values,
+        contains(CustomConnectionState.disconnected),
+      );
+      expect(
+        CustomConnectionState.values,
+        contains(CustomConnectionState.connecting),
+      );
+      expect(
+        CustomConnectionState.values,
+        contains(CustomConnectionState.connected),
+      );
+      expect(
+        CustomConnectionState.values,
+        contains(CustomConnectionState.disconnecting),
+      );
     });
 
     test('should handle app lifecycle state enum values', () {
       expect(CustomAppLifecycleState.values.length, 5);
-      expect(CustomAppLifecycleState.values,
-          contains(CustomAppLifecycleState.resumed));
-      expect(CustomAppLifecycleState.values,
-          contains(CustomAppLifecycleState.inactive));
-      expect(CustomAppLifecycleState.values,
-          contains(CustomAppLifecycleState.paused));
-      expect(CustomAppLifecycleState.values,
-          contains(CustomAppLifecycleState.detached));
-      expect(CustomAppLifecycleState.values,
-          contains(CustomAppLifecycleState.hidden));
+      expect(
+        CustomAppLifecycleState.values,
+        contains(CustomAppLifecycleState.resumed),
+      );
+      expect(
+        CustomAppLifecycleState.values,
+        contains(CustomAppLifecycleState.inactive),
+      );
+      expect(
+        CustomAppLifecycleState.values,
+        contains(CustomAppLifecycleState.paused),
+      );
+      expect(
+        CustomAppLifecycleState.values,
+        contains(CustomAppLifecycleState.detached),
+      );
+      expect(
+        CustomAppLifecycleState.values,
+        contains(CustomAppLifecycleState.hidden),
+      );
     });
 
     test('should handle protocol switching', () async {
@@ -250,7 +244,9 @@ void main() {
 
       final result = await client.switchProtocols();
       expect(
-          result, false); // Should return false when no alternative transport
+        result,
+        false,
+      ); // Should return false when no alternative transport
     });
   });
 }
