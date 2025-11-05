@@ -1,11 +1,11 @@
 name: channel_sender_client
 description: A Dart client for sending and receiving real-time events using WebSocket or SSE over Async DataFlow channels.
-version: 3.1.0
+version: 3.1.1
 homepage: https://github.com/bancolombia/async-dataflow
 repository: https://github.com/bancolombia/async-dataflow.git
 
 environment:
-  sdk: '>=3.7.0 <4.0.0'
+  sdk: '>=3.8.0 <4.0.0'
   flutter: ">=3.32.0"
 
 dependencies:
