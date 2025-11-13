@@ -35,6 +35,17 @@ public class Handler {
 
     }
 
+    public Mono<ServerResponse> listenBusinessTwoEvents(ServerRequest serverRequest) {
+        return ServerResponse.accepted()
+                .body(
+                        useCase.asyncBusinessFlowTwoEvents(
+                                serverRequest.queryParam("delay").orElse("5000"),
+                                serverRequest.queryParam("channel_ref").orElse(""),
+                                serverRequest.queryParam("user_ref").toString(),
+                                serverRequest.queryParam("correlationId").orElse(UUID.randomUUID().toString())),
+                        String.class);
+    }
+
     public static <T> Mono<ServerResponse> responseHandler(T response, HttpStatus status) {
         return ServerResponse.status(status)
                 .contentType(MediaType.APPLICATION_JSON)
