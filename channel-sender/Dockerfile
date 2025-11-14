@@ -1,7 +1,7 @@
 #===============
 # Build Stage
 #===============
-FROM elixir:1.17.3-otp-27-alpine as build
+FROM elixir:1.18.4-otp-27-alpine as build
 
 ARG BUILD_ENV=prod
 

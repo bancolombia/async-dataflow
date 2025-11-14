@@ -73,8 +73,7 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
         }
 
         case CustomTelemetry.start_span(:test, req, "ch_123") do
-          {:span_ctx, _trace_id, _span_id, _parent_span_id, _tracestate, _sampled, _ended,
-           _remote, _name} ->
+          {:span_ctx, _trace_id, _span_id, _parent_span_id, _, _tracestate, _sampled, _ended, _remote, _name} ->
             assert true
 
           other ->
