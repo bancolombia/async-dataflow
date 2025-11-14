@@ -1,7 +1,7 @@
 #===============
 # Build Stage
 #===============
-FROM elixir:1.17.3-otp-27-alpine as build
+FROM elixir:1.18.4-otp-27-alpine as build
 
 ARG BUILD_ENV=prod
 
@@ -29,7 +29,7 @@ RUN mix release channel_sender_ex && \
 #===================
 # Deployment Stage
 #===================
-FROM alpine:3.21.3
+FROM alpine:3.22.2
 
 RUN apk upgrade --no-cache && \
     apk add --no-cache \

@@ -1,10 +1,10 @@
 defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   use ExUnit.Case
 
-  alias ChannelSenderEx.Core.RulesProvider.Helper
-  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Core.{Channel, ChannelSupervisor, ProtocolMessage}
   alias ChannelSenderEx.Core.PubSub.PubSubCore
+  alias ChannelSenderEx.Core.RulesProvider.Helper
+  alias ChannelSenderEx.Core.Security.ChannelAuthenticator
   alias ChannelSenderEx.Transport.EntryPoint
 
   @moduletag :capture_log
