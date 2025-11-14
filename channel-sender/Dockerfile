@@ -29,7 +29,7 @@ RUN mix release channel_sender_ex && \
 #===================
 # Deployment Stage
 #===================
-FROM alpine:3.21.3
+FROM alpine:3.22.2
 
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
