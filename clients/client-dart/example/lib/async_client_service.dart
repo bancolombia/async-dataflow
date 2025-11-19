@@ -66,6 +66,16 @@ class AsyncClientService extends InheritedWidget {
           'Message from async dataflow, title: ${msg.payload['data']['reply']['messageData']['title']} detail: ${msg.payload['data']['reply']['messageData']['detail']}');
     }
 
+    if (msg.event == 'ch-ms-async-callback.svp.p2p') {
+      responsesNotifier.addResponse(
+          'Message from async dataflow, title: ${msg.payload['title']}');
+    }
+
+    if (msg.event == 'ch-ms-async-callback.svp.p2m') {
+      responsesNotifier.addResponse(
+          'Message from async dataflow, title: ${msg.payload['title']} ');
+    }
+
     if (msg.event == ':n_token') {
       // The client app can also subscrtibe to this ADF internal event to listen
       // when connector receives a new token from the backend.

@@ -13,6 +13,7 @@ public class RouterRest {
     @Bean
     public RouterFunction<ServerResponse> routerFunction(Handler handler) {
         return route(GET("/api/business"), handler::listenBusiness)
+                .andRoute(GET("/api/business/two-events"), handler::listenBusinessTwoEvents)
                 .andRoute(GET("/api/credentials"), handler::listenGenerateCredentials);
 
     }

@@ -35,6 +35,7 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
   post("/ext/channel/create", do: create_channel(conn))
   post("/ext/channel/deliver_message", do: deliver_message(conn))
   post("/ext/channel/deliver_batch", do: deliver_message(conn))
+  post("/ext/channel/deliver_two_events", do: deliver_two_events(conn))
   delete("/ext/channel", do: close_channel(conn))
   match(_, do: send_resp(conn, 404, "Route not found."))
 
@@ -406,6 +407,96 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
           conn
         )
     end
+  end
+
+  defp deliver_two_events(conn) do
+    route_deliver_two_events(conn.body_params, conn)
+  end
+
+
+  defp route_deliver_two_events(
+         %{
+           channel_ref: channel_ref,
+           event_one: event_one,
+           event_two: event_two
+         },
+         conn
+       ) do
+    add_trace_metadata(%{channel_ref: channel_ref})
+
+    with {:ok, message_one} <- assert_deliver_request(event_one),
+         {:ok, message_two} <- assert_deliver_request(event_two) do
+      # Deliver first event
+      perform_delivery_two_events(channel_ref, message_one, message_two)
+
+      conn
+      |> put_resp_header("content-type", "application/json")
+      |> send_resp(202, Jason.encode!(%{result: "Ok", events_sent: 2}))
+    else
+      {:error, :invalid_message} ->
+        invalid_body(conn)
+    end
+  end
+
+  defp route_deliver_two_events(_, conn), do: invalid_body(conn)
+
+  @spec perform_delivery_two_events(String.t(), map(), map()) :: :ok
+  defp perform_delivery_two_events(channel_ref, message_one, message_two) do
+    parent_ctx = Ctx.get_current()
+
+    Task.start(fn ->
+      Ctx.attach(parent_ctx)
+      span_ctx = Tracer.start_span("deliver_two_events_to_channel", %{parent: parent_ctx})
+      Tracer.set_current_span(span_ctx)
+
+      # Convert to protocol messages
+      protocol_msg_one = ProtocolMessage.to_protocol_message(message_one)
+      protocol_msg_two = ProtocolMessage.to_protocol_message(message_two)
+
+      # Deliver first event
+      res_one = PubSubCore.deliver_to_channel(channel_ref, protocol_msg_one)
+
+      Logger.debug(
+        "Delivering first event to channel #{channel_ref}, result: #{inspect(res_one)}"
+      )
+
+      # Small delay to ensure order (optional, can be removed if not needed)
+      Process.sleep(10)
+
+      # Deliver second event
+      res_two = PubSubCore.deliver_to_channel(channel_ref, protocol_msg_two)
+
+      Logger.debug(
+        "Delivering second event to channel #{channel_ref}, result: #{inspect(res_two)}"
+      )
+
+      case {res_one, res_two} do
+        {:error, _} ->
+          Logger.warning(
+            "Channel #{inspect(channel_ref)} not found, first message delivery failed"
+          )
+
+          Tracer.set_status(OpenTelemetry.status(:error, "Channel not found for first event"))
+
+        {_, :error} ->
+          Logger.warning(
+            "Channel #{inspect(channel_ref)} not found, second message delivery failed"
+          )
+
+          Tracer.set_status(OpenTelemetry.status(:error, "Channel not found for second event"))
+
+        _ ->
+          Tracer.add_event("deliver_two_events", %{
+            detail: "Both events delivered successfully"
+          })
+
+          :ok
+      end
+
+      Tracer.end_span()
+    end)
+
+    :ok
   end
 
   defp build_and_send_response({202, body}, conn) do
