@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 
 import '../../../channel_sender_client.dart';
-import '../../async_client_event_handler.dart';
 import '../../decoder/decoder.dart';
 import '../../exceptions/exceptions.dart';
 import '../../sse/eventflux.dart';
@@ -34,16 +33,17 @@ class SSETransport implements Transport {
   late RetryTimer _connectRetryTimer;
 
   late StreamController<ChannelMessage> _broadCastStream;
-  final CappedList<String> _messageDedup = CappedList<String>(50);
+  late final CappedList<String> _messageDedup;
 
-  SSETransport(
-    this._signalSSEClose,
-    this._signalSSEError,
-    this._config,
-  ) {
+  SSETransport(this._signalSSEClose, this._signalSSEError, this._config) {
     currentToken = _config.channelSecret;
-    _broadCastStream = StreamController<
-        ChannelMessage>.broadcast(); // subscribers stream of data
+    _broadCastStream =
+        StreamController<
+          ChannelMessage
+        >.broadcast(); // subscribers stream of data
+
+    _messageDedup = CappedList<String>(_config.maxCacheSize);
+
     _connectRetryTimer = RetryTimer(
       () async {
         return await connect();
@@ -87,11 +87,9 @@ class SSETransport implements Transport {
       },
       multipartRequest: false,
       onSuccessCallback: (EventFluxResponse? response) {
-        response?.stream?.listen(
-          (data) {
-            _onData(data.data);
-          },
-        );
+        response?.stream?.listen((data) {
+          _onData(data.data);
+        });
       },
       onError: (error) {
         _onResponseError(error, StackTrace.current);
@@ -114,7 +112,8 @@ class SSETransport implements Transport {
       reconnectConfig: ReconnectConfig(
         mode: ReconnectMode.linear, // or exponential,
         interval: const Duration(seconds: 2),
-        maxAttempts: _config.maxRetries ??
+        maxAttempts:
+            _config.maxRetries ??
             RETRY_DEFAULT_MAX_RETRIES, // or -1 for infinite,
         onReconnect: () {
           _log.info('[async-client][SSETransport] onReconnect Called');
@@ -220,6 +219,12 @@ class SSETransport implements Transport {
 
     if (message.event == RESPONSE_NEW_TOKEN) {
       _handleNewToken(message);
+    }
+
+    if (_config.dedupCacheDisable) {
+      _broadCastStream.add(message);
+
+      return;
     }
 
     if (_messageDedup.contains(message.messageId ?? '')) {

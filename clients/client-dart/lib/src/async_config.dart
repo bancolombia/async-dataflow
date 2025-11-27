@@ -28,6 +28,8 @@ import 'transport/transport.dart';
 /// - [hbInterval]: The interval for heartbeat messages in milliseconds (default is 5000).
 /// - [maxRetries]: The maximum number of retry attempts for connection (optional).
 /// - [sseUrl]: The URL for Server-Sent Events (optional).
+/// - [maxCacheSize]: The maximum size of the deduplication cache (default is 50).
+/// - [dedupCacheDisable]: A flag to disable the deduplication cache (default is false).
 class AsyncConfig {
   final String socketUrl;
   final String channelRef;
@@ -37,6 +39,8 @@ class AsyncConfig {
   int hbInterval = 5000;
   int? maxRetries;
   String? sseUrl;
+  int maxCacheSize;
+  bool dedupCacheDisable;
   String _channelSecret;
 
   AsyncConfig({
@@ -47,6 +51,8 @@ class AsyncConfig {
     this.maxRetries,
     this.sseUrl,
     this.eventHandler,
+    this.maxCacheSize = 50,
+    this.dedupCacheDisable = false,
     int? heartbeatInterval,
     List<TransportType>? transportsProvider,
   }) : _channelSecret = channelSecret {
