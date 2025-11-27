@@ -258,6 +258,8 @@ void main() {
       when(() => mockConfig.enableBinaryTransport).thenReturn(false);
       when(() => mockConfig.maxRetries).thenReturn(3);
       when(() => mockConfig.hbInterval).thenReturn(30000);
+      when(() => mockConfig.maxCacheSize).thenReturn(50);
+      when(() => mockConfig.dedupCacheDisable).thenReturn(false);
 
       when(() => mockWebSocket.readyState).thenReturn(WebSocket.open);
       when(
