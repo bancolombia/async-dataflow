@@ -37,6 +37,8 @@ class AsyncConfig {
   int hbInterval = 5000;
   int? maxRetries;
   String? sseUrl;
+  int maxCacheSize;
+  bool dedupCacheDisable;
   String _channelSecret;
 
   AsyncConfig({
@@ -47,6 +49,8 @@ class AsyncConfig {
     this.maxRetries,
     this.sseUrl,
     this.eventHandler,
+    this.maxCacheSize = 50,
+    this.dedupCacheDisable = false,
     int? heartbeatInterval,
     List<TransportType>? transportsProvider,
   }) : _channelSecret = channelSecret {

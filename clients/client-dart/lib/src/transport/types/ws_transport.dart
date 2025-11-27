@@ -8,9 +8,9 @@ import 'dart:math';
 import 'package:logging/logging.dart';
 
 import '../../../channel_sender_client.dart';
-import '../../async_client_event_handler.dart';
 import '../../decoder/decoder.dart';
 import '../../exceptions/exceptions.dart';
+import '../../utils/capped_list.dart';
 import '../../utils/retry_timer.dart';
 import '../../utils/utils.dart';
 import '../transport.dart';
@@ -46,6 +46,8 @@ class WSTransport implements Transport {
   late bool _streamDone = false;
   late RetryTimer _connectRetryTimer;
 
+  late final CappedList<String> _messageDedup;
+
   StreamSubscription? _socketStreamSub;
 
   int _ref = 0;
@@ -63,8 +65,12 @@ class WSTransport implements Transport {
 
     currentToken = _config.channelSecret;
     _subProtocols = configSubProtocol();
-    _broadCastStream = StreamController<
-        ChannelMessage>.broadcast(); // subscribers stream of data
+    _broadCastStream =
+        StreamController<
+          ChannelMessage
+        >.broadcast(); // subscribers stream of data
+
+    _messageDedup = CappedList<String>(_config.maxCacheSize);
 
     _connectRetryTimer = RetryTimer(
       () async {
@@ -142,9 +148,7 @@ class WSTransport implements Transport {
         int wait = expBackoff(500, 2000, attempts);
         attempts++;
 
-        await Future.delayed(
-          Duration(milliseconds: wait),
-        );
+        await Future.delayed(Duration(milliseconds: wait));
       }
     }
 
@@ -303,11 +307,33 @@ class WSTransport implements Transport {
     if (kind == EVENT_KIND_USER) {
       _ackMessage(message);
       // then stream
-      _broadCastStream.add(message);
+      _handleMessageDedup(message);
     } else if (kind == EVENT_KIND_SYSTEM &&
         message.event == RESPONSE_NEW_TOKEN) {
       // just stream it, so app can handle it
       _broadCastStream.add(message);
+    }
+  }
+
+  void _handleMessageDedup(ChannelMessage message) {
+    if (_config.dedupCacheDisable) {
+      _broadCastStream.add(message);
+
+      return;
+    }
+
+    String? messageId = message.messageId;
+    if (messageId != null && messageId.isNotEmpty) {
+      if (_messageDedup.contains(messageId)) {
+        _log.info(
+          '[async-client][WSTransport] Duplicate message detected, ignoring. messageId: $messageId',
+        );
+
+        return;
+      } else {
+        _messageDedup.add(messageId);
+        _broadCastStream.add(message);
+      }
     }
   }
 
@@ -355,7 +381,8 @@ class WSTransport implements Transport {
       _heartbeatTimer?.cancel();
     }
     int reasonCode = extractCode(reason);
-    bool shouldRetry = code > SOCKET_GOING_AWAY ||
+    bool shouldRetry =
+        code > SOCKET_GOING_AWAY ||
         (code == SOCKET_GOING_AWAY && reasonCode >= SENDER_INVALID_REF);
 
     // Don't retry on invalid secret (3008) or invalid token
