@@ -1,4 +1,6 @@
 # CHANGELOG
+## [3.2.0]
+- Add deduplication support for ws.
 ## [3.1.1]
 - Update dart sdk to `>= 3.8.0`
 ## [3.1.0]
