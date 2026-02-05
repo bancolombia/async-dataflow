@@ -1,19 +1,24 @@
+apply plugin: 'info.solidsoft.pitest.aggregator'
+
 allprojects {
     repositories {
         mavenCentral()
-        maven { url "https://repo.spring.io/snapshot" }
-        maven { url "https://repo.spring.io/milestone" }
+        maven { url = "https://repo.spring.io/snapshot" }
+        maven { url = "https://repo.spring.io/milestone" }
     }
 }
 
 subprojects {
+    apply plugin: 'info.solidsoft.pitest'
     apply plugin: 'java'
     apply plugin: 'jacoco'
     apply plugin: 'io.spring.dependency-management'
 
     compileJava.dependsOn validateStructure
     java {
-        sourceCompatibility = JavaVersion.VERSION_17
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
     }
 
     test {
@@ -24,15 +29,15 @@ subprojects {
         implementation 'io.projectreactor:reactor-core'
         implementation 'io.projectreactor.addons:reactor-extra'
 
-        testImplementation 'io.projectreactor.tools:blockhound-junit-platform:1.0.10.RELEASE'
+        testImplementation 'io.projectreactor.tools:blockhound-junit-platform:1.0.16.RELEASE'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
         testImplementation 'io.projectreactor:reactor-test'
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
         compileOnly "org.projectlombok:lombok:${lombokVersion}"
-        annotationProcessor  "org.projectlombok:lombok:${lombokVersion}"
-        testCompileOnly  "org.projectlombok:lombok:${lombokVersion}"
-        testAnnotationProcessor  "org.projectlombok:lombok:${lombokVersion}"
+        annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+        testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+        testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
         implementation platform("org.springframework.boot:spring-boot-dependencies:${springBootVersion}")
     }
 
@@ -46,8 +51,25 @@ subprojects {
 
     test.finalizedBy(project.tasks.jacocoTestReport)
 
+    pitest {
+        targetClasses = ['co.com.bancolombia.*']
+        excludedClasses = []
+        excludedTestClasses = []
+        pitestVersion = '1.22.0'
+        verbose = false
+        outputFormats = ['XML', 'HTML']
+        threads = 8
+        exportLineCoverage = true
+        timestampedReports = false
+        //mutators = ['STRONGER', 'DEFAULTS']
+        fileExtensionsToFilter.addAll('xml', 'orbit')
+        junit5PluginVersion = '1.2.3'
+        failWhenNoMutations = false
+        jvmArgs = ["-XX:+AllowRedefinitionToAddDeleteMethods"]
+    }
+
     jacocoTestReport {
-        dependsOn test
+        dependsOn test, 'pitest'
         reports {
             xml.setRequired true
             xml.setOutputLocation layout.buildDirectory.file("reports/jacoco.xml")
@@ -64,7 +86,7 @@ jacoco {
 }
 
 tasks.register('jacocoMergedReport', JacocoReport) {
-    dependsOn = [test, subprojects.jacocoTestReport]
+    dependsOn = [test, subprojects.jacocoTestReport, pitestReportAggregate]
     additionalSourceDirs.setFrom files(subprojects.sourceSets.main.allSource.srcDirs)
     sourceDirectories.setFrom files(subprojects.sourceSets.main.allSource.srcDirs)
     classDirectories.setFrom files(subprojects.sourceSets.main.output)
@@ -82,6 +104,27 @@ tasks.withType(JavaCompile).configureEach {
     ]
 }
 
+
+pitestReportAggregate {
+    doLast {
+        def reportDir = layout.buildDirectory.dir("reports/pitest").get().asFile
+        def consolidatedReport = new File(reportDir, 'mutations.xml')
+        consolidatedReport.withWriter { writer ->
+            writer.write("<mutations>\n")
+            subprojects.each { subproject ->
+                def xmlReport = subproject.layout.buildDirectory.file("reports/pitest/mutations.xml").get().asFile
+                if (xmlReport.exists()) {
+                    def xmlContent = xmlReport.text
+                    xmlContent = xmlContent.replaceAll("<\\?xml[^>]*>", "")
+                    xmlContent = xmlContent.replaceAll("</?mutations( partial=\"true\")?>", "")
+                    writer.write(xmlContent.trim() + "\n")
+                }
+            }
+            writer.write("</mutations>")
+        }
+    }
+}
+
 tasks.named('wrapper') {
-    gradleVersion = '8.12.1'
+    gradleVersion = '9.3.0'
 }

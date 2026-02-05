@@ -4,8 +4,8 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.3.1",
-      elixir: "~> 1.16",
+      version: "0.3.2",
+      elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
@@ -23,21 +23,20 @@ defmodule ChannelSenderEx.MixProject do
   def application do
     extra_apps =
       if Mix.env() == :dev do
-        [
-          :logger,
-          :telemetry,
-          :observer,
-          :wx,
-          :runtime_tools,
-          :opentelemetry_exporter,
-          :opentelemetry
-        ]
+        [:logger, :observer, :wx, :runtime_tools]
       else
-        [:logger, :telemetry, :opentelemetry_exporter, :opentelemetry]
+        [:logger]
       end
 
+    optionals = [
+      telemetry: :optional,
+      opentelemetry: :optional,
+      opentelemetry_exporter: :optional
+    ]
+
     [
-      extra_applications: extra_apps,
+      extra_applications: extra_apps ++ optionals,
+      # include_applications: [:telemetry, :opentelemetry_exporter, :opentelemetry],
       mod: {ChannelSenderEx.Application, []}
     ]
   end
@@ -45,38 +44,39 @@ defmodule ChannelSenderEx.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      {:benchee, "~> 0.13", only: [:dev, :benchee]},
-      {:cowboy, "~> 2.8"},
-      {:cowlib, "~> 2.9", override: true},
-      {:plug_cowboy, "~> 2.0"},
-      {:elixir_uuid, "~> 1.2"},
-      {:gen_state_machine, "~> 2.0"},
-      {:jason, "~> 1.2"},
       {:cors_plug, "~> 3.0"},
-      {:hackney, "~> 1.20.1", only: :test},
+      {:cowboy, "~> 2.14"},
+      {:cowlib, "~> 2.16"},
+      {:elixir_uuid, "~> 1.2"},
+      {:gen_state_machine, "~> 3.0"},
+      {:jason, "~> 1.4"},
+      {:libcluster, "~> 3.5"},
+      {:plug_cowboy, "~> 2.7"},
       {:plug_crypto, "~> 2.1"},
-      {:stream_data, "~> 0.4", only: [:test]},
-      {:gun, "~> 1.3", only: [:test, :benchee]},
-      {:libcluster, "~> 3.4.1"},
-      {:vapor, "~> 0.10.0"},
-      {:mock, "~> 0.3.0", only: :test},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
-      # for metrics
-      {:telemetry_metrics_prometheus, "~> 1.1"},
-      {:telemetry_poller, "~> 1.1"},
-      {:cowboy_telemetry, "~> 0.4.0"},
-      {:telemetry, "~> 1.3"},
-      {:opentelemetry, "~> 1.5"},
-      {:opentelemetry_exporter, "~> 1.8"},
-      {:opentelemetry_api, "~> 1.4"},
+      {:vapor, "~> 0.10"},
+      # for metrics and tracing
+      {:opentelemetry, "~> 1.7"},
+      {:opentelemetry_exporter, "~> 1.10"},
+      {:opentelemetry_api, "~> 1.5"},
       {:opentelemetry_plug,
-       git: "https://github.com/bancolombia/opentelemetry_plug.git", tag: "v1.2.0"},
-      {:eflambe, "~> 0.3.0"},
-      {:meck, "0.9.2"},
-      {:observer_cli, "~> 1.8"}
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+       git: "https://github.com/bancolombia/opentelemetry_plug.git", tag: "v1.3.0"},
+      {:opentelemetry_semantic_conventions, "~> 1.27"},
+      {:cowboy_telemetry, "~> 0.4"},
+      {:telemetry, "~> 1.3"},
+      {:telemetry_metrics_prometheus, "~> 1.1"},
+      {:telemetry_poller, "~> 1.3"},
+      # Profiling tools
+      {:eflambe, "~> 0.3"},
+      {:observer_cli, "~> 1.8"},
+      # Dev and Test dependencies
+      # {:meck, "0.9.2"},
+      {:hackney, "~> 1.25", only: :test},
+      {:stream_data, "~> 1.2", only: :test},
+      {:mock, "~> 0.3", only: :test},
+      {:benchee, "~> 1.5", only: [:dev, :benchee]},
+      {:gun, "~> 2.2", only: [:test, :benchee]},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
     ]
   end
 

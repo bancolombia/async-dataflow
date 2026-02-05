@@ -5,6 +5,16 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
   require OpenTelemetry.Tracer, as: Tracer
   alias ChannelSenderEx.Utils.CustomTelemetry, as: CT
 
+  alias OpenTelemetry.SemConv.{
+    ClientAttributes,
+    HTTPAttributes,
+    NetworkAttributes,
+    ServerAttributes,
+    URLAttributes,
+    UserAgentAttributes
+  }
+
+  @dialyzer {:nowarn_function, client_info: 3}
   @service_name "channel_sender_ex"
 
   def custom_telemetry_events do
@@ -135,23 +145,44 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
     traces_enable = Application.get_env(:channel_sender_ex, :traces_enable, false)
 
     if traces_enable do
-      span_name = "#{req.path}->#{channel}"
+      span_name = "#{req.path}"
 
       {peer_ip, peer_port} = req.peer
+      {local_ip, _} = req.sock
+      peer_address = to_string(:inet_parse.ntoa(peer_ip))
+      local_address = to_string(:inet_parse.ntoa(local_ip))
+
+      {protocol_name, protocol_version} = map_http_version(req.version)
+      {client_address, client_port} = client_info(req, peer_address, peer_port)
+
+      attributes = %{
+        ClientAttributes.client_port() => client_port,
+        ClientAttributes.client_address() => client_address,
+        HTTPAttributes.http_request_method() => req.method,
+        HTTPAttributes.http_route() => req.path,
+        NetworkAttributes.network_local_address() => local_address,
+        NetworkAttributes.network_protocol_name() => protocol_name,
+        NetworkAttributes.network_protocol_version() => protocol_version,
+        NetworkAttributes.network_peer_address() => peer_address,
+        NetworkAttributes.network_transport() => "tcp",
+        ServerAttributes.server_address() => req.host,
+        ServerAttributes.server_port() => req.port,
+        URLAttributes.url_path() => req.path,
+        URLAttributes.url_scheme() => req.scheme,
+        :"adf.channel_ref" => channel,
+        :"adf.protocol" => protocol
+      }
 
       attributes =
-        [
-          "http.target": req.path,
-          "http.host": req.host,
-          "http.scheme": req.scheme,
-          "http.flavor": map_http_version(req.version),
-          "http.method": req.method,
-          "net.peer.ip": to_string(:inet_parse.ntoa(peer_ip)),
-          "net.peer.port": peer_port,
-          "net.host.port": req.port,
-          "adf.channel_ref": channel,
-          "adf.protocol": protocol
-        ]
+        if Map.has_key?(req.headers, "user-agent") do
+          Map.put(
+            attributes,
+            UserAgentAttributes.user_agent_original(),
+            req.headers["user-agent"]
+          )
+        else
+          attributes
+        end
 
       Tracer.start_span(span_name, %{attributes: attributes, kind: :server})
     end
@@ -166,14 +197,23 @@ defmodule ChannelSenderEx.Utils.CustomTelemetry do
     monotonic_time |> System.convert_time_unit(:native, :millisecond)
   end
 
-  defp map_http_version(:"HTTP/1.0"), do: :"1.0"
-  defp map_http_version(:"HTTP/1"), do: :"1.0"
-  defp map_http_version(:"HTTP/1.1"), do: :"1.1"
-  defp map_http_version(:"HTTP/2.0"), do: :"2.0"
-  defp map_http_version(:"HTTP/2"), do: :"2.0"
-  defp map_http_version(:"HTTP/3.0"), do: :"3.0"
-  defp map_http_version(:"HTTP/3"), do: :"3.0"
-  defp map_http_version(:SPDY), do: :SPDY
-  defp map_http_version(:QUIC), do: :QUIC
-  defp map_http_version(_other), do: ""
+  defp client_info(req, peer_ip, peer_port) do
+    case :otel_http.extract_client_info(req.headers) do
+      %{ip: :undefined, port: :undefined} -> {peer_ip, peer_port}
+      %{ip: ip, port: :undefined} -> {ip, peer_port}
+      %{ip: :undefined, port: port} -> {peer_ip, port}
+      %{ip: ip, port: port} -> {ip, port}
+    end
+  end
+
+  defp map_http_version(:"HTTP/1.0"), do: {"http", :"1.0"}
+  defp map_http_version(:"HTTP/1"), do: {"http", :"1.0"}
+  defp map_http_version(:"HTTP/1.1"), do: {"http", :"1.1"}
+  defp map_http_version(:"HTTP/2.0"), do: {"http", :"2.0"}
+  defp map_http_version(:"HTTP/2"), do: {"http", :"2.0"}
+  defp map_http_version(:"HTTP/3.0"), do: {"http", :"3.0"}
+  defp map_http_version(:"HTTP/3"), do: {"http", :"3.0"}
+  defp map_http_version(:SPDY), do: {"SPDY", :"2"}
+  defp map_http_version(:QUIC), do: {"QUIC", :"3"}
+  defp map_http_version(_other), do: {"", :""}
 end

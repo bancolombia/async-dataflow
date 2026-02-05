@@ -1,10 +1,11 @@
 package co.com.bancolombia.events.model;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 
 @Data
 @Builder(toBuilder = true)
@@ -14,10 +15,9 @@ public class ObjectResponse {
     private Credentials result;
 
     @Data
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Credentials {
-        @JsonAlias("channel_ref")
         String channelRef;
-        @JsonAlias("channel_secret")
         String channelSecret;
     }
 }

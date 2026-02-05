@@ -5,7 +5,7 @@ import co.com.bancolombia.events.model.ObjectResponse;
 import co.com.bancolombia.model.async.Credentials;
 import co.com.bancolombia.model.async.DeliverMessage;
 import co.com.bancolombia.model.async.gateways.AsyncDataFlowGateway;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.cloudevents.CloudEvent;
 import io.cloudevents.core.builder.CloudEventBuilder;
 import io.cloudevents.jackson.JsonCloudEventData;

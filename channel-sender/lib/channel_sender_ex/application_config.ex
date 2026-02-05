@@ -174,6 +174,12 @@ defmodule ChannelSenderEx.ApplicationConfig do
 
     Application.put_env(
       :channel_sender_ex,
+      :metrics_enabled,
+      get_in(config, [:channel_sender_ex, "metrics", "enabled"])
+    )
+
+    Application.put_env(
+      :channel_sender_ex,
       :interval_minutes_count_active_channel,
       get_in(config, [:channel_sender_ex, "metrics", "active_interval_minutes_count"])
     )

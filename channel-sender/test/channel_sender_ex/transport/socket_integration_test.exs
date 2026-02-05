@@ -107,10 +107,10 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   test "Should close on authentication fail", %{port: port, channel: channel, secret: secret} do
     conn = connect(port, channel)
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}
-    :gun.ws_send(conn, {:text, "Auth::#{secret}Invalid"})
+    :gun.ws_send(conn, stream, {:text, "Auth::#{secret}Invalid"})
     assert_receive {:gun_ws, ^conn, ^stream, {:close, 1001, "3008"}}
-    assert_receive {:gun_down, ^conn, :ws, :closed, [], []}
-    refute_receive {:gun_up, _conn, _}
+    assert_receive {:gun_down, ^conn, :ws, :normal, [^stream]}
+    assert_receive {:gun_up, _conn, _}
     :gun.close(conn)
   end
 
@@ -181,7 +181,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   } do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret, @binary)
 
-    :gun.ws_send(conn, {:text, "foo"})
+    :gun.ws_send(conn, stream, {:text, "foo"})
 
     assert_receive {:gun_ws, ^conn, ^stream, {:text, "Echo: foo"}}
     :gun.close(conn)
@@ -257,7 +257,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {_message_id, _data} = deliver_message(channel, "45")
     assert_receive {:gun_ws, ^conn, ^stream, encoded_data}
     message_id = decode_message(encoded_data) |> ProtocolMessage.message_id()
-    :gun.ws_send(conn, {:text, "Ack::" <> message_id})
+    :gun.ws_send(conn, stream, {:text, "Ack::" <> message_id})
 
     refute_receive {:gun_ws, ^conn, ^stream, _}, 600
 
@@ -314,7 +314,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
   defp assert_reply_heartbeat(protocol, %{port: port, channel: channel, secret: secret}) do
     {conn, stream} = assert_connect_and_authenticate(port, channel, secret, protocol)
 
-    :gun.ws_send(conn, {:text, "hb::1"})
+    :gun.ws_send(conn, stream, {:text, "hb::1"})
     assert_receive {:gun_ws, ^conn, ^stream, data}
     assert {_, "1", ":hb", "", _} = decode_message(data)
     :gun.close(conn)
@@ -323,7 +323,7 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
 
   defp assert_connect_and_authenticate(port, channel, secret, sub_protocol \\ nil) do
     {conn, stream} = assert_connect(port, channel, secret, sub_protocol)
-    authenticate(conn, secret)
+    authenticate(conn, stream, secret)
     assert_authenticate(conn, stream)
   end
 
@@ -334,9 +334,10 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
     {conn, stream}
   end
 
-  defp authenticate(conn, secret), do: :gun.ws_send(conn, {:text, "Auth::#{secret}"})
+  defp authenticate(conn, stream, secret),
+    do: :gun.ws_send(conn, stream, {:text, "Auth::#{secret}"})
 
-  defp assert_connect(port, channel, _secret, sub_protocol \\ nil) do
+  defp assert_connect(port, channel, _secret, sub_protocol) do
     conn =
       case sub_protocol do
         nil -> connect(port, channel)
@@ -344,17 +345,6 @@ defmodule ChannelSenderEx.Transport.SocketIntegrationTest do
       end
 
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 1000
-    {conn, stream}
-  end
-
-  defp assert_reject(port, channel, _secret, sub_protocol \\ nil) do
-    conn =
-      case sub_protocol do
-        nil -> connect(port, channel)
-        sub_protocol -> connect(port, channel, sub_protocol)
-      end
-
-    assert_receive {:gun_ws, ^conn, stream, {:close, 1001, "3050"}}, 1000
     {conn, stream}
   end
 

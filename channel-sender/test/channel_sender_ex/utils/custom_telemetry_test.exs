@@ -68,7 +68,9 @@ defmodule ChannelSenderEx.Utils.CustomTelemetryTest do
           :scheme => "http",
           :version => input_version,
           :method => "GET",
+          :headers => %{},
           :peer => {{127, 0, 0, 1}, 4000},
+          :sock => {{127, 0, 0, 1}, 8080},
           :port => 8080
         }
 

@@ -18,9 +18,9 @@ defmodule ChannelSenderEx.Application do
     _config = ApplicationConfig.load()
 
     open_telemetry_traces()
+    open_telemetry_metrics()
 
     Helper.compile(:channel_sender_ex)
-    CustomTelemetry.custom_telemetry_events()
 
     no_start_param = Application.get_env(:channel_sender_ex, :no_start)
 
@@ -33,9 +33,6 @@ defmodule ChannelSenderEx.Application do
   end
 
   defp children(no_start_param) do
-    prometheus_port =
-      Application.get_env(:channel_sender_ex, :prometheus_port, @default_prometheus_port)
-
     case no_start_param do
       false ->
         [
@@ -49,15 +46,8 @@ defmodule ChannelSenderEx.Application do
              port: Application.get_env(:channel_sender_ex, :rest_port),
              protocol_options: Application.get_env(:channel_sender_ex, :cowboy_protocol_options),
              transport_options: Application.get_env(:channel_sender_ex, :cowboy_transport_options)
-           ]},
-          {TelemetryMetricsPrometheus,
-           [
-             metrics: CustomTelemetry.metrics(),
-             port: prometheus_port
-           ]},
-          ChannelSenderEx.Utils.ChannelMetrics
-          # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()}
-        ]
+           ]}
+        ] ++ metrics_children()
 
       true ->
         []
@@ -81,9 +71,13 @@ defmodule ChannelSenderEx.Application do
   end
 
   defp open_telemetry_traces do
-    traces_enable = Application.get_env(:channel_sender_ex, :traces_enable, false)
+    traces_enabled? = Application.get_env(:channel_sender_ex, :traces_enable, false)
 
-    if traces_enable do
+    if traces_enabled? do
+      Application.ensure_all_started(:telemetry)
+      Application.ensure_all_started(:opentelemetry_exporter)
+      Application.ensure_all_started(:opentelemetry)
+
       traces_endpoint = Application.get_env(:channel_sender_ex, :traces_endpoint)
       traces_ignore_routes = Application.get_env(:channel_sender_ex, :traces_ignore_routes)
 
@@ -104,6 +98,32 @@ defmodule ChannelSenderEx.Application do
 
       Logger.warning("Tracing is enabled, setting up OpentelemetryPlug.")
       OpentelemetryPlug.setup()
+    end
+  end
+
+  defp open_telemetry_metrics do
+    metrics_enabled? = Application.get_env(:channel_sender_ex, :metrics_enabled, false)
+
+    if metrics_enabled? do
+      Logger.warning("Metrics are enabled, setting up CustomTelemetry.")
+      CustomTelemetry.custom_telemetry_events()
+    end
+  end
+
+  defp metrics_children do
+    metrics_enabled? = Application.get_env(:channel_sender_ex, :metrics_enabled, false)
+
+    if metrics_enabled? do
+      prometheus_port =
+        Application.get_env(:channel_sender_ex, :prometheus_port, @default_prometheus_port)
+
+      [
+        {TelemetryMetricsPrometheus, [metrics: CustomTelemetry.metrics(), port: prometheus_port]},
+        ChannelSenderEx.Utils.ChannelMetrics
+        # {Telemetry.Metrics.ConsoleReporter, metrics: CustomTelemetry.metrics()}
+      ]
+    else
+      []
     end
   end
 end

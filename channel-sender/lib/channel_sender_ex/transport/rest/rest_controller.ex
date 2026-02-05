@@ -222,9 +222,13 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
   defp perform_delivery_deliver_message(message, parent_ctx) do
     Ctx.attach(parent_ctx)
-    span_ctx = Tracer.start_span("deliver_to_channel", %{parent: parent_ctx})
-    Tracer.set_current_span(span_ctx)
     {channel_ref, new_msg} = Map.pop(message, :channel_ref)
+    attributes = %{"adf.channel_ref" => channel_ref, "adf.msg" => new_msg.message_id}
+
+    span_ctx =
+      Tracer.start_span("deliver_to_channel", %{attributes: attributes, parent: parent_ctx})
+
+    Tracer.set_current_span(span_ctx)
 
     res =
       PubSubCore.deliver_to_channel(
@@ -250,7 +254,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
     Task.start(fn ->
       Ctx.attach(parent_ctx)
-      span_ctx = Tracer.start_span("deliver_to_channel", %{parent: parent_ctx})
+      attributes = %{"adf.channel_ref" => channel_ref, "adf.msg" => message.message_id}
+
+      span_ctx =
+        Tracer.start_span("deliver_to_channel", %{attributes: attributes, parent: parent_ctx})
+
       Tracer.set_current_span(span_ctx)
       new_msg = ProtocolMessage.to_protocol_message(message)
       res = PubSubCore.deliver_to_channel(channel_ref, new_msg)
@@ -277,7 +285,11 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
     Task.start(fn ->
       Ctx.attach(parent_ctx)
-      span_ctx = Tracer.start_span("deliver_to_app_channels", %{parent: parent_ctx})
+      attributes = %{"adf.app_ref" => app_ref, "adf.msg" => message.message_id}
+
+      span_ctx =
+        Tracer.start_span("deliver_to_app_channels", %{attributes: attributes, parent: parent_ctx})
+
       Tracer.set_current_span(span_ctx)
       new_msg = ProtocolMessage.to_protocol_message(message)
       res = PubSubCore.deliver_to_app_channels(app_ref, new_msg)
@@ -312,7 +324,14 @@ defmodule ChannelSenderEx.Transport.Rest.RestController do
 
     Task.start(fn ->
       Ctx.attach(parent_ctx)
-      span_ctx = Tracer.start_span("deliver_to_user_channels", %{parent: parent_ctx})
+      attributes = %{"adf.user_ref" => user_ref, "adf.msg" => message.message_id}
+
+      span_ctx =
+        Tracer.start_span("deliver_to_user_channels", %{
+          attributes: attributes,
+          parent: parent_ctx
+        })
+
       Tracer.set_current_span(span_ctx)
       new_msg = ProtocolMessage.to_protocol_message(message)
       res = PubSubCore.deliver_to_user_channels(user_ref, new_msg)

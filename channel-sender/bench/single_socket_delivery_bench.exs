@@ -30,7 +30,7 @@ defmodule SingleSocketDeliveryBench do
       1000 -> raise "Websocket upgrade timeout!"
     end
 
-    :gun.ws_send(conn, {:text, "Auth::#{secret}"})
+    :gun.ws_send(conn, stream, {:text, "Auth::#{secret}"})
 
     data_string = receive do
       {:gun_ws, ^conn, ^stream, {:text, data_string}} -> data_string
@@ -89,10 +89,10 @@ send_and_receive_sequential = fn {conn, stream, channel_id} ->
   receive do
     {:gun_ws, ^conn, ^stream, {:text, data}} ->
       {message_id, _, _, _, _} = JsonEncoder.decode_message(data)
-      :gun.ws_send(conn, {:text, "Ack::" <> message_id})
+      :gun.ws_send(conn, stream, {:text, "Ack::" <> message_id})
     {:gun_ws, ^conn, ^stream, {:binary, data}} ->
       {message_id, _, _, _, _} = BinaryEncoder.decode_message(data)
-      :gun.ws_send(conn, {:text, "Ack::" <> message_id})
+      :gun.ws_send(conn, stream, {:text, "Ack::" <> message_id})
   after
     100 ->
       raise "No message!"
