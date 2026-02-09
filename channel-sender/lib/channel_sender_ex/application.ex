@@ -74,10 +74,6 @@ defmodule ChannelSenderEx.Application do
     traces_enabled? = Application.get_env(:channel_sender_ex, :traces_enable, false)
 
     if traces_enabled? do
-      Application.ensure_all_started(:telemetry)
-      Application.ensure_all_started(:opentelemetry_exporter)
-      Application.ensure_all_started(:opentelemetry)
-
       traces_endpoint = Application.get_env(:channel_sender_ex, :traces_endpoint)
       traces_ignore_routes = Application.get_env(:channel_sender_ex, :traces_ignore_routes)
 
@@ -91,10 +87,14 @@ defmodule ChannelSenderEx.Application do
         OtelResourceDynatrace
       ])
 
-      Application.put_env(:opentelemetry_exporter, :otlp_protocol, :http_protobuf)
       Application.put_env(:opentelemetry_exporter, :otlp_endpoint, traces_endpoint)
 
       Application.put_env(:opentelemetry_plug, :ignored_routes, traces_ignore_routes)
+
+      Application.ensure_all_started(:gproc)
+      Application.ensure_all_started(:telemetry)
+      Application.ensure_all_started(:opentelemetry_exporter)
+      Application.ensure_all_started(:opentelemetry)
 
       Logger.warning("Tracing is enabled, setting up OpentelemetryPlug.")
       OpentelemetryPlug.setup()

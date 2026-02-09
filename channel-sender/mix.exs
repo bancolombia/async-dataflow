@@ -23,9 +23,9 @@ defmodule ChannelSenderEx.MixProject do
   def application do
     extra_apps =
       if Mix.env() == :dev do
-        [:logger, :observer, :wx, :runtime_tools]
+        [:logger, :gproc, :observer, :wx, :runtime_tools]
       else
-        [:logger]
+        [:logger, :gproc]
       end
 
     optionals = [
@@ -36,7 +36,7 @@ defmodule ChannelSenderEx.MixProject do
 
     [
       extra_applications: extra_apps ++ optionals,
-      # include_applications: [:telemetry, :opentelemetry_exporter, :opentelemetry],
+      include_applications: [:telemetry, :opentelemetry_exporter, :opentelemetry],
       mod: {ChannelSenderEx.Application, []}
     ]
   end
