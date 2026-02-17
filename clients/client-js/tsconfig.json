@@ -2,9 +2,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": { "*": ["types/*"] },
-    //"lib": [ "es2015" ],
-    "module": "commonjs",
-    "target": "es2015",
+    "module": "es2020",
+    "target": "es2020",
     "declaration": true,
     "outDir": "./dist",
     "sourceMap": true
