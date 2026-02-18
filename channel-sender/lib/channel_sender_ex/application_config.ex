@@ -149,7 +149,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     Application.put_env(
       :channel_sender_ex,
       :prometheus_port,
-      Map.get(fetch(config, :channel_sender_ex), "prometheus_port", 9568)
+      Map.get(fetch(config, :channel_sender_ex, "metrics"), "prometheus_port", 9568)
     )
 
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))

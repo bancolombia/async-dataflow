@@ -4,10 +4,6 @@ metadata:
   name: adfsender-config
   namespace: sendernm
 data:
-  env.sh: |-
-    #!/bin/sh
-    export RELEASE_DISTRIBUTION=name
-    export RELEASE_NODE=channel_sender_ex@${POD_NAME}.${POD_NAME_DNS}
   config.yaml: |-
     channel_sender_ex:
       rest_port: 8081
@@ -41,6 +37,14 @@ data:
           kubernetes_selector: "cluster=beam"
           namespace: "sendernm"
           polling_interval: 20000
+
+      opentelemetry:
+        traces_enable: false
+        traces_endpoint: http://jaeger.observability.svc.cluster.local:4318
+        traces_ignore_routes: [/health, /metrics]
+      metrics:
+        enabled: false
+        active_interval_minutes_count: 2
 
     logger:
       level: debug

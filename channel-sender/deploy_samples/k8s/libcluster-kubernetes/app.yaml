@@ -64,14 +64,20 @@ spec:
     spec:
       containers:
         - name: adfsender
-          image: bancolombia/async-dataflow-channel-sender:0.1.9
+          image: bancolombia/async-dataflow-channel-sender:0.3.1
           env:
             - name: POD_NAME
               valueFrom:
                 fieldRef:
-                  fieldPath: metadata.name    # requires read-pods-role role 
+                  fieldPath: metadata.name    # requires read-pods-role role
             - name: POD_NAME_DNS              # see declared file env.sh in configMap
-              value: adfsender-headless.sendernm.svc.cluster.local                          
+              value: adfsender-headless.sendernm.svc.cluster.local
+            - name: RELEASE_DISTRIBUTION
+              value: name
+            - name: RELEASE_NODE
+              value: channel_sender_ex@$(POD_NAME).$(POD_NAME_DNS)
+            - name: ERL_FULLSWEEP_AFTER
+              value: "10"
             - name: RELEASE_COOKIE
               value: "put_some_random_string_here"
           ports:
@@ -92,9 +98,6 @@ spec:
               cpu: 250m
               memory: 250M
           volumeMounts:
-          - name: config-volume
-            mountPath: /app/config/env.sh
-            subPath: env.sh
           - name: config-volume
             mountPath: /app/config/config.yaml
             subPath: config.yaml

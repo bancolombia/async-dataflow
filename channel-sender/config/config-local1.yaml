@@ -1,7 +1,6 @@
 channel_sender_ex:
   rest_port: 8091
   socket_port: 8092
-  prometheus_port: 8568
   secret_generator:
     base: "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc"
     salt: "socket auth"
@@ -83,6 +82,7 @@ channel_sender_ex:
     traces_ignore_routes: ["/health", "/metrics"]
   metrics:
     enabled: true
+    prometheus_port: 8568
     active_interval_minutes_count: 2
 logger:
   level: debug

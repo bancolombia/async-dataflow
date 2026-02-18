@@ -16,7 +16,7 @@ paths:
     post:
       tags:
       - /ext/channel
-      summary: Create Channel and session
+      summary: Create Channel
       description: |
         By passing in the appropriate options, you can register a new channel in the system
       operationId: createChannel
