@@ -24,7 +24,7 @@ jobs:
     - run: npm run test
       name: Test
     - name: SonarQube Scan
-      uses: SonarSource/sonarqube-scan-action@v4
+      uses: SonarSource/sonarqube-scan-action@v6
       with:
         projectBaseDir: clients/client-js
       env:
