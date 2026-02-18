@@ -1,6 +1,6 @@
 import * as chai from 'chai';
 
-import { Cache } from "../src/cache";
+import { Cache } from "../src/cache.js";
 
 const assert: Chai.AssertStatic = chai.assert;
 describe('Cache Tests', function () {

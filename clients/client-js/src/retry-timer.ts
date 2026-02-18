@@ -1,4 +1,4 @@
-import { Utils } from "./utils";
+import { Utils } from "./utils.js";
 
 const MAX_DELAY = 6000;
 export class RetryTimer {

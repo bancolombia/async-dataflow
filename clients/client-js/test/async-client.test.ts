@@ -1,12 +1,15 @@
 import * as chai from 'chai';
-import * as sinon from 'sinon';
-import { AsyncClient } from "../src/async-client";
-import { AsyncConfig } from "../src/async-config";
-import { Cache } from "../src/cache";
-import { SseTransport, WsTransport } from "../src/transport";
-import { MockedTransport } from './utils/mocked-transport';
-import { ChannelMessage } from '../src';
-import { promisedMessage, timeout } from './utils/types.utils';
+import sinonPkg from "sinon";
+import { AsyncClient } from "../src/async-client.js";
+import { AsyncConfig } from "../src/async-config.js";
+import { Cache } from "../src/cache.js";
+import { SseTransport, WsTransport } from "../src/transport/index.js";
+import { MockedTransport } from './utils/mocked-transport.js';
+import { ChannelMessage } from '../src/channel-message.js';
+import { promisedMessage, timeout } from './utils/types.utils.js';
+
+const { spy } = sinonPkg;
+const { stub } = sinonPkg;
 
 const assert: Chai.AssertStatic = chai.assert;
 
@@ -25,7 +28,7 @@ describe('AsyncClient Constructor Tests', function () {
             maxReconnectAttempts: 3,
             checkConnectionOnFocus: true
         };
-        mockTransport = sinon.stub();
+        mockTransport = stub();
     });
 
     it('should initialize with default transports if none provided', function () {
@@ -50,7 +53,7 @@ describe('AsyncClient Constructor Tests', function () {
     });
 
     it('should set up focus event listener if checkConnectionOnFocus is true', function () {
-        const addEventListenerSpy = sinon.spy(window, 'addEventListener');
+        const addEventListenerSpy = spy(window, 'addEventListener');
         new AsyncClient(config, ['ws'], mockTransport);
         assert.isTrue(addEventListenerSpy.called);
         addEventListenerSpy.restore();
@@ -58,15 +61,15 @@ describe('AsyncClient Constructor Tests', function () {
 
     it('should not set up focus event listener if checkConnectionOnFocus is false', function () {
         config.checkConnectionOnFocus = false;
-        const addEventListenerSpy = sinon.spy(window, 'addEventListener');
+        const addEventListenerSpy = spy(window, 'addEventListener');
         new AsyncClient(config, ['ws'], mockTransport);
         assert.isFalse(addEventListenerSpy.called);
         addEventListenerSpy.restore();
     });
 
     it('should instantiate the correct transport', function () {
-        const wsTransportStub = sinon.stub(WsTransport, 'create');
-        const sseTransportStub = sinon.stub(SseTransport, 'create');
+        const wsTransportStub = stub(WsTransport, 'create');
+        const sseTransportStub = stub(SseTransport, 'create');
 
         new AsyncClient(config, ['ws'], mockTransport);
         assert.isTrue(wsTransportStub.calledOnce);
@@ -80,7 +83,7 @@ describe('AsyncClient Constructor Tests', function () {
     });
 
     it('should instantiate the transport', function () {
-        const instantiationStub = sinon.stub(SseTransport, 'create');
+        const instantiationStub = stub(SseTransport, 'create');
         instantiationStub.callsFake((_config, messageHandler, errorHandler) => {
             return new MockedTransport('sse', messageHandler!, errorHandler!)
         });
@@ -96,14 +99,14 @@ describe('Event handler matching Tests', function () {
     let instantiationStub: sinon.SinonStub;
     let mockedTransport: MockedTransport;
     let client: AsyncClient;
-    let config = {
+    const config = {
         socket_url: "wss://host.local/socket",
         channel_ref: "ab771f3434aaghjgr",
         channel_secret: "secret234342432dsfghjikujyg1221",
     };
 
     beforeEach(() => {
-        instantiationStub = sinon.stub(WsTransport, 'create');
+        instantiationStub = stub(WsTransport, 'create');
         instantiationStub.callsFake((_config, messageHandler, errorHandler) => {
             return new MockedTransport('ws', messageHandler!, errorHandler!)
         });
@@ -175,14 +178,14 @@ describe('Dedup messages Tests', function () {
     let instantiationStub: sinon.SinonStub;
     let mockedTransport: MockedTransport;
     let client: AsyncClient;
-    let config: AsyncConfig = {
+    const config: AsyncConfig = {
         socket_url: "wss://host.local/socket",
         channel_ref: "ab771f3434aaghjgr",
         channel_secret: "secret234342432dsfghjikujyg1221",
     };
 
     beforeEach(() => {
-        instantiationStub = sinon.stub(WsTransport, 'create');
+        instantiationStub = stub(WsTransport, 'create');
         instantiationStub.callsFake((_config, messageHandler, errorHandler) => {
             return new MockedTransport('ws', messageHandler!, errorHandler!)
         });
@@ -202,7 +205,7 @@ describe('Dedup messages Tests', function () {
         client.connect();
 
         const simulatedMessage = new ChannelMessage("1", "quick.orange.rabbit", "1", "Hi, There");
-        const onMessage = sinon.spy();
+        const onMessage = spy();
         // Act
         client.listenEvent("quick.orange.rabbit", onMessage);
         mockedTransport.simulateMessage(simulatedMessage);
@@ -218,7 +221,7 @@ describe('Dedup messages Tests', function () {
 
         const simulatedMessage = new ChannelMessage("1", "quick.orange.rabbit", "1", "Hi, There");
         const simulatedMessage2 = new ChannelMessage("2", "quick.orange.rabbit", "2", "Hi, There");
-        const onMessage = sinon.spy();
+        const onMessage = spy();
         // Act
         client.listenEvent("quick.orange.rabbit", onMessage);
         mockedTransport.simulateMessage(simulatedMessage);
@@ -234,7 +237,7 @@ describe('Dedup messages Tests', function () {
         client.connect();
 
         const simulatedMessage = new ChannelMessage("1", "quick.orange.rabbit", "1", "Hi, There");
-        const onMessage = sinon.spy();
+        const onMessage = spy();
         // Act
         client.listenEvent("quick.orange.rabbit", onMessage);
         mockedTransport.simulateMessage(simulatedMessage);
@@ -250,14 +253,14 @@ describe('Renew token Tests', function () {
     let instantiationStub: sinon.SinonStub;
     let mockedTransport: MockedTransport;
     let client: AsyncClient;
-    let config: AsyncConfig = {
+    const config: AsyncConfig = {
         socket_url: "wss://host.local/socket",
         channel_ref: "ab771f3434aaghjgr",
         channel_secret: "secret234342432dsfghjikujyg1221",
     };
 
     beforeEach(() => {
-        instantiationStub = sinon.stub(WsTransport, 'create');
+        instantiationStub = stub(WsTransport, 'create');
         instantiationStub.callsFake((_config, messageHandler, errorHandler) => {
             return new MockedTransport('ws', messageHandler!, errorHandler!)
         });

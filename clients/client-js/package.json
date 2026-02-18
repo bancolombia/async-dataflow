@@ -1,12 +1,22 @@
 {
   "name": "@bancolombia/chanjs-client",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "AsycnDataflow websocket browser client. By Bancolombia",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "test": "nyc mocha --reporter spec --reporter mocha-sonarqube-reporter --reporter-options output=coverage/xunit.xml --require source-map-support/register --require jsdom-global/register --require ts-node/register 'test/**/*.test.ts'",
-    "test-local": "mocha --require jsdom-global/register --require source-map-support/register --require ts-node/register 'test/**/*.test.ts'",
+    "test": "nyc mocha --reporter spec --reporter mocha-sonarqube-reporter --reporter-options output=coverage/xunit.xml  --import ./test/setup.ts --node-option loader=ts-node/esm --extension ts,tsx 'test/**/*.test.ts'",
+    "test-local": "mocha --import ./test/setup.ts --node-option loader=ts-node/esm --extension ts,tsx 'test/**/*.test.ts'" ,
     "watch:build": "tsc --watch",
     "sonar-scanner": "node_modules/sonar-scanner/bin/sonar-scanner",
     "prepare": "npm run build",
@@ -59,10 +69,10 @@
     "rxjs": "^7.8.1",
     "sinon": "^6.3.5",
     "sonar-scanner": "^3.1.0",
-    "source-map-support": "^0.5.9",
+    "source-map-support": "^0.5.21",
     "ts-mock-imports": "^1.2.1",
     "ts-mockito": "^2.3.1",
-    "ts-node": "^7.0.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.2.2"
   },
   "dependencies": {

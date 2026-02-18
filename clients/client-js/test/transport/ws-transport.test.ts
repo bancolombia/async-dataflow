@@ -1,13 +1,13 @@
 import * as chai from 'chai';
 
-import { AsyncConfig } from "../../src";
+import { AsyncConfig } from "../../src/async-config.js";
 import { Server, WebSocket } from 'mock-socket';
 
-import { ChannelMessage } from "../../src/channel-message";
-import { JsonDecoder, BinaryDecoder } from "../../src/decoder";
-import { Protocol, WsTransport } from "../../src/transport";
+import { ChannelMessage } from "../../src/channel-message.js";
+import { JsonDecoder, BinaryDecoder } from "../../src/decoder/index.js";
+import { Protocol, WsTransport } from "../../src/transport/index.js";
 import "fast-text-encoding"
-import { managedObservable, ManagedPromise, promiseFromObservable, timeout, waitFor } from '../utils/types.utils';
+import { managedObservable, ManagedPromise, promiseFromObservable, timeout, waitFor } from '../utils/types.utils.js';
 
 const assert: Chai.AssertStatic = chai.assert;
 const TIMEOUT = 10000;
@@ -17,7 +17,7 @@ describe('WsTransport Tests', function () {
     let mockServer;
     let managed: ManagedPromise;
     let client: WsTransport;
-    let config: AsyncConfig = {
+    const config: AsyncConfig = {
         socket_url: "wss://host.local",
         channel_ref: "ab771f3434aaghjgr",
         channel_secret: "secret234342432dsfghjikujyg1221",
@@ -69,7 +69,6 @@ describe('WsTransport Tests', function () {
         client.connect();
 
         const message = await Promise.race([timeout(200), promiseFromObservable(managed.observableMsg)]);
-        // @ts-ignore
         assert.isTrue(client.isActive);
         assert.deepEqual(message, new ChannelMessage("12", "person.registered", "", "CC111222"));
         client.disconnect();
@@ -92,7 +91,6 @@ describe('WsTransport Tests', function () {
         client.connect();
 
         const result = await Promise.race([timeout(500), promiseFromObservable(managed.observableMsg, 2)]);
-        // @ts-ignore
         assert.deepEqual(result, new ChannelMessage("14", "ack.reply.ok", "", "ok"));
         client.disconnect();
     });
@@ -109,7 +107,7 @@ describe('WsTransport url tests', function () {
     afterEach((done) => done());
 
     it('Should try to connect with correct url', () => {
-        let config: AsyncConfig = {
+        const config: AsyncConfig = {
             socket_url: "http://host.local",
             channel_ref: "ab771f3434aaghjgr",
             channel_secret: "secret234342432dsfghjikujyg1221",
@@ -122,7 +120,7 @@ describe('WsTransport url tests', function () {
     });
 
     it('Should try to connect with correct url with ssl', () => {
-        let config: AsyncConfig = {
+        const config: AsyncConfig = {
             socket_url: "https://host.local",
             channel_ref: "ab771f3434aaghjgr",
             channel_secret: "secret234342432dsfghjikujyg1221",
@@ -138,15 +136,15 @@ describe('WsTransport url tests', function () {
 describe('Async Reconnection Tests', () => {
 
     it('Should ReConnect when server closes the socket', async () => {
-        let config = {
+        const config = {
             socket_url: "wss://reconnect.local:8984",
             channel_ref: "ab771f3434aaghjgr",
             channel_secret: "secret234342432dsfghjikujyg1221",
             heartbeat_interval: 200
         };
-        let mockServer = new Server(`${config.socket_url}/ext/socket`);
-        let managed = managedObservable();
-        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
+        const mockServer = new Server(`${config.socket_url}/ext/socket`);
+        const managed = managedObservable();
+        const client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
 
         let firstSocket;
         mockServer.on('connection', socket => {
@@ -160,7 +158,6 @@ describe('Async Reconnection Tests', () => {
                     } else {
                         console.log('server. second auth ok');
                         socket.send('["", "", "AuthOk", ""]');
-                        // @ts-ignore
                         setTimeout(() => socket.send('["120", "", "person.registered2", "CC1112223"]'), 200)
                     }
                 }
@@ -184,30 +181,29 @@ describe('Async Reconnection Tests', () => {
 
 
     it('Should ReConnect when no heartbeat', async () => {
-        let config = {
+        const config = {
             socket_url: "wss://reconnect.local:8985",
             channel_ref: "ab771f3434aaghjgr",
             channel_secret: "secret234342432dsfghjikujyg1221",
             heartbeat_interval: 200
         };
-        let mockServer = new Server(`${config.socket_url}/ext/socket`);
-        let managed = managedObservable();
-        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
+        const mockServer = new Server(`${config.socket_url}/ext/socket`);
+        const managed = managedObservable();
+        const client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
         let respondBeat = false;
         let connectCount = 0;
 
         mockServer.on('connection', socket => {
             socket.on('message', raw_data => {
                 if (typeof raw_data == "string") {
-                    let data = String(raw_data);
+                    const data = String(raw_data);
                     if (data == `Auth::${config.channel_secret}`) {
                         console.log('server. auth ok');
                         connectCount = connectCount + 1;
                         socket.send('["", "", "AuthOk", ""]');
-                        // @ts-ignore
                         setTimeout(() => socket.send('["12", "", "person.registered", "CC111222"]'), 200)
                     } else if (data.startsWith("hb::") && respondBeat) {
-                        let correlation = data.split("::")[1];
+                        const correlation = data.split("::")[1];
                         socket.send(`["", ${correlation}, ":hb", ""]`);
                     }
                 }
@@ -222,7 +218,6 @@ describe('Async Reconnection Tests', () => {
         await timeout(600);
         respondBeat = true;
         const lastCount = connectCount;
-        // @ts-ignore
         console.log("Count", connectCount);
 
         await timeout(700);
@@ -241,7 +236,7 @@ describe('Async Reconnection Tests', () => {
 
 describe('Refresh token Tests', () => {
 
-    let config = {
+    const config = {
         socket_url: "wss://reconnect.local:8986",
         channel_ref: "ab771f3434aaghjgr",
         channel_secret: "secret234342432dsfghjikujyg1221",
@@ -249,9 +244,9 @@ describe('Refresh token Tests', () => {
     };
 
     it('Should ReConnect with new token', async () => {
-        let mockServer = new Server(`${config.socket_url}/ext/socket`);
-        let managed = managedObservable();
-        let client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
+        const mockServer = new Server(`${config.socket_url}/ext/socket`);
+        const managed = managedObservable();
+        const client: WsTransport = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
         const secondToken = "new_token_secret12243";
 
         let firstSocket;
@@ -271,7 +266,6 @@ describe('Refresh token Tests', () => {
                         socket.send('["", "", "AuthOk", ""]');
                         socket.send('["12", "", "person.registered2", "CC1112223"]');
                     } else if (new String(data).startsWith('Auth::')) {
-                        // @ts-ignore
                         console.log("server. invalid credentials");
                         mockServer.close({ code: 4403, reason: "Invalid auth", wasClean: true })
                     }
@@ -300,19 +294,19 @@ describe('Refresh token Tests', () => {
 describe('Protocol negotiation Tests', function () {
     let client: WsTransport;
     let mockServer: Server;
-    let baseConf = {
+    const baseConf = {
         socket_url: "wss://protocol.local",
         channel_ref: "ab771f3434aaghjgr",
         channel_secret: "secret234342432dsfghjikujyg1221",
     };
 
-    let initServer = (selectProtocol) => {
+    const initServer = (selectProtocol) => {
         mockServer = new Server(`${baseConf.socket_url}/ext/socket`, {
             selectProtocol
         })
     };
 
-    let connectAndGetDecoderSelected = async (config) => {
+    const connectAndGetDecoderSelected = async (config) => {
         const managed = managedObservable();
         client = WsTransport.create(config, managed.onMessage, managed.onError, WebSocket) as WsTransport;
         const connected = new Promise<boolean>(resolve => client.doOnSocketOpen(() => resolve(true)));
@@ -328,7 +322,7 @@ describe('Protocol negotiation Tests', function () {
     });
 
     it('Should use Json decoder when specified', async () => {
-        let config = {
+        const config = {
             ...baseConf,
             enable_binary_transport: false
         };
@@ -342,7 +336,7 @@ describe('Protocol negotiation Tests', function () {
     });
 
     it('Should use binary protocol when available', async () => {
-        let config = {
+        const config = {
             ...baseConf,
             enable_binary_transport: true
         };
@@ -356,7 +350,7 @@ describe('Protocol negotiation Tests', function () {
     });
 
     it('Should fallback to json protocol when server select it', async () => {
-        let config = {
+        const config = {
             ...baseConf,
             enable_binary_transport: true
         };
@@ -370,14 +364,12 @@ describe('Protocol negotiation Tests', function () {
     });
 
     it('Should fallback to Json decoder when Binary decoder is not available', async () => {
-        let config = {
+        const config = {
             ...baseConf,
             enable_binary_transport: true
         };
 
-        //@ts-ignore
         const decoder = global.TextDecoder;
-        // @ts-ignore
         global.TextDecoder = undefined;
 
         initServer((protocols) => {
@@ -388,7 +380,6 @@ describe('Protocol negotiation Tests', function () {
         const decoderSelected = await connectAndGetDecoderSelected(config);
         assert.instanceOf(decoderSelected, JsonDecoder);
 
-        // @ts-ignore
         global.TextDecoder = decoder;
     });
 });

@@ -1,7 +1,7 @@
-import { Transport, SseTransport, WsTransport, TransportError } from "./transport";
-import { AsyncConfig } from "./async-config";
-import { Cache } from "./cache";
-import { ChannelMessage } from "./channel-message";
+import { Transport, SseTransport, WsTransport, TransportError } from "./transport/index.js";
+import { AsyncConfig } from "./async-config.js";
+import { Cache } from "./cache.js";
+import { ChannelMessage } from "./channel-message.js";
 export class AsyncClient {
     private currentTransport: Transport;
     private currentTransportIndex: number = 0;
@@ -77,7 +77,7 @@ export class AsyncClient {
             return;
         }
         
-        var candidateBindings = this.bindings
+        const candidateBindings = this.bindings
             .filter(handler => this.matchHandlerExpr(handler.eventName, message.event));
 
         if (candidateBindings.length === 0) {

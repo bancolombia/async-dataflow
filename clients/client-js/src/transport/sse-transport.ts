@@ -1,10 +1,10 @@
-import { MessageDecoder, JsonDecoder } from "../decoder"
-import { ChannelMessage } from "../channel-message";
-import { Transport } from "./transport";
-import { AsyncConfig } from "../async-config";
+import { MessageDecoder, JsonDecoder } from "../decoder/index.js"
+import { ChannelMessage } from "../channel-message.js";
+import { Transport } from "./transport.js";
+import { AsyncConfig } from "../async-config.js";
 import { EventSourceController, EventSourcePlus } from "event-source-plus";
-import { TransportError } from "./transport-error";
-import { Utils } from "../utils";
+import { TransportError } from "./transport-error.js";
+import { Utils } from "../utils.js";
 
 export class SseTransport implements Transport {
 
@@ -48,23 +48,22 @@ export class SseTransport implements Transport {
             console.debug('async-client. sse not connected, creating new EventSource');
         }
 
-        const self = this;
-        self.controller = this.transport.listen({
+        this.controller = this.transport.listen({
             onMessage: (event) => {             
                 try {
                     const message = this.serializer.decode_sse(event.data)
                     if (message.event == ":n_token") {
-                        self.actualToken = message.payload;
-                        console.debug('async-client. sse received new token = ', self.actualToken);
+                        this.actualToken = message.payload;
+                        console.debug('async-client. sse received new token = ', this.actualToken);
                     }
                     this.errorCount = 0;
-                    self.handleMessage(message);
+                    this.handleMessage(message);
                 } catch (error) {
                     console.error('Error processing message:', error);
                 }
             },
             onRequest: ({ options }) => {
-                options.headers.append("Authorization", "Bearer " + self.getToken());
+                options.headers.append("Authorization", "Bearer " + this.getToken());
             },
             async onResponse({ response }) {
                 console.debug(`Sse client received status code: ${response.status}`);
@@ -73,7 +72,7 @@ export class SseTransport implements Transport {
                 }
             },
             async onResponseError({ request, response, error }) {
-                self.errorCount++;
+                this.errorCount++;
                 console.debug(`[Sse response error]`, request, response.status, error);
                 const body = await response.text();
                 console.error('Sse response error:', body);
@@ -90,14 +89,14 @@ export class SseTransport implements Transport {
                     (response.status == 401 && reason < 3050) ||
                     (response.status == 428 && reason < 3050);
 
-                if (stopRetries || self.errorCount >= self.config.maxReconnectAttempts) {
+                if (stopRetries || this.errorCount >= this.config.maxReconnectAttempts) {
                     console.log('async-client. sse stopping retries');
-                    self.disconnect();
-                    self.errorCallback({ origin: 'sse', code: 1, message: response.statusText + ' ' + body });
+                    this.disconnect();
+                    this.errorCallback({ origin: 'sse', code: 1, message: response.statusText + ' ' + body });
                 } else if (response.status === 401) {
                     console.log('async-client. disconnecting because 401 and will retry with new token');
-                    self.disconnect();
-                    self.connect(connectedCallback);
+                    this.disconnect();
+                    this.connect(connectedCallback);
                 }
             },
 

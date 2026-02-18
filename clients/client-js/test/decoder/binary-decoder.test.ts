@@ -1,7 +1,7 @@
 import * as chai from 'chai';
 
-import { ChannelMessage } from "../../src/channel-message";
-import { MessageDecoder, BinaryDecoder } from "../../src/decoder";
+import { ChannelMessage } from "../../src/channel-message.js";
+import { MessageDecoder, BinaryDecoder } from "../../src/decoder/index.js";
 import "fast-text-encoding"
 
 const assert = chai.assert;

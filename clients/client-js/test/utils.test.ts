@@ -1,13 +1,13 @@
 import * as chai from 'chai';
 
-import { Utils } from "../src/utils";
+import { Utils } from "../src/utils.js";
 
 const assert = chai.assert;
 describe('Utils Tests', function () {
 
     it('Should generate random jitter', () => {
         for (let i = 0; i < 100; i++) {
-            let result = Utils.jitter(1000, 0.25)
+            const result = Utils.jitter(1000, 0.25)
             assert.isAbove(result, 749);
             assert.isBelow(result, 1000);
         }
@@ -53,7 +53,7 @@ describe('Utils Tests', function () {
         const jitterFn = num => Utils.jitter(num, jitterFactor);
 
         expected.forEach(x => {
-            let result = Utils.expBackoff(10, 6000, x[0], jitterFn);
+            const result = Utils.expBackoff(10, 6000, x[0], jitterFn);
             assert.isAbove(result, (x[1] * (1 - jitterFactor)) - 1);
             assert.isBelow(result, x[1]);
         });

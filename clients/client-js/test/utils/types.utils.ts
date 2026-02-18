@@ -1,19 +1,19 @@
 import { Observable, Subscriber } from "rxjs";
-import { ChannelMessage } from "../../src/channel-message";
-import { TransportError } from "../../src/transport";
-import * as sinon from "sinon";
-import { AsyncClient } from "../../src";
-import { MockedTransport } from "./mocked-transport";
+import { ChannelMessage } from "../../src/channel-message.js";
+import { TransportError } from "../../src/transport/transport-error.js";
+import sinonPkg from "sinon";
+import { AsyncClient } from "../../src/async-client.js";
+import { MockedTransport } from "./mocked-transport.js";
+const { spy } = sinonPkg;
 
 export interface ManagedPromise {
     observableMsg: Observable<ChannelMessage>,
     onMessage: (message: ChannelMessage) => void,
     onError: (error: TransportError) => void
-};
+}
 
 export function timeout(millis: number): Promise<any> {
     return new Promise(resolve => {
-        // @ts-ignore
         setTimeout(resolve, millis, "timeout");
     });
 }
@@ -42,7 +42,7 @@ export function managedObservable() {
         observable = obs;
     });
     const onMessage = (message: ChannelMessage) => observable.next(message);
-    const onError = sinon.spy();
+    const onError = spy();
     return { observableMsg, onMessage, onError };
 }
 

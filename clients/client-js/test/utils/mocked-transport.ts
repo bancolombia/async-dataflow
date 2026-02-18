@@ -1,11 +1,13 @@
-import { ChannelMessage } from "../../src";
-import { Transport, TransportError } from "../../src/transport";
-import * as sinon from "sinon";
+import { ChannelMessage } from "../../src/channel-message.js";
+import { Transport, TransportError } from "../../src/transport/index.js";
+import sinonPkg from "sinon";
+
+const { spy } = sinonPkg;
 
 export class MockedTransport implements Transport {
-    public connect = sinon.spy();
-    public disconnect = sinon.spy();
-    public connected = sinon.spy();
+    public connect = spy();
+    public disconnect = spy();
+    public connected = spy();
     constructor(private readonly nameValue: string,
         private readonly handleMessage: (_message: ChannelMessage) => void,
         private readonly errorCallback: (_error: TransportError) => void) {

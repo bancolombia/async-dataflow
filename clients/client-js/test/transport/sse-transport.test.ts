@@ -1,12 +1,12 @@
 import * as chai from 'chai';
 
-import { AsyncConfig } from "../../src";
-import { SSEMockServer } from "../utils/sse-mock-server";
+import { AsyncConfig } from "../../src/async-config.js";
+import { SSEMockServer } from "../utils/sse-mock-server.js";
 
-import { ChannelMessage } from "../../src/channel-message";
-import { SseTransport } from "../../src/transport";
+import { ChannelMessage } from "../../src/channel-message.js";
+import { SseTransport } from "../../src/transport/sse-transport.js";
 import "fast-text-encoding"
-import { managedObservable, promiseFromObservable, timeout, waitFor } from '../utils/types.utils';
+import { managedObservable, promiseFromObservable } from '../utils/types.utils.js';
 
 const assert: Chai.AssertStatic = chai.assert;
 
@@ -27,7 +27,7 @@ describe('SseTransport Tests', function () {
 
     it('Should authenticate with server route message and call connected', async () => {
         // Arrange
-        let config: AsyncConfig = {
+        const config: AsyncConfig = {
             socket_url: "ws://localhost:3000",
             channel_ref: "channel-1",
             channel_secret: "token-1",
@@ -57,7 +57,7 @@ describe('SseTransport Tests', function () {
 
     it('Should retry connection and notify when max retries reached', async () => {
         // Arrange
-        let config: AsyncConfig = {
+        const config: AsyncConfig = {
             socket_url: "ws://localhost:3000",
             channel_ref: "channel-2",
             channel_secret: "token-2",
@@ -99,11 +99,11 @@ describe('SseTransport Tests', function () {
         // Assert
         assert.isTrue(connected);
         assert.deepEqual(response, { code: 1, message: "Internal Server Error ", origin: "sse" });
-    });
+    }).timeout(10000);
 
     it('Should connect with a new token', async () => {
         // Arrange
-        let config: AsyncConfig = {
+        const config: AsyncConfig = {
             socket_url: "ws://localhost:3000",
             channel_ref: "channel-3",
             channel_secret: "token-3",

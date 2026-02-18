@@ -1,7 +1,8 @@
 import * as chai from 'chai';
-import * as sinon from 'sinon';
+import sinonPkg from "sinon";
 
-import { RetryTimer } from "../src/retry-timer";
+import { RetryTimer } from "../src/retry-timer.js";
+const { spy } = sinonPkg;
 
 const assert: Chai.AssertStatic = chai.assert;
 describe('Exponential Retry Timer Tests', function () {
@@ -11,12 +12,12 @@ describe('Exponential Retry Timer Tests', function () {
     it('Should retry with exponential delay', async () => {
         let counter = 0;
         let lastTime = Date.now();
-        let times: number[] = [];
+        const times: number[] = [];
         const maxRetries = 7;
 
-        let retryProcess = new Promise(resolve => {
+        const retryProcess = new Promise(resolve => {
             timer = new RetryTimer(() => {
-                let now = Date.now();
+                const now = Date.now();
                 times.push(now - lastTime);
                 lastTime = now;
                 counter = counter + 1;
@@ -33,18 +34,18 @@ describe('Exponential Retry Timer Tests', function () {
     it('Should call maxRetriesReachenCallback', async () => {
         let counter = 0;
         let lastTime = Date.now();
-        let times: number[] = [];
+        const times: number[] = [];
         const maxRetries = 3;
-        var rechedCallback: sinon.SinonSpy = sinon.spy();
+        const rechedCallback: sinon.SinonSpy = spy();
 
-        let retryProcess = new Promise(resolve => {
+        const retryProcess = new Promise(resolve => {
             timer = new RetryTimer(() => {
-                let now = Date.now();
+                const now = Date.now();
                 times.push(now - lastTime);
                 lastTime = now;
                 counter = counter + 1;
                 if (counter <= maxRetries) { timer.schedule() }
-                if (counter == maxRetries) { resolve(0) };
+                if (counter == maxRetries) { resolve(0) }
             }, 10, x => x, maxRetries, rechedCallback);
         });
 

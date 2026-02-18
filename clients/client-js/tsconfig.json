@@ -7,11 +7,17 @@
     "target": "es2020",
     "declaration": true,
     "outDir": "./dist",
-    "sourceMap": true
+    "sourceMap": true,
+    "types": ["mocha"]
+
   },
+ "ts-node": {
+    "esm": true,
+    "transpileOnly": true
+  },
+  "include": ["src", "test"],
   "exclude": [
     "node_modules",
-    "dist",
-    "test"
+    "dist"
   ]
 }

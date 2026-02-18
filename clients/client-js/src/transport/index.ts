@@ -1,6 +1,6 @@
-export { Transport } from './transport';
-export { TransportError } from './transport-error';
-export { SocketState } from './socket-state';
-export { WsTransport } from './ws-transport';
-export { SseTransport } from './sse-transport';
-export { Protocol } from './protocol';
+export type { Transport } from './transport.js';
+export type { TransportError } from './transport-error.js';
+export  { SocketState } from './socket-state.js';
+export  { WsTransport } from './ws-transport.js';
+export  { SseTransport } from './sse-transport.js';
+export  { Protocol } from './protocol.js';

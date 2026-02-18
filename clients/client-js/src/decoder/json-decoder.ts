@@ -1,8 +1,8 @@
 /* The Json serializer for encoding and decoding messages */
 
 
-import { ChannelMessage } from "../channel-message";
-import { MessageDecoder } from "./message-decoder";
+import { ChannelMessage } from "../channel-message.js";
+import { MessageDecoder } from "./message-decoder.js";
 
 export class JsonDecoder implements MessageDecoder {
 
