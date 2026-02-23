@@ -19,7 +19,7 @@ jobs:
         node-version-file: 'clients/client-js/.nvmrc'
         registry-url: 'https://registry.npmjs.org'
     - run: npm install
-    - run: npm publish --access public
+    - run: npm publish
     - uses: actions/setup-node@v6
       with:
         registry-url: 'https://npm.pkg.github.com'
