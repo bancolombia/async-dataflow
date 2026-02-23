@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v6
     - uses: actions/setup-node@v6
       with:
-        node-version-file: '.nvmrc'
+        node-version-file: 'clients/client-js/.nvmrc'
         registry-url: 'https://registry.npmjs.org'
     - run: npm install
     - run: npm publish --access public
