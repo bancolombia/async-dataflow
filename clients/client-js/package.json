@@ -38,6 +38,10 @@
     "websocket"
   ],
   "author": "Daniel Bustamante Ospina <danibust@bancolombia.com.co>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bancolombia/async-dataflow"
+  },
   "license": "ISC",
   "devDependencies": {
     "@types/chai": "^4.1.6",
