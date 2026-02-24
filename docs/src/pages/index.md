@@ -44,7 +44,7 @@ Distributed Elixir Cluster implementation of real time with websockets and notif
 ```
 
 
-## [Channel Streams](/async-dataflow/docs/channel-streams)
+## Channel Streams
 Distributed Elixir Cluster implementation of a async messages router.
 
 ```mermaid
@@ -82,12 +82,12 @@ Distributed Elixir Cluster implementation of a async messages router.
 
 ## Clients
 
-### [Client JS](/async-dataflow/docs/client-js)
+### Client JS
 Javascript library for async data flow implementation for browsers.
-### [Client Dart](/async-dataflow/docs/client-dart)
+### Client Dart
 Dart library for async data flow implementation for flutter applications.
-### [Elixir Client](/async-dataflow/docs/client-elixir)
+### Elixir Client
 Elixir library for async data flow implementation for elixir applications.
 
-## [Examples](/async-dataflow/docs/examples)
+## Examples
 The purpose of this project is to help the community to understand more the the async data flow component to implement in full asyncio solutions.
