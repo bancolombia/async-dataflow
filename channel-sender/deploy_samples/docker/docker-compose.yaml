@@ -1,0 +1,11 @@
+services:
+  channel-sender:
+    image: bancolombia/async-dataflow-channel-sender:0.3.1
+    container_name: adf-channel-sender
+    ports:
+      - "8081:8081"
+      - "8082:8082"
+      - "9568:9568"
+    volumes:
+      - ../../config/config-local.yaml:/app/config/config.yaml:ro
+    restart: unless-stopped

@@ -1,0 +1,8 @@
+.gradle
+.idea
+**/build
+**/build-cache
+.dockerignore
+.gitignore
+Dockerfile
+README.md

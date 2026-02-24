@@ -13,7 +13,7 @@ The purpose of this project is to help the community to understand more the the 
 First you need to start Docker and create container by [Async Data Flow Sender](https://hub.docker.com/repository/docker/bancolombia/async-dataflow-channel-sender).
 
 ```sh
-docker run -p 8081:8081 -p 8082:8082 -d --name=asyncdataflow bancolombia/async-dataflow-channel-sender:0.1.0
+docker run -p 8081:8081 -p 8082:8082 -d --name=asyncdataflow bancolombia/async-dataflow-channel-sender:0.3.2
 ```
 
 You need to start `back-async-java`, configure your async data flow endpoint in _application.yaml_ this application expose by default port _8080_. you can execute the backend with you favourite IDE or by shell.

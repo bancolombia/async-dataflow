@@ -67,8 +67,14 @@ spec:
     spec:
       containers:
         - name: adfsender
-          image: bancolombia/async-dataflow-channel-sender:0.1.9
-          env:                   
+          image: bancolombia/async-dataflow-channel-sender:0.3.1
+          env:
+            - name: RELEASE_DISTRIBUTION
+              value: name
+            - name: RELEASE_NODE
+              value: channel_sender_ex@$(hostname -f)
+            - name: ERL_FULLSWEEP_AFTER
+              value: "10"
             - name: ERLANG_COOKIE
               value: "put_some_random_string_here"
             - name: RELEASE_COOKIE
@@ -91,9 +97,6 @@ spec:
               cpu: 250m
               memory: 250M
           volumeMounts:
-          - name: config-volume
-            mountPath: /app/config/env.sh
-            subPath: env.sh
           - name: config-volume
             mountPath: /app/config/config.yaml
             subPath: config.yaml

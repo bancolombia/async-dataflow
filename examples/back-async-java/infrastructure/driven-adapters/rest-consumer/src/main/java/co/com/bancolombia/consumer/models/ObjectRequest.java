@@ -1,6 +1,5 @@
 package co.com.bancolombia.consumer.models;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Builder;
 import lombok.Data;
 

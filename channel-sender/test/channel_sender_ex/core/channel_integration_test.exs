@@ -271,7 +271,7 @@ defmodule ChannelSenderEx.Core.ChannelIntegrationTest do
   defp assert_connect_and_authenticate(port, channel, secret) do
     conn = connect(port, channel)
     assert_receive {:gun_upgrade, ^conn, stream, ["websocket"], _headers}, 500
-    :gun.ws_send(conn, {:text, "Auth::#{secret}"})
+    :gun.ws_send(conn, stream, {:text, "Auth::#{secret}"})
 
     assert_receive {:gun_ws, ^conn, ^stream, {:text, data_string}}
     message = decode_message(data_string)

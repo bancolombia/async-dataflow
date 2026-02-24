@@ -1,7 +1,7 @@
 #===============
 # Build Stage
 #===============
-FROM elixir:1.18.4-otp-27-alpine as build
+FROM elixir:1.19.5-otp-28-alpine as build
 
 ARG BUILD_ENV=prod
 
@@ -29,7 +29,7 @@ RUN mix release channel_sender_ex && \
 #===================
 # Deployment Stage
 #===================
-FROM alpine:3.22.2
+FROM alpine:3.23
 
 RUN apk upgrade --no-cache && \
     apk add --no-cache \
@@ -52,5 +52,4 @@ USER adfuser
 VOLUME /app/config
 
 ENTRYPOINT ["/bin/bash"]
-CMD ["/app/runner.sh"]  
-
+CMD ["/app/runner.sh"]

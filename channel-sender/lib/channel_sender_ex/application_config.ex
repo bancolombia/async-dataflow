@@ -149,7 +149,7 @@ defmodule ChannelSenderEx.ApplicationConfig do
     Application.put_env(
       :channel_sender_ex,
       :prometheus_port,
-      Map.get(fetch(config, :channel_sender_ex), "prometheus_port", 9568)
+      Map.get(fetch(config, :channel_sender_ex, "metrics"), "prometheus_port", 9568)
     )
 
     Application.put_env(:channel_sender_ex, :topology, parse_libcluster_topology(config))
@@ -170,6 +170,12 @@ defmodule ChannelSenderEx.ApplicationConfig do
       :channel_sender_ex,
       :traces_ignore_routes,
       get_in(config, [:channel_sender_ex, "opentelemetry", "traces_ignore_routes"])
+    )
+
+    Application.put_env(
+      :channel_sender_ex,
+      :metrics_enabled,
+      get_in(config, [:channel_sender_ex, "metrics", "enabled"])
     )
 
     Application.put_env(
