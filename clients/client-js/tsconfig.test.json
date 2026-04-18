@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "paths": {
+      "./transport/sse-transport.js": ["./src/transport/sse-transport.ts"],
+      "../transport/sse-transport.js": ["./src/transport/sse-transport.ts"]
+    }
+  }
+}

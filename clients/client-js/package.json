@@ -1,6 +1,6 @@
 {
   "name": "@bancolombia/chanjs-client",
-  "version": "0.4.0",
+  "version": "5.0.0",
   "description": "AsycnDataflow websocket browser client. By Bancolombia",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -52,6 +52,7 @@
     "chai": "^4.2.0",
     "deps": "^1.0.0",
     "eslint": "^8.49.0",
+    "fast-check": "^4.7.0",
     "fast-text-encoding": "^1.0.3",
     "jsdom": "22.1.0",
     "jsdom-global": "3.0.2",

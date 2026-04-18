@@ -3,7 +3,8 @@ import * as sinon from 'sinon';
 import { AsyncClient } from "../src/async-client";
 import { AsyncConfig } from "../src/async-config";
 import { Cache } from "../src/cache";
-import { SseTransport, WsTransport } from "../src/transport";
+import { WsTransport } from "../src/transport";
+import { SseTransport } from "../src/transport/sse-transport";
 import { MockedTransport } from './utils/mocked-transport';
 import { ChannelMessage } from '../src';
 import { promisedMessage, timeout } from './utils/types.utils';
@@ -64,27 +65,35 @@ describe('AsyncClient Constructor Tests', function () {
         addEventListenerSpy.restore();
     });
 
-    it('should instantiate the correct transport', function () {
+    it('should instantiate the correct transport', async function () {
         const wsTransportStub = sinon.stub(WsTransport, 'create');
         const sseTransportStub = sinon.stub(SseTransport, 'create');
+        wsTransportStub.returns(new MockedTransport('ws', () => {}, () => {}));
+        sseTransportStub.returns(new MockedTransport('sse', () => {}, () => {}));
 
-        new AsyncClient(config, ['ws'], mockTransport);
+        const wsClient = new AsyncClient(config, ['ws'], mockTransport);
+        assert.isNull(wsClient['currentTransport'], 'transport should be null before connect()');
+        await wsClient.connect();
         assert.isTrue(wsTransportStub.calledOnce);
         assert.isFalse(sseTransportStub.called);
 
-        new AsyncClient(config, ['sse'], mockTransport);
+        const sseClient = new AsyncClient(config, ['sse'], mockTransport);
+        assert.isNull(sseClient['currentTransport'], 'transport should be null before connect()');
+        await sseClient.connect();
         assert.isTrue(sseTransportStub.calledOnce);
 
         wsTransportStub.restore();
         sseTransportStub.restore();
     });
 
-    it('should instantiate the transport', function () {
+    it('should instantiate the transport', async function () {
         const instantiationStub = sinon.stub(SseTransport, 'create');
         instantiationStub.callsFake((_config, messageHandler, errorHandler) => {
             return new MockedTransport('sse', messageHandler!, errorHandler!)
         });
-        new AsyncClient(config, ['sse']);
+        const client = new AsyncClient(config, ['sse']);
+        assert.isNull(client['currentTransport'], 'transport should be null before connect()');
+        await client.connect();
 
         assert.isTrue(instantiationStub.calledOnce);
 
@@ -102,14 +111,14 @@ describe('Event handler matching Tests', function () {
         channel_secret: "secret234342432dsfghjikujyg1221",
     };
 
-    beforeEach(() => {
+    beforeEach(async () => {
         instantiationStub = sinon.stub(WsTransport, 'create');
         instantiationStub.callsFake((_config, messageHandler, errorHandler) => {
             return new MockedTransport('ws', messageHandler!, errorHandler!)
         });
         client = new AsyncClient(config, ['ws']);
+        await client.connect();
         mockedTransport = client['currentTransport'] as any;
-        client.connect();
     })
 
     afterEach(() => {
@@ -198,8 +207,8 @@ describe('Dedup messages Tests', function () {
 
     it('Should dedup repeated message', async () => {
         client = new AsyncClient(config, ['ws']);
+        await client.connect();
         mockedTransport = client['currentTransport'] as any;
-        client.connect();
 
         const simulatedMessage = new ChannelMessage("1", "quick.orange.rabbit", "1", "Hi, There");
         const onMessage = sinon.spy();
@@ -213,8 +222,8 @@ describe('Dedup messages Tests', function () {
 
     it('Should not dedup different messageid', async () => {
         client = new AsyncClient(config, ['ws']);
+        await client.connect();
         mockedTransport = client['currentTransport'] as any;
-        client.connect();
 
         const simulatedMessage = new ChannelMessage("1", "quick.orange.rabbit", "1", "Hi, There");
         const simulatedMessage2 = new ChannelMessage("2", "quick.orange.rabbit", "2", "Hi, There");
@@ -230,8 +239,8 @@ describe('Dedup messages Tests', function () {
     it('Should not dedup same messageid when cache disabled', async () => {
         config.dedupCacheDisable = true;
         client = new AsyncClient(config, ['ws']);
+        await client.connect();
         mockedTransport = client['currentTransport'] as any;
-        client.connect();
 
         const simulatedMessage = new ChannelMessage("1", "quick.orange.rabbit", "1", "Hi, There");
         const onMessage = sinon.spy();
@@ -273,8 +282,8 @@ describe('Renew token Tests', function () {
 
     it('Should update token', async () => {
         client = new AsyncClient(config, ['ws']);
+        await client.connect();
         mockedTransport = client['currentTransport'] as any;
-        client.connect();
 
         const simulatedMessage = new ChannelMessage("1", ":n_token", "1", "token");
         // Act

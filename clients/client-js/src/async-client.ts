@@ -1,9 +1,9 @@
-import { Transport, SseTransport, WsTransport, TransportError } from "./transport";
+import { Transport, WsTransport, TransportError } from "./transport";
 import { AsyncConfig } from "./async-config";
 import { Cache } from "./cache";
 import { ChannelMessage } from "./channel-message";
 export class AsyncClient {
-    private currentTransport: Transport;
+    private currentTransport: Transport | null = null;
     private currentTransportIndex: number = 0;
     private readonly bindings = [];
     private readonly cache: Cache = undefined;
@@ -17,7 +17,6 @@ export class AsyncClient {
         if (this.transports == null || this.transports.length == 0) {
             this.transports = ['ws', 'sse'];
         }
-        this.currentTransport = this.getTransport();
         const intWindow = typeof window !== "undefined" ? window : null;
         if (intWindow && (config.checkConnectionOnFocus || config.checkConnectionOnFocus === undefined)) {
             intWindow.addEventListener('focus', () => {
@@ -28,7 +27,7 @@ export class AsyncClient {
         }
     }
 
-    private getTransport(): Transport {
+    private async getTransportAsync(): Promise<Transport> {
         const transport = this.transports[this.currentTransportIndex];
         console.log('will instantiate transport: ', transport);
         if (transport === 'ws') {
@@ -37,6 +36,10 @@ export class AsyncClient {
                 (error: TransportError) => this.handleTransportError(error),
                 this.mockTransport);
         } else if (transport === 'sse') {
+            // Cast path to `any` to bypass NodeNext's .js extension requirement.
+            // Bundlers resolve this at build time; ts-node (commonjs) resolves it at test time.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { SseTransport } = await import("./transport/sse-transport" as any);
             return SseTransport.create(this.config,
                 (message: ChannelMessage) => this.handleMessage(message),
                 (error: TransportError) => this.handleTransportError(error),
@@ -45,8 +48,11 @@ export class AsyncClient {
         throw new Error('No transport available: ' + transport);
     }
 
-    public connect() {
+    public async connect() {
         this.closeWasClean = false;
+        if (!this.currentTransport) {
+            this.currentTransport = await this.getTransportAsync();
+        }
         this.currentTransport.connect();
     }
 
@@ -56,11 +62,13 @@ export class AsyncClient {
 
     public disconnect(): void {
         this.closeWasClean = true;
-        this.currentTransport.disconnect();
+        if (this.currentTransport) {
+            this.currentTransport.disconnect();
+        }
     }
 
     public connected(): boolean {
-        return this.currentTransport.connected();
+        return this.currentTransport ? this.currentTransport.connected() : false;
     }
 
     // internal methods
@@ -109,14 +117,14 @@ export class AsyncClient {
         }
     }
 
-    private handleTransportError(error: TransportError) {
+    private async handleTransportError(error: TransportError) {
         console.debug(`async-client. hanldling transport error: `, error);
         if (error.code === 1 && error.origin == this.currentTransport.name()) {
             this.retriesByTransport++;
             this.currentTransport.disconnect();
             this.currentTransportIndex = (this.currentTransportIndex + 1) % this.transports.length;
             if (this.retriesByTransport <= this.config.maxReconnectAttempts) {
-                this.currentTransport = this.getTransport();
+                this.currentTransport = await this.getTransportAsync();
                 this.connect();
             } else {
                 console.error('async-client. stopping transport retries for ', this.transports);

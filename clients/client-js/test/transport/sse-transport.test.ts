@@ -4,7 +4,7 @@ import { AsyncConfig } from "../../src";
 import { SSEMockServer } from "../utils/sse-mock-server";
 
 import { ChannelMessage } from "../../src/channel-message";
-import { SseTransport } from "../../src/transport";
+import { SseTransport } from "../../src/transport/sse-transport";
 import "fast-text-encoding"
 import { managedObservable, promiseFromObservable, timeout, waitFor } from '../utils/types.utils';
 
