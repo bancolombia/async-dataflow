@@ -16,8 +16,8 @@ export class Utils {
     }
 
     public static extractReason(reason): number {
-        const reasonNumber = parseInt(reason);
-        if (isNaN(reasonNumber)) {
+        const reasonNumber = Number.parseInt(reason);
+        if (Number.isNaN(reasonNumber)) {
             return 0;
         }
         return reasonNumber;

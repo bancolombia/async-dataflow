@@ -85,7 +85,7 @@ export class AsyncClient {
             return;
         }
         
-        var candidateBindings = this.bindings
+        const candidateBindings = this.bindings
             .filter(handler => this.matchHandlerExpr(handler.eventName, message.event));
 
         if (candidateBindings.length === 0) {

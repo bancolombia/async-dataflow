@@ -84,7 +84,7 @@ export class WsTransport implements Transport {
     }
 
     public connected(): boolean {
-        return this.socket && this.socket.readyState == SocketState.OPEN;
+        return this.socket?.readyState == SocketState.OPEN;
     }
 
     public send(message: string): void {
@@ -213,10 +213,10 @@ export class WsTransport implements Transport {
         this.tearingDown = true;
         if (!this.socket) {
             this.tearingDown = false;
-            return callback && callback();
+            return callback?.();
         }
 
-        if (this.socket && this.socket.readyState != SocketState.CLOSED && this.socket.readyState != SocketState.CLOSING) {
+        if (this.socket.readyState != SocketState.CLOSED && this.socket.readyState != SocketState.CLOSING) {
             this.socket.close();
         }
 
@@ -226,7 +226,7 @@ export class WsTransport implements Transport {
                 this.socket = null
             }
             this.tearingDown = false;
-            callback && callback()
+            callback?.()
         });
 
     }
