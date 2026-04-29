@@ -36,14 +36,11 @@ export class AsyncClient {
                 (error: TransportError) => this.handleTransportError(error),
                 this.mockTransport);
         } else if (transport === 'sse') {
-            // Cast path to `any` to bypass NodeNext's .js extension requirement.
-            // Bundlers resolve this at build time; ts-node (commonjs) resolves it at test time.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { SseTransport } = await import("./transport/sse-transport" as any);
+            const { SseTransport } = await import("./transport/sse-transport.js");
             return SseTransport.create(this.config,
-                (message: ChannelMessage) => this.handleMessage(message),
-                (error: TransportError) => this.handleTransportError(error),
-                this.mockTransport);
+                    (message: ChannelMessage) => this.handleMessage(message),
+                    (error: TransportError) => this.handleTransportError(error),
+                    this.mockTransport);
         }
         throw new Error('No transport available: ' + transport);
     }
