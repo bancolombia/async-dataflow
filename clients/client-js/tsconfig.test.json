@@ -1,8 +1,12 @@
 {
   "extends": "./tsconfig.json",
+  "ts-node": {
+    "esm": true
+  },
   "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["mocha", "node"],
     "paths": {
       "./transport/sse-transport.js": ["./src/transport/sse-transport.ts"],
       "../transport/sse-transport.js": ["./src/transport/sse-transport.ts"]
