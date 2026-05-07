@@ -30,29 +30,29 @@ describe('AsyncClient Constructor Tests', function () {
     });
 
     it('should initialize with default transports if none provided', function () {
-        const client = new AsyncClient(config, null, mockTransport);
+        const client = new AsyncClient({ config });
         assert.deepEqual(client['transports'], ['ws', 'sse']);
     });
 
     it('should initialize with provided transports', function () {
-        const client = new AsyncClient(config, ['ws'], mockTransport);
+        const client = new AsyncClient({ config, transports: ['ws'], mockTransport });
         assert.deepEqual(client['transports'], ['ws']);
     });
 
     it('should initialize cache if dedupCacheDisable is false', function () {
-        const client = new AsyncClient(config, ['ws'], mockTransport);
+        const client = new AsyncClient({ config, transports: ['ws'], mockTransport });
         assert.instanceOf(client['cache'], Cache);
     });
 
     it('should not initialize cache if dedupCacheDisable is true', function () {
         config.dedupCacheDisable = true;
-        const client = new AsyncClient(config, ['ws'], mockTransport);
+        const client = new AsyncClient({ config, transports: ['ws'], mockTransport });
         assert.isUndefined(client['cache']);
     });
 
     it('should set up focus event listener if checkConnectionOnFocus is true', function () {
         const addEventListenerSpy = sinon.spy(window, 'addEventListener');
-        new AsyncClient(config, ['ws'], mockTransport);
+        new AsyncClient({ config, transports: ['ws'], mockTransport });
         assert.isTrue(addEventListenerSpy.called);
         addEventListenerSpy.restore();
     });
@@ -60,7 +60,7 @@ describe('AsyncClient Constructor Tests', function () {
     it('should not set up focus event listener if checkConnectionOnFocus is false', function () {
         config.checkConnectionOnFocus = false;
         const addEventListenerSpy = sinon.spy(window, 'addEventListener');
-        new AsyncClient(config, ['ws'], mockTransport);
+        new AsyncClient({ config, transports: ['ws'], mockTransport });
         assert.isFalse(addEventListenerSpy.called);
         addEventListenerSpy.restore();
     });
@@ -71,13 +71,13 @@ describe('AsyncClient Constructor Tests', function () {
         wsTransportStub.returns(new MockedTransport('ws', () => {}, () => {}));
         sseTransportStub.returns(new MockedTransport('sse', () => {}, () => {}));
 
-        const wsClient = new AsyncClient(config, ['ws'], mockTransport);
+        const wsClient = new AsyncClient({ config, transports: ['ws'], mockTransport });
         assert.isNull(wsClient['currentTransport'], 'transport should be null before connect()');
         await wsClient.connect();
         assert.isTrue(wsTransportStub.calledOnce);
         assert.isFalse(sseTransportStub.called);
 
-        const sseClient = new AsyncClient(config, ['sse'], mockTransport);
+        const sseClient = new AsyncClient({ config, transports: ['sse'], mockTransport });
         assert.isNull(sseClient['currentTransport'], 'transport should be null before connect()');
         await sseClient.connect();
         assert.isTrue(sseTransportStub.calledOnce);
@@ -91,7 +91,7 @@ describe('AsyncClient Constructor Tests', function () {
         instantiationStub.callsFake((_config, messageHandler, errorHandler) => {
             return new MockedTransport('sse', messageHandler!, errorHandler!)
         });
-        const client = new AsyncClient(config, ['sse']);
+        const client = new AsyncClient({ config, transports: ['sse'] });
         assert.isNull(client['currentTransport'], 'transport should be null before connect()');
         await client.connect();
 
@@ -116,7 +116,7 @@ describe('Event handler matching Tests', function () {
         instantiationStub.callsFake((_config, messageHandler, errorHandler) => {
             return new MockedTransport('ws', messageHandler!, errorHandler!)
         });
-        client = new AsyncClient(config, ['ws']);
+        client = new AsyncClient({ config, transports: ['ws'] });
         await client.connect();
         mockedTransport = client['currentTransport'] as any;
     })
@@ -206,7 +206,7 @@ describe('Dedup messages Tests', function () {
     });
 
     it('Should dedup repeated message', async () => {
-        client = new AsyncClient(config, ['ws']);
+        client = new AsyncClient({ config, transports: ['ws'] });
         await client.connect();
         mockedTransport = client['currentTransport'] as any;
 
@@ -221,7 +221,7 @@ describe('Dedup messages Tests', function () {
     });
 
     it('Should not dedup different messageid', async () => {
-        client = new AsyncClient(config, ['ws']);
+        client = new AsyncClient({ config, transports: ['ws'] });
         await client.connect();
         mockedTransport = client['currentTransport'] as any;
 
@@ -238,7 +238,7 @@ describe('Dedup messages Tests', function () {
 
     it('Should not dedup same messageid when cache disabled', async () => {
         config.dedupCacheDisable = true;
-        client = new AsyncClient(config, ['ws']);
+        client = new AsyncClient({ config, transports: ['ws'] });
         await client.connect();
         mockedTransport = client['currentTransport'] as any;
 
@@ -281,7 +281,7 @@ describe('Renew token Tests', function () {
     });
 
     it('Should update token', async () => {
-        client = new AsyncClient(config, ['ws']);
+        client = new AsyncClient({ config, transports: ['ws'] });
         await client.connect();
         mockedTransport = client['currentTransport'] as any;
 

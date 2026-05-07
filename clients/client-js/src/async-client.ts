@@ -1,7 +1,8 @@
 import { Transport, WsTransport, TransportError } from "./transport";
-import { AsyncConfig } from "./async-config";
+import { AsyncConfig, AsyncClientOptions } from "./async-config";
 import { Cache } from "./cache";
 import { ChannelMessage } from "./channel-message";
+
 export class AsyncClient {
     private currentTransport: Transport | null = null;
     private currentTransportIndex: number = 0;
@@ -9,8 +10,14 @@ export class AsyncClient {
     private readonly cache: Cache = undefined;
     private closeWasClean: boolean = false;
     private retriesByTransport = 0;
+    private readonly config: AsyncConfig;
+    private transports: Array<string> | null;
+    private readonly mockTransport: any;
 
-    constructor(private readonly config: AsyncConfig, private readonly transports: Array<string> | null, private readonly mockTransport: any = null) {
+    constructor({ config, transports = null, mockTransport = null }: AsyncClientOptions) {
+        this.config = config;
+        this.transports = transports;
+        this.mockTransport = mockTransport;
         if (!config.dedupCacheDisable) {
             this.cache = new Cache(config.dedupCacheMaxSize, config.dedupCacheTtl);
         }
