@@ -51,7 +51,7 @@ defmodule ChannelSenderEx.MixProject do
       {:gen_state_machine, "~> 3.0"},
       {:jason, "~> 1.4"},
       {:libcluster, "~> 3.5"},
-      {:plug_cowboy, "~> 2.7"},
+      {:plug_cowboy, "~> 2.8"},
       {:plug_crypto, "~> 2.1"},
       {:vapor, "~> 0.10"},
       # for metrics and tracing
@@ -62,7 +62,7 @@ defmodule ChannelSenderEx.MixProject do
        git: "https://github.com/bancolombia/opentelemetry_plug.git", tag: "v1.3.0"},
       {:opentelemetry_semantic_conventions, "~> 1.27"},
       {:cowboy_telemetry, "~> 0.4"},
-      {:telemetry, "~> 1.3"},
+      {:telemetry, "~> 1.4"},
       {:telemetry_metrics_prometheus, "~> 1.1"},
       {:telemetry_poller, "~> 1.3"},
       # Profiling tools
@@ -70,8 +70,8 @@ defmodule ChannelSenderEx.MixProject do
       {:observer_cli, "~> 1.8"},
       # Dev and Test dependencies
       # {:meck, "0.9.2"},
-      {:hackney, "~> 1.25", only: :test},
-      {:stream_data, "~> 1.2", only: :test},
+      {:hackney, "~> 4.0", only: :test},
+      {:stream_data, "~> 1.3", only: :test},
       {:mock, "~> 0.3", only: :test},
       {:benchee, "~> 1.5", only: [:dev, :benchee]},
       {:gun, "~> 2.2", only: [:test, :benchee]},
