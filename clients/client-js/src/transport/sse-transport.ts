@@ -110,11 +110,11 @@ export class SseTransport implements Transport {
 
     public disconnect(): void {
         console.info('async-client. sse disconnect() called');
-        if (!this.controller.signal.aborted) {
+        if (this.controller.signal.aborted) {
+            console.debug('async-client. sse already aborted');
+        } else {
             this.controller.abort();
             console.debug('async-client. sse aborted');
-        } else {
-            console.debug('async-client. sse already aborted');
         }
     }
 

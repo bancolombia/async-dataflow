@@ -39,7 +39,7 @@ export class WsTransport implements Transport {
         private readonly errorCallback: (_error: TransportError) => void,
         private readonly transport: any = null) {
 
-        const intWindow = typeof window !== "undefined" ? window : null;
+        const intWindow = typeof globalThis.window == "undefined" ? null : globalThis.window;
         this.transport = transport || intWindow['WebSocket'];
         this.heartbeatIntervalMs = config.heartbeat_interval || 750;
         this.reconnectTimer = new RetryTimer(() => this.teardown(() => this.connect()),

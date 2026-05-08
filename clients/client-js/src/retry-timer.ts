@@ -22,12 +22,14 @@ export class RetryTimer {
     }
 
     public schedule(): void {
-        if (typeof window !== 'undefined') {
+        if (typeof globalThis.window == 'undefined') {
+            console.warn(`async-client. could not setup scheduler for retry: window is undefined.`);
+        } else {
             if (this.tries < this.maxRetries) {
                 const delayMS = this.delay();
                 this.tries = this.tries + 1;
                 console.log(`async-client. scheduling retry in ${delayMS} ms`);
-                this.timer = window.setTimeout(() => {
+                this.timer = globalThis.window.setTimeout(() => {
                     console.log(`async-client. retrying ${this.tries} of ${this.maxRetries}`);
                     this.callback();
                 }, delayMS)
@@ -39,8 +41,6 @@ export class RetryTimer {
                 }
                 console.log(`async-client. max retries reached.`);
             }
-        } else {
-            console.warn(`async-client. could not setup scheduler for rety: window is undefined.`);
         }
     }
 

@@ -55,7 +55,7 @@ export class AsyncClientService {
       maxReconnectAttempts: settings.maxRetries
     }
     console.log('Configuring AsyncClient with:', config);
-    this.client = new AsyncClient(config, settings.transports);
+    this.client = new AsyncClient({config, transports: settings.transports});
 
     this.client.connect();
     this.listenEvents(this.client);

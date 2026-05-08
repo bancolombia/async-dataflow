@@ -11,7 +11,7 @@ export class AsyncClient {
     private closeWasClean: boolean = false;
     private retriesByTransport = 0;
     private readonly config: AsyncConfig;
-    private transports: Array<string> | null;
+    private readonly transports: Array<string> | null;
     private readonly mockTransport: any;
 
     constructor({ config, transports = null, mockTransport = null }: AsyncClientOptions) {
@@ -24,7 +24,7 @@ export class AsyncClient {
         if (this.transports == null || this.transports.length == 0) {
             this.transports = ['ws', 'sse'];
         }
-        const intWindow = typeof window !== "undefined" ? window : null;
+        const intWindow = typeof globalThis.window == "undefined" ? null: globalThis.window;
         if (intWindow && (config.checkConnectionOnFocus || config.checkConnectionOnFocus === undefined)) {
             intWindow.addEventListener('focus', () => {
                 if (!this.closeWasClean) {
@@ -95,7 +95,6 @@ export class AsyncClient {
         if (candidateBindings.length === 0) {
             console.debug(`async-client. No bindings found for event'${message.event}' with message_id: ${message.message_id}. Discarding message.`);
             this.currentTransport.send(`no-bindings-for[${message.event}]-msgid[${message.message_id}]`);
-            return;
         } else {
             candidateBindings
                 .filter(_handler => this.deDupFilter(message.message_id))
@@ -105,19 +104,19 @@ export class AsyncClient {
 
     private matchHandlerExpr(eventExpr: string, actualEventName: string): boolean {
         if (eventExpr === actualEventName) return true;
-        const regexString = '^' + eventExpr.replace(/\*/g, '([^.]+)').replace(/#/g, '([^.]+\\.?)+') + '$';
+        const regexString = '^' + eventExpr.replace(/\*/g, '([^.]+)').replace(/#/g, String.raw`([^.]+\.?)+`) + '$';
         return actualEventName.search(regexString) !== -1;
     }
 
     private deDupFilter(message_id: string): boolean {
         if (this.cache === undefined) {
             return true;
-        } else if (this.cache.get(message_id) !== undefined) {
-            console.debug(`async-client. Dedup filtering for message_id: ${message_id} applied.`);
-            return false;
-        } else {
+        } else if (this.cache.get(message_id) == undefined) {
             this.cache.save(message_id, '');
             return true;
+        } else {
+            console.debug(`async-client. Dedup filtering for message_id: ${message_id} applied.`);
+            return false;
         }
     }
 
