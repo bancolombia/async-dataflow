@@ -39,7 +39,7 @@ export class WsTransport implements Transport {
         private readonly errorCallback: (_error: TransportError) => void,
         private readonly transport: any = null) {
 
-        const intWindow = typeof window !== "undefined" ? window : null;
+        const intWindow = typeof globalThis.window == "undefined" ? null : globalThis.window;
         this.transport = transport || intWindow['WebSocket'];
         this.heartbeatIntervalMs = config.heartbeat_interval || 750;
         this.reconnectTimer = new RetryTimer(() => this.teardown(() => this.connect()),
@@ -84,7 +84,7 @@ export class WsTransport implements Transport {
     }
 
     public connected(): boolean {
-        return this.socket && this.socket.readyState == SocketState.OPEN;
+        return this.socket?.readyState == SocketState.OPEN;
     }
 
     public send(message: string): void {
@@ -213,10 +213,10 @@ export class WsTransport implements Transport {
         this.tearingDown = true;
         if (!this.socket) {
             this.tearingDown = false;
-            return callback && callback();
+            return callback?.();
         }
 
-        if (this.socket && this.socket.readyState != SocketState.CLOSED && this.socket.readyState != SocketState.CLOSING) {
+        if (this.socket.readyState != SocketState.CLOSED && this.socket.readyState != SocketState.CLOSING) {
             this.socket.close();
         }
 
@@ -226,7 +226,7 @@ export class WsTransport implements Transport {
                 this.socket = null
             }
             this.tearingDown = false;
-            callback && callback()
+            callback?.()
         });
 
     }

@@ -1,24 +1,30 @@
-import { Transport, SseTransport, WsTransport, TransportError } from "./transport";
-import { AsyncConfig } from "./async-config";
+import { Transport, WsTransport, TransportError } from "./transport";
+import { AsyncConfig, AsyncClientOptions } from "./async-config";
 import { Cache } from "./cache";
 import { ChannelMessage } from "./channel-message";
+
 export class AsyncClient {
-    private currentTransport: Transport;
+    private currentTransport: Transport | null = null;
     private currentTransportIndex: number = 0;
     private readonly bindings = [];
     private readonly cache: Cache = undefined;
     private closeWasClean: boolean = false;
     private retriesByTransport = 0;
+    private readonly config: AsyncConfig;
+    private readonly transports: Array<string> | null;
+    private readonly mockTransport: any;
 
-    constructor(private readonly config: AsyncConfig, private readonly transports: Array<string> | null, private readonly mockTransport: any = null) {
+    constructor({ config, transports = null, mockTransport = null }: AsyncClientOptions) {
+        this.config = config;
+        this.transports = transports;
+        this.mockTransport = mockTransport;
         if (!config.dedupCacheDisable) {
             this.cache = new Cache(config.dedupCacheMaxSize, config.dedupCacheTtl);
         }
         if (this.transports == null || this.transports.length == 0) {
             this.transports = ['ws', 'sse'];
         }
-        this.currentTransport = this.getTransport();
-        const intWindow = typeof window !== "undefined" ? window : null;
+        const intWindow = typeof globalThis.window == "undefined" ? null: globalThis.window;
         if (intWindow && (config.checkConnectionOnFocus || config.checkConnectionOnFocus === undefined)) {
             intWindow.addEventListener('focus', () => {
                 if (!this.closeWasClean) {
@@ -28,7 +34,7 @@ export class AsyncClient {
         }
     }
 
-    private getTransport(): Transport {
+    private async getTransportAsync(): Promise<Transport> {
         const transport = this.transports[this.currentTransportIndex];
         console.log('will instantiate transport: ', transport);
         if (transport === 'ws') {
@@ -37,16 +43,20 @@ export class AsyncClient {
                 (error: TransportError) => this.handleTransportError(error),
                 this.mockTransport);
         } else if (transport === 'sse') {
+            const { SseTransport } = await import("./transport/sse-transport.js");
             return SseTransport.create(this.config,
-                (message: ChannelMessage) => this.handleMessage(message),
-                (error: TransportError) => this.handleTransportError(error),
-                this.mockTransport);
+                    (message: ChannelMessage) => this.handleMessage(message),
+                    (error: TransportError) => this.handleTransportError(error),
+                    this.mockTransport);
         }
         throw new Error('No transport available: ' + transport);
     }
 
-    public connect() {
+    public async connect() {
         this.closeWasClean = false;
+        if (!this.currentTransport) {
+            this.currentTransport = await this.getTransportAsync();
+        }
         this.currentTransport.connect();
     }
 
@@ -56,11 +66,13 @@ export class AsyncClient {
 
     public disconnect(): void {
         this.closeWasClean = true;
-        this.currentTransport.disconnect();
+        if (this.currentTransport) {
+            this.currentTransport.disconnect();
+        }
     }
 
     public connected(): boolean {
-        return this.currentTransport.connected();
+        return this.currentTransport ? this.currentTransport.connected() : false;
     }
 
     // internal methods
@@ -77,13 +89,12 @@ export class AsyncClient {
             return;
         }
         
-        var candidateBindings = this.bindings
+        const candidateBindings = this.bindings
             .filter(handler => this.matchHandlerExpr(handler.eventName, message.event));
 
         if (candidateBindings.length === 0) {
             console.debug(`async-client. No bindings found for event'${message.event}' with message_id: ${message.message_id}. Discarding message.`);
             this.currentTransport.send(`no-bindings-for[${message.event}]-msgid[${message.message_id}]`);
-            return;
         } else {
             candidateBindings
                 .filter(_handler => this.deDupFilter(message.message_id))
@@ -93,30 +104,30 @@ export class AsyncClient {
 
     private matchHandlerExpr(eventExpr: string, actualEventName: string): boolean {
         if (eventExpr === actualEventName) return true;
-        const regexString = '^' + eventExpr.replace(/\*/g, '([^.]+)').replace(/#/g, '([^.]+\\.?)+') + '$';
+        const regexString = '^' + eventExpr.replace(/\*/g, '([^.]+)').replace(/#/g, String.raw`([^.]+\.?)+`) + '$';
         return actualEventName.search(regexString) !== -1;
     }
 
     private deDupFilter(message_id: string): boolean {
         if (this.cache === undefined) {
             return true;
-        } else if (this.cache.get(message_id) !== undefined) {
-            console.debug(`async-client. Dedup filtering for message_id: ${message_id} applied.`);
-            return false;
-        } else {
+        } else if (this.cache.get(message_id) == undefined) {
             this.cache.save(message_id, '');
             return true;
+        } else {
+            console.debug(`async-client. Dedup filtering for message_id: ${message_id} applied.`);
+            return false;
         }
     }
 
-    private handleTransportError(error: TransportError) {
+    private async handleTransportError(error: TransportError) {
         console.debug(`async-client. hanldling transport error: `, error);
         if (error.code === 1 && error.origin == this.currentTransport.name()) {
             this.retriesByTransport++;
             this.currentTransport.disconnect();
             this.currentTransportIndex = (this.currentTransportIndex + 1) % this.transports.length;
             if (this.retriesByTransport <= this.config.maxReconnectAttempts) {
-                this.currentTransport = this.getTransport();
+                this.currentTransport = await this.getTransportAsync();
                 this.connect();
             } else {
                 console.error('async-client. stopping transport retries for ', this.transports);

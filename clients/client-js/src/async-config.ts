@@ -1,3 +1,9 @@
+export interface AsyncClientOptions {
+    config: AsyncConfig;
+    transports?: Array<string> | null;
+    mockTransport?: any;
+}
+
 export interface AsyncConfig {
     socket_url: string;
     sse_url?: string;

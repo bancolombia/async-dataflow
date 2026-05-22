@@ -29,12 +29,15 @@ You can understand better the flow with this sequence diagram.
 import { AsyncClient } from '@bancolombia/chanjs-client';
 
 ...
-const client = new AsyncClient({
-    socket_url: "wss://some.domain:8984/socket",
-    channel_ref: "some_channel_ref",
-    channel_secret: "secret_from_some_auth_service",
-    heartbeat_interval: 200
-});
+const client = new AsyncClient(
+    {
+        socket_url: "wss://some.domain:8984/socket",
+        channel_ref: "some_channel_ref",
+        channel_secret: "secret_from_some_auth_service",
+        heartbeat_interval: 200
+    },
+    ['ws', 'sse'] // optional: transport priority order, defaults to ['ws', 'sse']
+);
 ...
 ```
 
@@ -43,13 +46,40 @@ const client = new AsyncClient({
 | **Parameters**          | Description                                                                                                                                   | Default Value |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | socket_url              | [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender) cluster url                         |               |
-| channel_ref             | channel getted from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender) |               |
-| channel_secret          | token getted from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender)   |               |
+| channel_ref             | channel obtained from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender) |               |
+| channel_secret          | token obtained from rest service of [async-dataflow-channel-sender](https://github.com/bancolombia/async-dataflow/tree/master/channel-sender)   |               |
+| sse_url                 | optional explicit SSE endpoint URL. If not set, it is derived from `socket_url` by replacing the `ws`/`wss` scheme with `http`/`https`        |               |
 | heartbeat_interval      | time in milliseconds to verify socket connection **this parameter must be less than the socket_idle_timeout on the channel sender**           | 750           |
-| enable_binary_transport | boolean parameter to indicate use binary protocol                                                                                             | false         |
-| dedupCacheDisable | boolean flag to control dedup operations of messages by its `message_id`. If `true` no dedup operation will be performed. | false |
-| dedupCacheMaxSize | max ammount of elements to cache in the dedup process. Only if `dedupCacheDisable` is false. | 500 |
-| dedupCacheTtl | time to live of cached elements in the dedup operation (in minutes). Only if `dedupCacheDisable` is false. | 15 |
+| enable_binary_transport | boolean parameter to indicate use binary protocol over WebSocket                                                                              | false         |
+| maxReconnectAttempts    | maximum number of reconnect attempts before giving up                                                                                         | 10            |
+| checkConnectionOnFocus  | when `true`, reconnects automatically when the browser window regains focus (if the connection was lost)                                      | true          |
+| dedupCacheDisable       | boolean flag to control dedup operations of messages by their `message_id`. If `true` no dedup operation will be performed.                   | false         |
+| dedupCacheMaxSize       | max number of elements to cache in the dedup process. Only if `dedupCacheDisable` is false.                                                   | 500           |
+| dedupCacheTtl           | time to live of cached elements in the dedup operation (in minutes). Only if `dedupCacheDisable` is false.                                    | 10            |
+
+### Transport fallback
+
+The client supports multiple transports with automatic fallback. By default it tries WebSocket first, then falls back to SSE if the WebSocket connection fails:
+
+```javascript
+// Default: tries WebSocket first, then SSE
+const client = new AsyncClient(config, ['ws', 'sse']);
+
+// WebSocket only
+const client = new AsyncClient(config, ['ws']);
+
+// SSE only
+const client = new AsyncClient(config, ['sse']);
+```
+
+### Client methods
+
+| **Method**        | Description                                                        |
+| ----------------- | ------------------------------------------------------------------ |
+| `connect()`       | Establishes the connection using the configured transport(s)       |
+| `disconnect()`    | Cleanly closes the connection                                      |
+| `connected()`     | Returns `true` if the transport is currently connected             |
+| `listenEvent(name, callback)` | Registers a callback for a given event name or pattern |
 
 ### Subscribing to events
 
@@ -59,11 +89,11 @@ client.listenEvent("event.some-name", (message) =>
 );
 ```
 
-You can also use amqp-match style name expressions when susbscribing to events. Examples:
+You can also use amqp-match style name expressions when subscribing to events. Examples:
 
 ```javascript
 client.listenEvent("event.#", (message) => someCallback(message.payload));
 client.listenEvent("event.some.*", (message) => someCallback(message.payload));
 ```
 
-Messages will be delivered **at least once**, as Channel-Sender implements delivery guarantee. If your application is sensible to the reception of eventually duplicated messages, you can make use of the simple dedup operation this client provides, by caching message_ids by certain time and only invokig your callback once, or by implementing your own dedup operation.
+Messages will be delivered **at least once**, as Channel-Sender implements delivery guarantee. If your application is sensitive to the reception of eventually duplicated messages, you can make use of the simple dedup operation this client provides, by caching message_ids for a certain time and only invoking your callback once, or by implementing your own dedup operation.

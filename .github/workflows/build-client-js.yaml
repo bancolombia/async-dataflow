@@ -12,11 +12,11 @@ jobs:
         working-directory: clients/client-js
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    # Setup .npmrc file to publish to npm
-    - uses: actions/setup-node@v4
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
       with:
-        node-version: '22.15.0'
+        node-version-file: 'clients/client-js/.nvmrc'
+        registry-url: 'https://registry.npmjs.org'
     - run: npm install
       name: Install dependencies
     - run: npm run build

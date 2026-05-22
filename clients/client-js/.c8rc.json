@@ -1,0 +1,16 @@
+{
+  "reporter": ["lcov", "text", "text-summary"],
+  "all": true,
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "**/*.d.ts",
+    "**/*.test.ts",
+    "src/index.ts",
+    "coverage",
+    "dist",
+    "node_modules"
+  ],
+  "temp-dir": "./.c8_output",
+  "report-dir": "./coverage",
+  "skip-full": false
+}
