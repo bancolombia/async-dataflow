@@ -1,4 +1,6 @@
 # CHANGELOG
+## [3.2.1]
+- Update dependencies to major versions
 ## [3.2.0]
 - Add deduplication support for ws.
 ## [3.1.1]
