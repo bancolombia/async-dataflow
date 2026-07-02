@@ -6,7 +6,7 @@ import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:channel_sender_client/src/transport/types/ws_transport.dart';
 import 'package:logging/logging.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 class MockAsyncConfig extends Mock implements AsyncConfig {}
 

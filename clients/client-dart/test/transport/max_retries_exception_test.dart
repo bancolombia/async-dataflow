@@ -1,5 +1,5 @@
 import 'package:channel_sender_client/src/exceptions/max_retries_exception.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('should create exception with message', () {

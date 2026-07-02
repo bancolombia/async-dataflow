@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:channel_sender_client/src/decoder/binary_decoder.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Parsing binary data', () {
@@ -61,7 +61,7 @@ void main() {
         97,
         116,
         97,
-        49
+        49,
       ]);
 
       final msg = BinaryDecoder().decode(binaryMessage);
@@ -82,9 +82,10 @@ void main() {
         255,
         messageId.length,
         correlationId.length,
-        event.length
+        event.length,
       ];
-      var binaryMessage = dataHeaders +
+      var binaryMessage =
+          dataHeaders +
           utf8.encode(messageId) +
           utf8.encode(correlationId) +
           utf8.encode(event) +
@@ -99,8 +100,18 @@ void main() {
     });
 
     test('parses binary frame for auth ok', () {
-      final binaryMessage =
-          Uint8List.fromList([255, 0, 0, 6, 65, 117, 116, 104, 79, 107]);
+      final binaryMessage = Uint8List.fromList([
+        255,
+        0,
+        0,
+        6,
+        65,
+        117,
+        116,
+        104,
+        79,
+        107,
+      ]);
       final msg = BinaryDecoder().decode(binaryMessage);
       expect(msg, isNotNull);
       expect(msg.messageId, equals(null));
@@ -110,13 +121,17 @@ void main() {
     });
 
     test('handle parsing wrong binary message', () {
-      expect(() => BinaryDecoder().decode(Uint8List.fromList([115, 97])),
-          throwsArgumentError);
+      expect(
+        () => BinaryDecoder().decode(Uint8List.fromList([115, 97])),
+        throwsArgumentError,
+      );
     });
 
     test('handle parsing empty binary message ', () {
-      expect(() => BinaryDecoder().decode(Uint8List.fromList([])),
-          throwsArgumentError);
+      expect(
+        () => BinaryDecoder().decode(Uint8List.fromList([])),
+        throwsArgumentError,
+      );
     });
 
     test('handle parsing null binary message ', () {

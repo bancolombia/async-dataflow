@@ -2,9 +2,10 @@ import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:channel_sender_client/src/transport/default_transport_strategy.dart';
 import 'package:channel_sender_client/src/transport/transport.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 class MockWSTransport extends Mock implements Transport {}
+
 class MockSSETransport extends Mock implements Transport {}
 
 void main() {
@@ -17,9 +18,7 @@ void main() {
   });
 
   group('Default Transport Strategy Tests', () {
-    
     test('Handle strategy initialization with no transports', () async {
-
       var onTransportClose = (int code, String reason) {
         print('socket closed');
       };
@@ -32,22 +31,24 @@ void main() {
         channelRef: 'channelRef',
         channelSecret: 'channelSecret',
         heartbeatInterval: 1000,
-        transportsProvider: [],);
+        transportsProvider: [],
+      );
 
-      expect(() => DefaultTransportStrategy(config, 
-        onTransportClose, 
-        onTransportError,), 
+      expect(
+        () => DefaultTransportStrategy(
+          config,
+          onTransportClose,
+          onTransportError,
+        ),
         throwsA(isA<Exception>()),
       );
-      
     });
 
     test('Handle strategy initialization with one transport ws', () async {
-
-      when(() => mockWSTransport.name())
-          .thenAnswer((_) => TransportType.ws);
-      when(() => mockWSTransport.connect())
-          .thenAnswer((_) => Future.value(true));
+      when(() => mockWSTransport.name()).thenAnswer((_) => TransportType.ws);
+      when(
+        () => mockWSTransport.connect(),
+      ).thenAnswer((_) => Future.value(true));
 
       var onTransportClose = (int code, String reason) {
         print('socket closed');
@@ -61,37 +62,37 @@ void main() {
         channelRef: 'channelRef',
         channelSecret: 'channelSecret',
         heartbeatInterval: 1000,
-        transportsProvider: [TransportType.ws],);
+        transportsProvider: [TransportType.ws],
+      );
 
-      DefaultTransportStrategy transportStrategy =  DefaultTransportStrategy.custom(config, 
-        onTransportClose, 
-        onTransportError,
-        {
-          TransportType.ws: () => mockWSTransport,
-        },);
-      
+      DefaultTransportStrategy transportStrategy =
+          DefaultTransportStrategy.custom(
+            config,
+            onTransportClose,
+            onTransportError,
+            {TransportType.ws: () => mockWSTransport},
+          );
+
       expect(transportStrategy, isNotNull);
       expect(transportStrategy.getTransport(), isNotNull);
       expect(transportStrategy.getTransport().name(), TransportType.ws);
-      
-      expect(await transportStrategy.connect(), true);
 
+      expect(await transportStrategy.connect(), true);
     });
 
     test('Handle strategy transport switching', () async {
+      when(() => mockWSTransport.name()).thenAnswer((_) => TransportType.ws);
+      when(
+        () => mockWSTransport.connect(),
+      ).thenAnswer((_) => Future.value(true));
+      when(
+        () => mockWSTransport.disconnect(),
+      ).thenAnswer((_) => Future.value());
 
-      when(() => mockWSTransport.name())
-          .thenAnswer((_) => TransportType.ws);
-      when(() => mockWSTransport.connect())
-          .thenAnswer((_) => Future.value(true));
-      when(() => mockWSTransport.disconnect())
-          .thenAnswer((_) => Future.value());
-
-
-      when(() => mockSSETransport.name())
-          .thenAnswer((_) => TransportType.sse);
-      when(() => mockSSETransport.connect())
-          .thenAnswer((_) => Future.value(true));
+      when(() => mockSSETransport.name()).thenAnswer((_) => TransportType.sse);
+      when(
+        () => mockSSETransport.connect(),
+      ).thenAnswer((_) => Future.value(true));
 
       var onTransportClose = (int code, String reason) {
         print('socket closed');
@@ -105,16 +106,20 @@ void main() {
         channelRef: 'channelRef',
         channelSecret: 'channelSecret',
         heartbeatInterval: 1000,
-        transportsProvider: [TransportType.ws, TransportType.sse],);
+        transportsProvider: [TransportType.ws, TransportType.sse],
+      );
 
-      DefaultTransportStrategy transportStrategy =  DefaultTransportStrategy.custom(config, 
-        onTransportClose, 
-        onTransportError,
-        {
-          TransportType.ws: () => mockWSTransport,
-          TransportType.sse: () => mockSSETransport,
-        },);
-           
+      DefaultTransportStrategy transportStrategy =
+          DefaultTransportStrategy.custom(
+            config,
+            onTransportClose,
+            onTransportError,
+            {
+              TransportType.ws: () => mockWSTransport,
+              TransportType.sse: () => mockSSETransport,
+            },
+          );
+
       expect(await transportStrategy.connect(), true);
       expect(transportStrategy.getTransport().name(), TransportType.ws);
 
@@ -126,15 +131,13 @@ void main() {
       // assert calls to mocks
       verify(() => mockWSTransport.disconnect()).called(1);
       verify(() => mockSSETransport.connect()).called(1);
-
     });
 
     test('Handle strategy transport switching with only 1 transport', () async {
-
-      when(() => mockWSTransport.name())
-          .thenAnswer((_) => TransportType.ws);
-      when(() => mockWSTransport.connect())
-          .thenAnswer((_) => Future.value(true));
+      when(() => mockWSTransport.name()).thenAnswer((_) => TransportType.ws);
+      when(
+        () => mockWSTransport.connect(),
+      ).thenAnswer((_) => Future.value(true));
 
       var onTransportClose = (int code, String reason) {
         print('socket closed');
@@ -148,15 +151,17 @@ void main() {
         channelRef: 'channelRef',
         channelSecret: 'channelSecret',
         heartbeatInterval: 1000,
-        transportsProvider: [TransportType.ws],);
+        transportsProvider: [TransportType.ws],
+      );
 
-      DefaultTransportStrategy transportStrategy =  DefaultTransportStrategy.custom(config, 
-        onTransportClose, 
-        onTransportError,
-        {
-          TransportType.ws: () => mockWSTransport,
-        },);
-           
+      DefaultTransportStrategy transportStrategy =
+          DefaultTransportStrategy.custom(
+            config,
+            onTransportClose,
+            onTransportError,
+            {TransportType.ws: () => mockWSTransport},
+          );
+
       expect(await transportStrategy.connect(), true);
       expect(transportStrategy.getTransport().name(), TransportType.ws);
 
@@ -167,15 +172,13 @@ void main() {
 
       // assert mocks not called
       verifyNever(() => mockWSTransport.disconnect()).called(0);
-
     });
 
     test('Handle retry connection on transport fail to connect', () async {
-
-      when(() => mockWSTransport.name())
-          .thenAnswer((_) => TransportType.ws);
-      when(() => mockWSTransport.connect())
-          .thenAnswer((_) => Future.value(false));
+      when(() => mockWSTransport.name()).thenAnswer((_) => TransportType.ws);
+      when(
+        () => mockWSTransport.connect(),
+      ).thenAnswer((_) => Future.value(false));
 
       var onTransportClose = (int code, String reason) {
         print('socket closed');
@@ -190,21 +193,21 @@ void main() {
         channelSecret: 'channelSecret',
         heartbeatInterval: 1000,
         maxRetries: 2,
-        transportsProvider: [TransportType.ws],);
+        transportsProvider: [TransportType.ws],
+      );
 
-      DefaultTransportStrategy transportStrategy =  DefaultTransportStrategy.custom(config, 
-        onTransportClose, 
-        onTransportError,
-        {
-          TransportType.ws: () => mockWSTransport,
-        },);
-           
+      DefaultTransportStrategy transportStrategy =
+          DefaultTransportStrategy.custom(
+            config,
+            onTransportClose,
+            onTransportError,
+            {TransportType.ws: () => mockWSTransport},
+          );
+
       expect(await transportStrategy.connect(), false);
 
       // assert mocks called
       verify(() => mockWSTransport.connect()).called(3);
-
     });
-
-  }); 
+  });
 }
