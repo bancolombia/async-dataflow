@@ -28,5 +28,5 @@ class NoopTransport implements Transport {
   }
 
   @override
-  Stream<ChannelMessage> get stream => Stream.empty();
+  Stream<ChannelMessage> get stream => const Stream.empty();
 }

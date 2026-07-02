@@ -1,5 +1,5 @@
 import 'package:channel_sender_client/channel_sender_client.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('transportFromString', () {

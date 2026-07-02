@@ -6,7 +6,7 @@ import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:channel_sender_client/src/transport/types/ws_transport.dart';
 import 'package:logging/logging.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 class MockAsyncConfig extends Mock implements AsyncConfig {}
 
@@ -200,7 +200,7 @@ void main() {
 
       server.transform(WebSocketTransformer()).listen((WebSocket channel) {
         channel.listen((request) async {
-          await Future.delayed(Duration(milliseconds: 200), () {
+          await Future.delayed(const Duration(milliseconds: 200), () {
             // final error = Exception('This is a test error');
             // final stackTrace = StackTrace.current;
             channel.close(1002, 'Test error');
@@ -310,11 +310,11 @@ void main() {
 
       socketStreamController.add(frame1);
 
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
 
       socketStreamController.add(frame2);
 
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
 
       expect(
         receivedMessages.length,
@@ -339,9 +339,9 @@ void main() {
       final frame2 = jsonEncode(['msg-B', 'event-B', '', 'data-B']);
 
       socketStreamController.add(frame1);
-      await Future.delayed(Duration(milliseconds: 10));
+      await Future.delayed(const Duration(milliseconds: 10));
       socketStreamController.add(frame2);
-      await Future.delayed(Duration(milliseconds: 10));
+      await Future.delayed(const Duration(milliseconds: 10));
 
       expect(receivedMessages.length, equals(2));
     });

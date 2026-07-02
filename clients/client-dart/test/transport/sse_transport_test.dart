@@ -4,17 +4,14 @@ import 'dart:io';
 import 'package:channel_sender_client/channel_sender_client.dart';
 import 'package:channel_sender_client/src/transport/types/sse_transport.dart';
 import 'package:logging/logging.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   late HttpServer server;
 
   setUp(() async {
     // mockHttpClient = MockHttpClient();
-    server = await HttpServer.bind(
-      'localhost',
-      8787,
-    );
+    server = await HttpServer.bind('localhost', 8787);
     addTearDown(server.close);
   });
 
@@ -45,8 +42,11 @@ void main() {
         heartbeatInterval: 1000,
       );
 
-      var transport =
-          SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
+      var transport = SSETransport(
+        signalSocketCloseFn,
+        signalSocketErrorFn,
+        config,
+      );
 
       bool connected = await transport.connect();
 
@@ -64,12 +64,16 @@ void main() {
     test('Should get new token', () async {
       server.listen((HttpRequest request) {
         if (request.uri.path == '/ext/sse') {
-          request.response.headers.contentType =
-              ContentType('text', 'event-stream', charset: 'utf-8');
+          request.response.headers.contentType = ContentType(
+            'text',
+            'event-stream',
+            charset: 'utf-8',
+          );
           request.response.headers.add('Cache-Control', 'no-cache');
           request.response.headers.add('Connection', 'keep-alive');
-          request.response
-              .write('data: ["", "", ":n_token", "new_secret"]\n\n');
+          request.response.write(
+            'data: ["", "", ":n_token", "new_secret"]\n\n',
+          );
           request.response.close();
         } else {
           request.response.statusCode = HttpStatus.notFound;
@@ -94,8 +98,11 @@ void main() {
         transportsProvider: [TransportType.sse],
       );
 
-      var transport =
-          SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
+      var transport = SSETransport(
+        signalSocketCloseFn,
+        signalSocketErrorFn,
+        config,
+      );
 
       await transport.connect();
       transport.stream.listen((event) {
@@ -133,8 +140,11 @@ void main() {
         heartbeatInterval: 1000,
       );
 
-      var transport =
-          SSETransport(signalSocketCloseFn, signalSocketErrorFn, config);
+      var transport = SSETransport(
+        signalSocketCloseFn,
+        signalSocketErrorFn,
+        config,
+      );
 
       bool connected = await transport.connect();
 

@@ -1,5 +1,5 @@
 import 'package:channel_sender_client/src/decoder/json_decoder.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Json decoding', () {
@@ -38,7 +38,8 @@ void main() {
       expect(
         msg.payload,
         equals(
-            '{"code":"100", "title":"process after 5000ms", "detail":"some detail 89bd02d1da483efaa5389cbd4ca65bbd", "level":"info"}'),
+          '{"code":"100", "title":"process after 5000ms", "detail":"some detail 89bd02d1da483efaa5389cbd4ca65bbd", "level":"info"}',
+        ),
       );
     });
 

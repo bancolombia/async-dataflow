@@ -1,6 +1,6 @@
 import 'package:channel_sender_client/src/utils/retry_timer.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
-import 'package:test/test.dart';
 
 void main() {
   group('Retry Timer tests', () {
@@ -44,8 +44,13 @@ void main() {
         throw ArgumentError('Some error');
       };
 
-      var retyTimer = RetryTimer(doSomething, doSomethingElse,
-          initialWait: 100, maxWait: 300, jitterFn: customJitter);
+      var retyTimer = RetryTimer(
+        doSomething,
+        doSomethingElse,
+        initialWait: 100,
+        maxWait: 300,
+        jitterFn: customJitter,
+      );
 
       retyTimer.schedule();
       await Future.delayed(const Duration(milliseconds: 500));

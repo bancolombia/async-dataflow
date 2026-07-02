@@ -54,17 +54,21 @@ void main() {
 
       AsyncClient client = AsyncClient(conf);
       expect(await client.connect(), true);
-      expect(await client.isOpen(), true);
+      expect(client.isOpen(), true);
 
       log.finest('------ Done connecting -------');
 
       bool messageReceived = false;
-      var subscriber = client.subscribeTo('event.productCreated', (event) {
-        log.info('SUB 1 JUST RECEIVED: $event');
-        messageReceived = true;
-      }, onError: (err) {
-        log.severe('SUB 1 JUST RECEIVED AN ERROR: $err');
-      });
+      var subscriber = client.subscribeTo(
+        'event.productCreated',
+        (event) {
+          log.info('SUB 1 JUST RECEIVED: $event');
+          messageReceived = true;
+        },
+        onError: (err) {
+          log.severe('SUB 1 JUST RECEIVED AN ERROR: $err');
+        },
+      );
 
       await Future.delayed(const Duration(seconds: 3));
 
@@ -102,15 +106,19 @@ void main() {
 
       AsyncClient client = AsyncClient(conf);
       expect(await client.connect(), true);
-      expect(await client.isOpen(), true);
+      expect(client.isOpen(), true);
 
       log.finest('------ Done connecting -------');
 
-      var subscriber = client.subscribeTo('event.productCreated', (event) {
-        log.info('SUB 1 JUST RECEIVED: $event');
-      }, onError: (err) {
-        log.severe('SUB 1 JUST RECEIVED AN ERROR: $err');
-      });
+      var subscriber = client.subscribeTo(
+        'event.productCreated',
+        (event) {
+          log.info('SUB 1 JUST RECEIVED: $event');
+        },
+        onError: (err) {
+          log.severe('SUB 1 JUST RECEIVED AN ERROR: $err');
+        },
+      );
 
       await Future.delayed(const Duration(seconds: 1));
 

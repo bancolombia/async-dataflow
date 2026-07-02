@@ -1,5 +1,5 @@
 import 'package:channel_sender_client/src/utils/utils.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Utils tests.', () {

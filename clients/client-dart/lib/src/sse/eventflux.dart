@@ -1,4 +1,4 @@
-library eventflux;
+library;
 
 /// EventFlux Library Exports.
 ///
