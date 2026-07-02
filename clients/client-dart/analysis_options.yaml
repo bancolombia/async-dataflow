@@ -18,7 +18,6 @@ linter:
     comment_references: false
     one_member_abstracts: false
     only_throw_errors: true
-    package_api_docs: true
     prefer_single_quotes: true
     sort_child_properties_last: true
     camel_case_types: true
@@ -74,8 +73,10 @@ analyzer:
   exclude:
     - "**.mocks.dart"
     - "**.g.dart"
-  plugins:
-    - dart_code_linter
+
+
+plugins:
+  dart_code_linter: ^4.1.5
 
 dart_code_linter:
   metrics:
@@ -86,76 +87,3 @@ dart_code_linter:
     source-lines-of-code: 250
   metrics-exclude:
     - test/**
-  rules:
-    - avoid-non-null-assertion 
-    - avoid-dynamic 
-    - avoid-returning-widgets 
-    - avoid-nested-conditional-expressions 
-    - avoid-unnecessary-type-casts 
-    - avoid-unnecessary-conditionals
-    - avoid-unused-parameters: 
-        severity: none
-    - missing-test-assertion 
-    - newline-before-return: 
-        severity: none
-    - no-boolean-literal-compare
-    - no-empty-block 
-    - no-equal-then-else
-    - no-magic-number
-    - prefer-trailing-comma: 
-        severity: none
-    - prefer-conditional-expressions
-    - prefer-immediate-return
-    - prefer-moving-to-variable
-    - format-comment:
-        only-doc-comments: true
-    - member-ordering:
-        order:
-          - public-fields
-          - private-fields
-          - constructors
-          - close-method
-          - dispose-method
-        widgets-order:
-          - constructor
-          - build-method
-          - init-state-method
-          - did-change-dependencies-method
-          - did-update-widget-method
-          - dispose-method
-        
-    - always-remove-listener
-    - avoid-unnecessary-setstate
-    - prefer-extracting-callbacks
-    - prefer-using-list-view
-    - avoid-ignoring-return-values:
-        severity: none
-    - avoid-passing-async-when-sync-expected:
-        exclude:
-          - test/**
-    - avoid-unnecessary-type-assertions
-    - avoid-unrelated-type-assertions
-    - double-literal-format
-    - prefer-async-await
-    - prefer-correct-identifier-length:
-        max-identifier-length: 35
-        min-identifier-length: 2
-    - prefer-correct-test-file-name
-    - prefer-correct-type-name:
-        min-length: 3
-        max-length: 35
-    - prefer-first
-    - prefer-last
-    - prefer-match-file-name:
-        exclude:
-          - test/**
-    - avoid-border-all
-    - avoid-expanded-as-spacer
-    - avoid-wrapping-in-padding
-    - no-blank-line-before-single-return
-    - prefer-first-or-null
-    - prefer-single-quotes
-
-  anti-patterns:
-    - long-method
-    - long-parameter-list

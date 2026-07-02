@@ -9,7 +9,7 @@ class AsyncDataFlowLogger {
       lineLength: 120,
       colors: true,
       printEmojis: true,
-      printTime: true,
+      dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
   );
 
@@ -26,11 +26,7 @@ class AsyncDataFlowLogger {
 
     switch (record.level.name) {
       case 'SEVERE':
-        _logger.e(
-          message,
-          record.error,
-          record.stackTrace,
-        );
+        _logger.e(message, error: record.error, stackTrace: record.stackTrace);
         break;
       case 'WARNING':
         _logger.w(message);

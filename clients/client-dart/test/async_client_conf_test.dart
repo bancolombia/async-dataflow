@@ -36,9 +36,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (client != null) {
-        await client.dispose();
-      }
+      await client.dispose();
     });
 
     test('should initialize with correct config', () {
