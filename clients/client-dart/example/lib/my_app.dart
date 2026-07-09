@@ -14,7 +14,9 @@ class MyApp extends StatelessWidget {
       eventListen: const [
         'ch-ms-async-callback.svp.reply',
         'businessEvent',
-        ':n_token'
+        ':n_token',
+        'ch-ms-async-callback.svp.p2p',
+        'ch-ms-async-callback.svp.p2m',
       ],
       asyncClientGateway: ApiService(context),
       appConfig: AppConfig.of(context),

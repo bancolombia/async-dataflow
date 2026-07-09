@@ -33,6 +33,6 @@ class ApiService implements AsyncClientGateway {
   Future<http.Response> callBusinessUseCase(
       String channelRef, String userRef, int delay) async {
     return http.get(Uri.parse(
-        "$urlBusinessService/business?channel_ref=$channelRef&user_ref=$userRef&delay=$delay"));
+        "$urlBusinessService/business/two-events?channel_ref=$channelRef&user_ref=$userRef&delay=$delay"));
   }
 }
