@@ -4,7 +4,7 @@ defmodule ChannelSenderEx.MixProject do
   def project do
     [
       app: :channel_sender_ex,
-      version: "0.3.2",
+      version: "0.3.3",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -45,13 +45,13 @@ defmodule ChannelSenderEx.MixProject do
   defp deps do
     [
       {:cors_plug, "~> 3.0"},
-      {:cowboy, "~> 2.14"},
-      {:cowlib, "~> 2.16"},
+      {:cowboy, "~> 2.18"},
+      {:cowlib, "~> 2.21"},
       {:elixir_uuid, "~> 1.2"},
       {:gen_state_machine, "~> 3.0"},
       {:jason, "~> 1.4"},
       {:libcluster, "~> 3.5"},
-      {:plug_cowboy, "~> 2.7"},
+      {:plug_cowboy, "~> 2.9"},
       {:plug_crypto, "~> 2.1"},
       {:vapor, "~> 0.10"},
       # for metrics and tracing
@@ -70,11 +70,10 @@ defmodule ChannelSenderEx.MixProject do
       {:observer_cli, "~> 1.8"},
       # Dev and Test dependencies
       # {:meck, "0.9.2"},
-      {:hackney, "~> 1.25", only: :test},
       {:stream_data, "~> 1.2", only: :test},
       {:mock, "~> 0.3", only: :test},
       {:benchee, "~> 1.5", only: [:dev, :benchee]},
-      {:gun, "~> 2.2", only: [:test, :benchee]},
+      {:gun, "~> 2.7", only: [:test, :benchee]},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
     ]
