@@ -7,11 +7,30 @@ defmodule ChannelSenderEx.Utils.ChannelMetricsTest do
   alias ChannelSenderEx.Utils.CustomTelemetry
 
   setup do
-    if GenServer.whereis(ChannelMetrics) do
-      GenServer.stop(ChannelMetrics)
+    if pid = GenServer.whereis(ChannelMetrics) do
+      try do
+        GenServer.stop(pid)
+      catch
+        # the previous test process linked to this server and may have
+        # killed it while the name was still registered
+        :exit, {:noproc, _} -> :ok
+      end
+
+      # name unregistration is async after process death; wait for it
+      # before starting a new server under the same name
+      deadline = System.monotonic_time(:millisecond) + 1000
+      wait_for_name_release(deadline)
     end
 
     :ok
+  end
+
+  defp wait_for_name_release(deadline) do
+    if GenServer.whereis(ChannelMetrics) != nil and
+         System.monotonic_time(:millisecond) < deadline do
+      Process.sleep(10)
+      wait_for_name_release(deadline)
+    end
   end
 
   describe "start_link/1" do

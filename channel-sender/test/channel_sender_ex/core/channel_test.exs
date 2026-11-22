@@ -14,6 +14,16 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   @moduletag :capture_log
 
   setup_all do
+    env_snapshot =
+      [
+        :accept_channel_reply_timeout,
+        :on_connected_channel_reply_timeout,
+        :channel_shutdown_on_clean_close,
+        :channel_shutdown_on_disconnection,
+        :secret_base
+      ]
+      |> Map.new(&{&1, Application.get_env(:channel_sender_ex, &1)})
+
     Application.put_env(
       :channel_sender_ex,
       :accept_channel_reply_timeout,
@@ -41,6 +51,14 @@ defmodule ChannelSenderEx.Core.ChannelTest do
 
     on_exit(fn ->
       Process.exit(pg_pid, :kill)
+
+      Enum.each(env_snapshot, fn {key, value} ->
+        if value == nil do
+          Application.delete_env(:channel_sender_ex, key)
+        else
+          Application.put_env(:channel_sender_ex, key, value)
+        end
+      end)
     end)
 
     :ok
@@ -155,9 +173,25 @@ defmodule ChannelSenderEx.Core.ChannelTest do
   end
 
   test "Should send new token in correct interval", %{init_args: init_args = {channel, _, _, _}} do
+    env_snapshot =
+      [:max_age, :min_disconnection_tolerance]
+      |> Map.new(&{&1, Application.get_env(:channel_sender_ex, &1)})
+
     Application.put_env(:channel_sender_ex, :max_age, 2)
     Application.put_env(:channel_sender_ex, :min_disconnection_tolerance, 1)
     Helper.compile(:channel_sender_ex)
+
+    on_exit(fn ->
+      Enum.each(env_snapshot, fn {key, value} ->
+        if value == nil do
+          Application.delete_env(:channel_sender_ex, key)
+        else
+          Application.put_env(:channel_sender_ex, key, value)
+        end
+      end)
+
+      Helper.compile(:channel_sender_ex)
+    end)
 
     {:ok, pid} = start_channel_safe(init_args)
     #    :sys.trace(pid, true)
@@ -175,7 +209,6 @@ defmodule ChannelSenderEx.Core.ChannelTest do
     assert {:ok, _app, _user} = ChannelIDGenerator.verify_token(channel, token)
 
     Process.exit(pid, :kill)
-    Helper.compile(:channel_sender_ex)
   end
 
   test "Should not fail when multiples acks was received", %{
