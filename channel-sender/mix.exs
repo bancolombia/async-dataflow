@@ -45,8 +45,8 @@ defmodule ChannelSenderEx.MixProject do
   defp deps do
     [
       {:cors_plug, "~> 3.0"},
-      {:cowboy, "~> 2.18"},
-      {:cowlib, "~> 2.21"},
+      {:cowboy, "~> 2.21"},
+      {:cowlib, "~> 2.22"},
       {:elixir_uuid, "~> 1.2"},
       {:gen_state_machine, "~> 3.0"},
       {:jason, "~> 1.4"},
@@ -54,6 +54,8 @@ defmodule ChannelSenderEx.MixProject do
       {:plug_cowboy, "~> 2.9"},
       {:plug_crypto, "~> 2.1"},
       {:vapor, "~> 0.10"},
+      # pins opentelemetry_exporter's TLS verifier past EEF-CVE-2026-117666
+      {:ssl_verify_fun, "~> 1.1.8"},
       # for metrics and tracing
       {:opentelemetry, "~> 1.7"},
       {:opentelemetry_exporter, "~> 1.10"},

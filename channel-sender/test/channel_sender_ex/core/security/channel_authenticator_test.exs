@@ -9,6 +9,10 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
   @moduletag :capture_log
 
   setup_all do
+    env_snapshot =
+      [:secret_base, :channel_shutdown_tolerance, :max_age]
+      |> Map.new(&{&1, Application.get_env(:channel_sender_ex, &1)})
+
     Application.put_env(:channel_sender_ex, :secret_base, {
       "aV4ZPOf7T7HX6GvbhwyBlDM8B9jfeiwi+9qkBnjXxUZXqAeTrehojWKHkV3U0kGc",
       "socket auth"
@@ -16,6 +20,16 @@ defmodule ChannelSenderEx.Core.Security.ChannelAuthenticatorTest do
 
     Application.put_env(:channel_sender_ex, :channel_shutdown_tolerance, 100)
     Application.put_env(:channel_sender_ex, :max_age, 100)
+
+    on_exit(fn ->
+      Enum.each(env_snapshot, fn {key, value} ->
+        if value == nil do
+          Application.delete_env(:channel_sender_ex, key)
+        else
+          Application.put_env(:channel_sender_ex, key, value)
+        end
+      end)
+    end)
 
     {:ok, _} = Application.ensure_all_started(:plug_crypto)
 
