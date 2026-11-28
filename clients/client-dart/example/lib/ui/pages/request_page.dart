@@ -136,20 +136,22 @@ class _RequestPageState extends State<RequestPage> {
                         onPressed: () => homeHelper.switchProtocols(),
                       ),
                       const SizedBox(width: 10),
-                      OutlinedButton(
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.stop,
-                            ),
-                            SizedBox(width: 5),
-                            Text(
-                              "Disconnect",
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ],
+                      Expanded(
+                        child: OutlinedButton(
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.stop,
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                "Disconn",
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            ],
+                          ),
+                          onPressed: () => homeHelper.disconnect(),
                         ),
-                        onPressed: () => homeHelper.disconnect(),
                       ),
                     ],
                   ),
